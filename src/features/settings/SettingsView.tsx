@@ -168,7 +168,7 @@ export const SettingsView: React.FC = () => {
                <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 0 10px var(--color-primary))' }}>🛡️</div>
                <div>
                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>VRChat Group Guard</h3>
-                 <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Version 1.0.0 (Beta)</p>
+                 <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Version 1.0.2 (Beta)</p>
                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', opacity: 0.6 }}>
                    Developed by <a href="https://vrchat.com/home/user/usr_ef7c23be-3c3c-40b4-a01c-82f59b2a8229" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>AppleExpl01t</a> • Electron • React • Vite
                  </div>
