@@ -298,7 +298,7 @@ app.on('before-quit', () => {
 });
 
 // Force exit in development mode to kill parent process
-app.on('will-quit', (event) => {
+app.on('will-quit', () => {
   if (process.env.NODE_ENV === 'development') {
     logger.info('Development mode: forcing process exit to terminate dev servers');
     // Allow the quit to proceed, but ensure process exits completely
