@@ -7,6 +7,7 @@ import { getVRChatClient } from './AuthService';
 import { databaseService } from './DatabaseService';
 import { instanceLoggerService } from './InstanceLoggerService';
 import { logWatcherService } from './LogWatcherService';
+import { groupAuthorizationService } from './GroupAuthorizationService';
 
 const logger = log.scope('AutoModService');
 
@@ -157,6 +158,12 @@ export const setupAutoModHandlers = () => {
     };
 
     const executeAction = async (player: { userId: string; displayName: string }, rule: AutoModRule, groupId: string) => {
+        // SECURITY: Validate that we have permission to moderate this group
+        if (!groupAuthorizationService.isGroupAllowed(groupId)) {
+            logger.warn(`[AutoMod] [SECURITY BLOCK] Attempted action on unauthorized group: ${groupId}. Skipping.`);
+            return;
+        }
+        
         const client = getVRChatClient();
         if (!client) return;
 
@@ -262,6 +269,12 @@ export const setupAutoModHandlers = () => {
                 return;
             }
 
+            // SECURITY: Validate that we have permission to moderate this group
+            if (!groupAuthorizationService.isGroupAllowed(groupId)) {
+                logger.debug(`[AutoMod] Skipping unauthorized group: ${groupId}`);
+                return;
+            }
+
             const players = logWatcherService.getPlayers();
             
             for (const p of players) {
@@ -278,9 +291,14 @@ export const setupAutoModHandlers = () => {
     logWatcherService.on('player-joined', async (event: { displayName: string; userId?: string }) => {
         if (!event.userId) return;
         const groupId = getCurrentGroupId();
-        if (groupId) {
-             await checkPlayer({ userId: event.userId, displayName: event.displayName }, groupId);
+        if (!groupId) return;
+        
+        // SECURITY: Validate that we have permission to moderate this group
+        if (!groupAuthorizationService.isGroupAllowed(groupId)) {
+            return; // Silently skip - not our group
         }
+        
+        await checkPlayer({ userId: event.userId, displayName: event.displayName }, groupId);
     });
 
     // Start Loop (Backup)

@@ -3,6 +3,7 @@ import log from 'electron-log';
 const logger = log.scope('GroupService');
 import { getVRChatClient, getCurrentUserId, getAuthCookieString } from './AuthService';
 import { databaseService } from './DatabaseService';
+import { groupAuthorizationService } from './GroupAuthorizationService';
 
 export function setupGroupHandlers() {
 
@@ -95,6 +96,9 @@ export function setupGroupHandlers() {
   // Get specific group details
   ipcMain.handle('groups:get-details', async (_event, { groupId }: { groupId: string }) => {
     try {
+      // SECURITY: Validate group access
+      groupAuthorizationService.validateAccess(groupId, 'groups:get-details');
+      
       const client = getVRChatClient();
       if (!client) throw new Error("Not authenticated");
   
@@ -133,6 +137,9 @@ export function setupGroupHandlers() {
   // Get group members
   ipcMain.handle('groups:get-members', async (_event, { groupId, n = 100, offset = 0 }: { groupId: string; n?: number; offset?: number }) => {
     try {
+      // SECURITY: Validate group access
+      groupAuthorizationService.validateAccess(groupId, 'groups:get-members');
+      
       const client = getVRChatClient();
       if (!client) throw new Error("Not authenticated");
   
@@ -166,6 +173,9 @@ export function setupGroupHandlers() {
   // Note: VRChat API may not support server-side search on getGroupMembers
   ipcMain.handle('groups:search-members', async (_event, { groupId, query, n = 15 }: { groupId: string; query: string; n?: number }) => {
     try {
+      // SECURITY: Validate group access
+      groupAuthorizationService.validateAccess(groupId, 'groups:search-members');
+      
       const client = getVRChatClient();
       if (!client) throw new Error("Not authenticated");
       
@@ -243,6 +253,9 @@ export function setupGroupHandlers() {
   // Get group join requests
   ipcMain.handle('groups:get-requests', async (_event, { groupId }: { groupId: string }) => {
     try {
+      // SECURITY: Validate group access
+      groupAuthorizationService.validateAccess(groupId, 'groups:get-requests');
+      
       const client = getVRChatClient();
       logger.info(`Fetching requests for group ${groupId}`);
       if (!client) throw new Error("Not authenticated");
@@ -272,6 +285,9 @@ export function setupGroupHandlers() {
   // Get group bans
   ipcMain.handle('groups:get-bans', async (_event, { groupId }: { groupId: string }) => {
     try {
+      // SECURITY: Validate group access
+      groupAuthorizationService.validateAccess(groupId, 'groups:get-bans');
+      
       const client = getVRChatClient();
       logger.info(`Fetching bans for group ${groupId}`);
       if (!client) throw new Error("Not authenticated");
@@ -303,6 +319,9 @@ export function setupGroupHandlers() {
 
   ipcMain.handle('groups:get-audit-logs', async (_event, { groupId }: { groupId: string }) => {
     try {
+      // SECURITY: Validate group access
+      groupAuthorizationService.validateAccess(groupId, 'groups:get-audit-logs');
+      
       const client = getVRChatClient();
       if (!client) throw new Error("Not authenticated");
       
@@ -376,6 +395,12 @@ export function setupGroupHandlers() {
 
   // Get active group instances - using direct HTTP to bypass SDK quirks
   ipcMain.handle('groups:get-instances', async (_event, { groupId }: { groupId: string }) => {
+    // SECURITY: Validate group access first
+    const authCheck = groupAuthorizationService.validateAccessSafe(groupId, 'groups:get-instances');
+    if (!authCheck.allowed) {
+      return { success: false, error: authCheck.error };
+    }
+    
     // Helper to safely stringify objects with BigInt values
     const safeStringify = (obj: unknown): string => {
       try {
@@ -509,6 +534,12 @@ export function setupGroupHandlers() {
 
   // Ban a user from a group
   ipcMain.handle('groups:ban-user', async (_event, { groupId, userId }: { groupId: string; userId: string }) => {
+    // SECURITY: Validate group access first
+    const authCheck = groupAuthorizationService.validateAccessSafe(groupId, 'groups:ban-user');
+    if (!authCheck.allowed) {
+      return { success: false, error: authCheck.error };
+    }
+    
     const client = getVRChatClient();
     if (!client) throw new Error("Not authenticated");
 
@@ -542,6 +573,9 @@ export function setupGroupHandlers() {
   // Get group roles
   ipcMain.handle('groups:get-roles', async (_event, { groupId }: { groupId: string }) => {
     try {
+      // SECURITY: Validate group access
+      groupAuthorizationService.validateAccess(groupId, 'groups:get-roles');
+      
       const client = getVRChatClient();
       if (!client) throw new Error("Not authenticated");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -625,6 +659,9 @@ export function setupGroupHandlers() {
   // Add role to member
   ipcMain.handle('groups:add-member-role', async (_event, { groupId, userId, roleId }: { groupId: string, userId: string, roleId: string }) => {
       try {
+          // SECURITY: Validate group access
+          groupAuthorizationService.validateAccess(groupId, 'groups:add-member-role');
+          
           const client = getVRChatClient();
           if (!client) throw new Error("Not authenticated");
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -693,6 +730,9 @@ export function setupGroupHandlers() {
   // Remove role from member
   ipcMain.handle('groups:remove-member-role', async (_event, { groupId, userId, roleId }: { groupId: string, userId: string, roleId: string }) => {
       try {
+          // SECURITY: Validate group access
+          groupAuthorizationService.validateAccess(groupId, 'groups:remove-member-role');
+          
           const client = getVRChatClient();
           if (!client) throw new Error("Not authenticated");
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -755,6 +795,9 @@ export function setupGroupHandlers() {
   // Respond to group join request
   ipcMain.handle('groups:respond-request', async (_event, { groupId, userId, action }: { groupId: string, userId: string, action: 'accept' | 'deny' }) => {
       try {
+          // SECURITY: Validate group access
+          groupAuthorizationService.validateAccess(groupId, 'groups:respond-request');
+          
           const client = getVRChatClient();
           if (!client) throw new Error("Not authenticated");
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

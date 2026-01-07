@@ -4,6 +4,7 @@ const logger = log.scope('AuthService');
 import path from 'path';
 import { saveCredentials, clearCredentials, loadCredentials, hasSavedCredentials } from './CredentialsService';
 import { onUserLoggedIn, onUserLoggedOut } from './PipelineService';
+import { groupAuthorizationService } from './GroupAuthorizationService';
 
 // Import the VRChat SDK and Keyv for session persistence
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -613,6 +614,9 @@ export function setupAuthHandlers() {
     vrchatClient = null;
     currentUser = null;
     pendingLoginCredentials = null;
+    
+    // SECURITY: Clear allowed groups on logout
+    groupAuthorizationService.clearAllowedGroups();
     
     // Disconnect from Pipeline WebSocket
     onUserLoggedOut();

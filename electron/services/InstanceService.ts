@@ -4,6 +4,7 @@ const logger = log.scope('InstanceService');
 import { getVRChatClient, getCurrentUserId } from './AuthService';
 import { instanceLoggerService } from './InstanceLoggerService';
 import { logWatcherService } from './LogWatcherService';
+import { groupAuthorizationService } from './GroupAuthorizationService';
 
 
 // ============================================
@@ -237,6 +238,12 @@ export function setupInstanceHandlers() {
 
     // RECRUIT (Invite User to Group)
     ipcMain.handle('instance:recruit-user', async (_event, { groupId, userId }) => {
+        // SECURITY: Validate group access
+        const authCheck = groupAuthorizationService.validateAccessSafe(groupId, 'instance:recruit-user');
+        if (!authCheck.allowed) {
+            return { success: false, error: authCheck.error };
+        }
+        
         const client = getVRChatClient();
         if (!client) throw new Error("Not authenticated");
 
@@ -281,6 +288,12 @@ export function setupInstanceHandlers() {
     
     // UNBAN (Unban User from Group)
     ipcMain.handle('instance:unban-user', async (_event, { groupId, userId }) => {
+        // SECURITY: Validate group access
+        const authCheck = groupAuthorizationService.validateAccessSafe(groupId, 'instance:unban-user');
+        if (!authCheck.allowed) {
+            return { success: false, error: authCheck.error };
+        }
+        
         const client = getVRChatClient();
         if (!client) throw new Error("Not authenticated");
 
@@ -312,6 +325,12 @@ export function setupInstanceHandlers() {
 
     // KICK (Ban from Group)
     ipcMain.handle('instance:kick-user', async (_event, { groupId, userId }) => {
+        // SECURITY: Validate group access
+        const authCheck = groupAuthorizationService.validateAccessSafe(groupId, 'instance:kick-user');
+        if (!authCheck.allowed) {
+            return { success: false, error: authCheck.error };
+        }
+        
         const client = getVRChatClient();
         if (!client) throw new Error("Not authenticated");
 
@@ -340,6 +359,12 @@ export function setupInstanceHandlers() {
 
     // RALLY: FETCH TARGETS
     ipcMain.handle('instance:get-rally-targets', async (_event, { groupId }) => {
+        // SECURITY: Validate group access
+        const authCheck = groupAuthorizationService.validateAccessSafe(groupId, 'instance:get-rally-targets');
+        if (!authCheck.allowed) {
+            return { success: false, error: authCheck.error };
+        }
+        
         const client = getVRChatClient();
         if (!client) throw new Error("Not authenticated");
         
