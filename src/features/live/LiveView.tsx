@@ -326,6 +326,7 @@ export const LiveView: React.FC = () => {
              let count = 0;
              for (const t of targets) {
                  // 2. Invite Loop
+                 if (!t.id) continue;
                  const invRes = await window.electron.instance.inviteToCurrent(t.id);
                  
                  if (!invRes.success && invRes.error === 'RATE_LIMIT') {

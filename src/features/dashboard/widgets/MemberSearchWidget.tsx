@@ -18,7 +18,7 @@ export const MemberSearchWidget: React.FC = () => {
     const [searchError, setSearchError] = useState<string | null>(null);
     
     // Debounce timer ref
-    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
     // Action states
     const [actionTarget, setActionTarget] = useState<GroupMember | null>(null);

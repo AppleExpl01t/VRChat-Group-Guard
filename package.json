@@ -1,7 +1,7 @@
 {
   "name": "vrchat-group-guard",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A powerful VRChat group moderation and management tool",
   "author": "VRChat Group Guard Team",
   "license": "MIT",
@@ -22,7 +22,7 @@
   },
   "build": {
     "appId": "com.vrchatgroupguard.app",
-    "productName": "VRChat Group Guard",
+    "productName": "Group Guard for VRChat",
     "copyright": "Copyright © 2024 VRChat Group Guard",
     "directories": {
       "output": "release"

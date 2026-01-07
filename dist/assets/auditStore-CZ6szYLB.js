@@ -1,0 +1,1 @@
+import{h as s}from"./index-D5E0sjoJ.js";const l=s(o=>({logs:[],isLoading:!1,error:null,fetchLogs:async e=>{o({isLoading:!0,error:null});try{const r=await window.electron.getGroupAuditLogs(e);r.success?o({logs:r.logs||[],isLoading:!1}):o({error:r.error,isLoading:!1})}catch(r){o({error:r.message||"Failed to fetch logs",isLoading:!1})}}}));export{l as u};

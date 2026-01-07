@@ -49,10 +49,25 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ isOpen, on
         setIsLoading(true);
         setError(null);
         try {
-             if (window.electron?.instance?.getUserInfo) {
-                const res = await window.electron.instance.getUserInfo(id);
-                if (res.success) {
-                    setProfile(res.data);
+            // Use the general getUser API
+             if (window.electron?.getUser) {
+                const res = await window.electron.getUser(id);
+                if (res.success && res.user) {
+                     // Adapter to match UserProfileData interface
+                    const u = res.user;
+                    setProfile({
+                        id: u.id,
+                        displayName: u.displayName,
+                        description: u.bio || '',
+                        tags: u.tags || [],
+                        thumbnailUrl: u.userIcon || u.profilePicOverride || u.currentAvatarThumbnailImageUrl || '',
+                        currentAvatarImageUrl: u.currentAvatarImageUrl || '',
+                        status: u.status || 'offline',
+                        statusDescription: u.statusDescription || '',
+                        last_login: u.last_login || '',
+                        developerType: u.developerType || 'none',
+                        isFriend: u.isFriend || false
+                    });
                 } else {
                     setError(res.error || 'Failed to fetch profile');
                 }
