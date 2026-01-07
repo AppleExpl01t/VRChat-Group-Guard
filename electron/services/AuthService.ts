@@ -280,25 +280,32 @@ async function performLogin(username: string, password: string, twoFactorCode?: 
     logger.info('Creating VRChat client...');
     const client = new VRChat(clientOptions);
     
-    // IMPORTANT: Set credentials on the client before login
-    // The SDK's response interceptor uses these for auto-re-authentication on 401
-    client.setCredentials({
+    // Set credentials on the client for the SDK's internal authentication flow
+    // Only include twoFactorCode if we have an actual code (prevents SDK from auto-verifying with empty code)
+    const credentialsToSet: { username: string; password: string; twoFactorCode?: () => string } = {
       username,
       password,
-      twoFactorCode: twoFactorCode ? () => twoFactorCode : undefined
-    });
+    };
+    if (twoFactorCode) {
+      credentialsToSet.twoFactorCode = () => twoFactorCode;
+    }
+    client.setCredentials(credentialsToSet);
 
     logger.info('Calling client.login() with credentials...');
     
     // Use the SDK's login method which properly handles authentication
+    // Only pass twoFactorCode if we actually have one
+    const loginOptions: { username: string; password: string; twoFactorCode?: () => string; throwOnError: boolean } = {
+      username, 
+      password,
+      throwOnError: true 
+    };
+    if (twoFactorCode) {
+      loginOptions.twoFactorCode = () => twoFactorCode;
+    }
+    
     try {
-      const loginResult = await client.login({ 
-        username, 
-        password,
-        // Handle 2FA if code is provided
-        twoFactorCode: twoFactorCode ? () => twoFactorCode : undefined,
-        throwOnError: true 
-      });
+      const loginResult = await client.login(loginOptions);
       
       logger.debug('Login response received');
       
@@ -422,6 +429,16 @@ async function performLogin(username: string, password: string, twoFactorCode?: 
     
     // Check for common authentication/credential errors and provide user-friendly messages
     const errorMsgLower = errorMessage.toLowerCase();
+    
+    // Check for rate limiting first (429)
+    if (
+      err?.statusCode === 429 ||
+      errorMsgLower.includes('too many') ||
+      errorMsgLower.includes('rate limit')
+    ) {
+      return { success: false, error: 'Too many login attempts. Please wait a few minutes and try again.' };
+    }
+    
     if (
       errorMsgLower.includes('invalid credentials') ||
       errorMsgLower.includes('incorrect password') ||
@@ -502,37 +519,84 @@ export function setupAuthHandlers() {
     }
     
     try {
-      logger.info('Verifying 2FA code...');
+      logger.info('Verifying 2FA code using existing client session...');
       
-      const result = await performLogin(
-        pendingLoginCredentials.username,
-        pendingLoginCredentials.password,
-        code
-      );
-
-      if (!result.success || !result.user) {
-        throw new Error(result.error || '2FA verification failed');
+      // Use the existing client that has the session from the first login attempt
+      // Try TOTP verification first (most common)
+      const client = vrchatClient;
+      
+      // Try to verify with TOTP (authenticator app)
+      let verifyResult = await client.verify2Fa({ 
+        body: { code },
+        throwOnError: false 
+      });
+      
+      // If TOTP didn't work, try email OTP
+      if (!verifyResult?.data?.verified) {
+        logger.info('TOTP verification failed, trying email OTP...');
+        verifyResult = await client.verify2FaEmailCode({ 
+          body: { code },
+          throwOnError: false 
+        });
       }
-
+      
+      // If email OTP didn't work, try recovery code
+      if (!verifyResult?.data?.verified) {
+        logger.info('Email OTP verification failed, trying recovery code...');
+        verifyResult = await client.verifyRecoveryCode({ 
+          body: { code },
+          throwOnError: false 
+        });
+      }
+      
+      if (!verifyResult?.data?.verified) {
+        logger.warn('All 2FA verification methods failed');
+        return { success: false, error: 'Invalid 2FA code. Please try again.' };
+      }
+      
+      logger.info('2FA verification successful, fetching user data...');
+      
+      // Now get the current user to complete login
+      const userResponse = await client.getCurrentUser({ throwOnError: true });
+      const user = userResponse?.data || userResponse;
+      
+      if (!user || !user.id) {
+        throw new Error('Failed to get user data after 2FA verification');
+      }
+      
+      // Sanitize user ID
+      if (user.id && typeof user.id === 'string') {
+        user.id = user.id.trim();
+      }
+      
+      currentUser = user as Record<string, unknown>;
+      
+      logger.info(`2FA complete, logged in as: ${user.displayName}`);
+      
       // Save credentials if rememberMe was set during initial login
       if (pendingLoginCredentials.rememberMe) {
-        // Save with the new authCookie from the result
-        saveCredentials(pendingLoginCredentials.username, pendingLoginCredentials.password, result.authCookie);
+        const authCookie = extractAuthCookie(client);
+        saveCredentials(pendingLoginCredentials.username, pendingLoginCredentials.password, authCookie);
         logger.info('Credentials saved for auto-login after 2FA');
-        logger.debug('Credentials saved after 2FA');
       }
       
       pendingLoginCredentials = null; // Clear pending credentials
       
-      // Note: performLogin sets currentUser and vrchatClient already
+      // Connect to Pipeline WebSocket
+      onUserLoggedIn();
       
       return { success: true, user: currentUser };
       
     } catch (error: unknown) {
-      const err = error as { message?: string };
+      const err = error as { message?: string; statusCode?: number };
       logger.error("2FA Verification Error:", error);
       
       const errorMessage = err.message || 'Invalid 2FA code';
+      
+      // Check for rate limiting
+      if (err.statusCode === 429 || errorMessage.toLowerCase().includes('too many')) {
+        return { success: false, error: 'Too many attempts. Please wait a few minutes and try again.' };
+      }
       
       // Check for specific error types
       if (errorMessage.toLowerCase().includes('invalid') || errorMessage.toLowerCase().includes('incorrect')) {
