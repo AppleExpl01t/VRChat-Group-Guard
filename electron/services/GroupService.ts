@@ -378,7 +378,8 @@ export function setupGroupHandlers() {
       }
 
       // 3. Merge and Sort
-      const allLogs = [...setLogs, ...localLogs].sort((a, b) => {
+      interface AuditLogEntry { created_at: string; [key: string]: unknown; }
+      const allLogs = [...setLogs, ...localLogs].sort((a: AuditLogEntry, b: AuditLogEntry) => {
           const dateA = new Date(a.created_at).getTime();
           const dateB = new Date(b.created_at).getTime();
           return dateB - dateA; // Newest first
@@ -680,8 +681,6 @@ export function setupGroupHandlers() {
           const clientAny = client as any;
           
           logger.info(`Adding role ${roleId} to user ${userId} in group ${groupId}`);
-          // DEBUG: Log methods to help find correct SDK method
-          // logger.info('Client keys:', Object.keys(clientAny));
 
           const axiosInstance = clientAny.axios || clientAny.api;
 
@@ -821,16 +820,6 @@ export function setupGroupHandlers() {
 
           // Strategy 1: SDK (respondGroupJoinRequest)
           // Note: The method is named 'respondGroupJoinRequest' in the generated SDK, NOT 'respondToGroupJoinRequest'
-
-          // DEBUG: Log available methods
-          const clientKeys = [];
-          let obj = clientAny;
-          while (obj) {
-              clientKeys.push(...Object.getOwnPropertyNames(obj));
-              obj = Object.getPrototypeOf(obj);
-          }
-          const respondMethods = clientKeys.filter(k => k.toLowerCase().includes('respond'));
-          logger.info(`[GroupService] Available respond methods on client: ${respondMethods.join(', ')}`);
 
           if (typeof clientAny.respondGroupJoinRequest === 'function') {
                try {

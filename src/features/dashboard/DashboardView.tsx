@@ -14,6 +14,8 @@ import { BansListDialog } from '../dashboard/dialogs/BansListDialog';
 import { InstancesListDialog } from '../dashboard/dialogs/InstancesListDialog';
 import { InstanceMonitorWidget } from './widgets/InstanceMonitorWidget';
 import { MemberSearchWidget } from './widgets/MemberSearchWidget';
+
+
 import { StatTile } from './components/StatTile';
 import styles from './DashboardView.module.css';
 import { motion } from 'framer-motion';
@@ -282,44 +284,53 @@ export const DashboardView: React.FC = memo(() => {
             </div>
         </GlassPanel>
 
-        {/* Main Content Area: 2 Columns */}
+        {/* Main Content Area: Swapped Columns (Monitor Left, Audit Right) */}
         <div className={styles.contentGrid}>
             
-            {/* Left: Audit Log Feed */}
+            {/* Left: Instance Monitor + Member Search (Now Wider) */}
+            <div className={styles.monitorColumn}>
+                <MemberSearchWidget />
+                <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+                    <InstanceMonitorWidget />
+                </div>
+            </div>
+
+            {/* Right: Audit Log Feed (Compact) */}
             <GlassPanel className={styles.auditPanel}>
                 <div className={styles.auditHeader}>
                     <div className={styles.auditTitle}>
-                        <h3>Live Audit Feed</h3>
+                        <h3>Live Feed</h3>
                         <div className={styles.liveIndicator} />
                     </div>
                     <NeonButton size="sm" variant="ghost" onClick={() => selectedGroup && fetchLogs(selectedGroup.id)} disabled={isLogsLoading}>
-                        {isLogsLoading ? 'SYNCING...' : 'REFRESH'}
+                        {isLogsLoading ? '...' : 'SYNC'}
                     </NeonButton>
                 </div>
                 
-                {/* Filter Tabs */}
+                {/* Filter Tabs - Compact */}
                 <div className={styles.auditTabs}>
-                    {(['all', 'joins', 'requests', 'invited', 'bans', 'instances', 'mod', 'settings'] as const).map(tab => (
+                    {(['all', 'joins', 'requests', 'bans'] as const).map(tab => (
                         <button
                             key={tab}
                             className={`${styles.auditTab} ${auditFilter === tab ? styles.auditTabActive : ''}`}
-                            onClick={() => setAuditFilter(tab)}
+                            onClick={() => setAuditFilter(tab as AuditFilterType)}
+                            title={tab.toUpperCase()}
                         >
                             {tab === 'all' ? 'ALL' : 
                              tab === 'joins' ? 'JOINS' : 
-                             tab === 'requests' ? 'REQUESTS' :
-                             tab === 'invited' ? 'INVITED' :
-                             tab === 'bans' ? 'BANS' : 
-                             tab === 'instances' ? 'INSTANCES' :
-                             tab === 'mod' ? 'MOD' : 'OTHER'}
+                             tab === 'requests' ? 'REQS' :
+                             tab === 'bans' ? 'BANS' : ''}
                         </button>
                     ))}
+                    <button className={styles.auditTab} onClick={() => setAuditFilter('all')} style={{ marginLeft: 'auto', opacity: 0.5 }}>
+                        ⋮
+                    </button>
                 </div>
                 
                 <div className={styles.logList}>
                     {filteredLogs.length === 0 && !isLogsLoading ? (
                         <div className={styles.emptyState}>
-                            -- No {auditFilter === 'all' ? '' : auditFilter + ' '}events --
+                            - Empty -
                         </div>
                     ) : (
                         filteredLogs.map((log) => (
@@ -327,26 +338,25 @@ export const DashboardView: React.FC = memo(() => {
                                 <div 
                                     className={styles.logDot} 
                                     style={{
-                                        background: log.eventType?.includes('ban') ? 'var(--color-danger)' : (log.eventType?.includes('join') ? 'var(--color-success)' : 'var(--color-accent)'),
-                                        boxShadow: log.eventType?.includes('ban') ? '0 0 8px rgba(239, 68, 68, 0.4)' : 'none'
+                                        background: log.eventType?.includes('ban') ? 'var(--color-danger)' : (log.eventType?.includes('join') ? 'var(--color-success)' : 'var(--color-accent)')
                                     }} 
                                 />
                                 <div className={styles.logContent}>
-                                    <div className={styles.logMeta}>
+                                    <div className={styles.scrollWrapper}>
+                                        <span className={styles.timestamp}>
+                                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                         <span 
                                             className={styles.actorName}
-                                            style={{ cursor: log.actorId ? 'pointer' : 'default' }}
-                                            onClick={() => log.actorId && openProfile(log.actorId)}
-                                            title={log.actorId ? 'View profile' : undefined}
+                                            onClick={(e) => { e.stopPropagation(); if (log.actorId) openProfile(log.actorId); }}
                                         >
                                             {log.actorDisplayName}
                                         </span>
-                                        <span className={styles.timestamp}>
-                                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                        <span className={styles.logDescription}>
+                                            {log.description || log.eventType}
                                         </span>
-                                    </div>
-                                    <div className={styles.logDescription}>
-                                        {log.description || log.eventType}
+                                        {/* Spacer to allow full scroll visibility in marquee if needed */}
+                                        <span style={{ minWidth: '20px' }} />
                                     </div>
                                 </div>
                             </div>
@@ -354,14 +364,6 @@ export const DashboardView: React.FC = memo(() => {
                     )}
                 </div>
             </GlassPanel>
-
-            {/* Right: Instance Monitor + Member Search */}
-            <div className={styles.monitorColumn}>
-                <MemberSearchWidget />
-                <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-                    <InstanceMonitorWidget />
-                </div>
-            </div>
         </div>
 
         {/* Dialogs */}

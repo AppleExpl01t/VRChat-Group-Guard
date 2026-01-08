@@ -19,13 +19,11 @@ export function useInstanceMonitorInit(isAuthenticated: boolean) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    console.log('[InstanceMonitor] Initializing Log Watcher...');
     // Start watching logs
     window.electron.logWatcher.start();
     
     // Fetch initial group state
     window.electron.instance.getCurrentGroup().then(groupId => {
-        console.log('[InstanceMonitor] Initial group ID:', groupId);
         setCurrentGroupId(groupId);
     });
 

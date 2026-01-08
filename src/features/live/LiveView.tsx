@@ -6,6 +6,8 @@ import { ShieldAlert, Users, Radio, Crosshair, UserPlus, ShieldCheck, Activity, 
 import { useGroupStore } from '../../stores/groupStore';
 import { useInstanceMonitorStore, type LiveEntity } from '../../stores/instanceMonitorStore';
 import { BanUserDialog } from './dialogs/BanUserDialog';
+import { OscAnnouncementWidget } from '../dashboard/widgets/OscAnnouncementWidget';
+import { RecruitResultsDialog } from './dialogs/RecruitResultsDialog';
 
 interface LogEntry {
     message: string;
@@ -108,17 +110,19 @@ const EntityCard: React.FC<{
 export const LiveView: React.FC = () => {
     const { selectedGroup, isRoamingMode } = useGroupStore();
     const { currentWorldName, currentWorldId, instanceImageUrl, liveScanResults, updateLiveScan, setEntityStatus } = useInstanceMonitorStore();
-    const [scanActive] = useState(true);
-    // Remove local entities state
-    const entities = liveScanResults; // Alias for compatibility
+    const scanActive = true; // Scan is always active when in LiveView
+    const entities = liveScanResults;
     
-    // ... instanceInfo and log state ...
     const [instanceInfo, setInstanceInfo] = useState<{ name: string; imageUrl?: string; worldId?: string; instanceId?: string } | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     
     // Dialog State
     const [banDialogUser, setBanUserDialog] = useState<{ id: string; displayName: string } | null>(null);
+    const [recruitResults, setRecruitResults] = useState<{ blocked: {name:string, reason?:string}[], invited: number } | null>(null);
+    
+    // Tab state for entity list
+    const [entityTab, setEntityTab] = useState<'active' | 'left'>('active');
 
     // Helpers to add logs
     const addLog = useCallback((message: string, type: 'info' | 'warn' | 'success' | 'error' = 'info') => {
@@ -253,6 +257,7 @@ export const LiveView: React.FC = () => {
     
     const [progress, setProgress] = useState<{ current: number, total: number } | null>(null);
     const [progressMode, setProgressMode] = useState<'recruit' | 'rally' | null>(null);
+    const [currentProcessingUser, setCurrentProcessingUser] = useState<{ name: string; phase: 'checking' | 'inviting' | 'skipped' } | null>(null);
 
     // ... existing code ...
 
@@ -265,11 +270,66 @@ export const LiveView: React.FC = () => {
         }
         
         addLog(`[CMD] SENDING MASS INVITES TO ${targets.length} STRANGERS...`, 'warn');
+        
+        // Check for AutoMod Keyword Rule
+        let keywordRuleInvoked = false;
+        try {
+            const rules = await window.electron.automod.getRules();
+            keywordRuleInvoked = rules.some(r => r.type === 'KEYWORD_BLOCK' && r.enabled);
+            if (keywordRuleInvoked) {
+                 addLog(`[AUTOMOD] Keyword Filter Active: Scanning profiles...`, 'info');
+            }
+        } catch (e) {
+            console.error("Failed to fetch automod rules", e);
+        }
+
         setProgress({ current: 0, total: targets.length });
         setProgressMode('recruit');
         
         let count = 0;
+        const blocked: { name: string; reason?: string }[] = [];
+        
         for (const t of targets) {
+            // Check user against AutoMod keyword filter if enabled
+            if (keywordRuleInvoked) {
+                setCurrentProcessingUser({ name: t.displayName, phase: 'checking' });
+                
+                // Brief delay to show "checking" state visually
+                await new Promise(r => setTimeout(r, 200));
+                
+                try {
+                    // Fetch full user profile to check bio/status
+                    const userRes = await window.electron.getUser(t.id);
+                    if (userRes.success && userRes.user) {
+                        const checkRes = await window.electron.automod.checkUser({
+                            id: t.id,
+                            displayName: t.displayName,
+                            tags: userRes.user.tags,
+                            bio: userRes.user.bio,
+                            status: userRes.user.status,
+                            statusDescription: userRes.user.statusDescription,
+                            pronouns: userRes.user.pronouns
+                        });
+
+
+                        // STEP 2: If blocked, skip this user
+                        if (checkRes.action === 'REJECT' || checkRes.action === 'AUTO_BLOCK') {
+                            setCurrentProcessingUser({ name: t.displayName, phase: 'skipped' });
+                            blocked.push({ name: t.displayName, reason: checkRes.reason });
+                            addLog(`[AUTOMOD] Skipped ${t.displayName} (Match: ${checkRes.reason})`, 'warn');
+                            setProgress({ current: count + blocked.length, total: targets.length });
+                            await new Promise(r => setTimeout(r, 300)); // Longer pause to show skip status
+                            continue; 
+                        }
+                    }
+                } catch (e) {
+                    console.error("AutoMod check failed for user", t.displayName, e);
+                }
+            }
+            
+            // STEP 3: Send invite (passed AutoMod or AutoMod disabled)
+            setCurrentProcessingUser({ name: t.displayName, phase: 'inviting' });
+
             const res = await window.electron.instance.recruitUser(selectedGroup!.id, t.id);
             
             if (!res.success && res.error === 'RATE_LIMIT') {
@@ -278,11 +338,24 @@ export const LiveView: React.FC = () => {
             }
             
             count++;
-            setProgress({ current: count, total: targets.length });
+            setProgress({ current: count + blocked.length, total: targets.length });
             await new Promise(r => setTimeout(r, 250));
         }
         
         addLog(`[CMD] Recruitment complete. Sent ${count} invites.`, 'success');
+        
+        
+        // Show results dialog if AutoMod was active (to confirm it worked) or if any users were blocked
+        if (keywordRuleInvoked || blocked.length > 0) {
+            if (blocked.length > 0) {
+                addLog(`[AUTOMOD] Blocked ${blocked.length} users from invite list.`, 'warn');
+            } else {
+                addLog(`[AUTOMOD] All users passed AutoMod check.`, 'success');
+            }
+            setRecruitResults({ blocked, invited: count });
+        }
+        
+        setCurrentProcessingUser(null);
         setProgress(null);
         setProgressMode(null);
     };
@@ -341,6 +414,28 @@ export const LiveView: React.FC = () => {
     const renderRecruitButton = () => {
         if (progress && progressMode === 'recruit') {
              const pct = Math.round((progress.current / progress.total) * 100);
+             
+             // Determine status text based on current phase
+             let statusText = `${progress.current}/${progress.total} PROCESSED`;
+             let statusColor = 'inherit';
+             
+             if (currentProcessingUser) {
+                 const truncatedName = currentProcessingUser.name.length > 15 
+                     ? currentProcessingUser.name.substring(0, 15) + '...' 
+                     : currentProcessingUser.name;
+                     
+                 if (currentProcessingUser.phase === 'checking') {
+                     statusText = `🔍 Checking: ${truncatedName}`;
+                     statusColor = '#fde047'; // Yellow
+                 } else if (currentProcessingUser.phase === 'inviting') {
+                     statusText = `📨 Inviting: ${truncatedName}`;
+                     statusColor = '#86efac'; // Green
+                 } else if (currentProcessingUser.phase === 'skipped') {
+                     statusText = `⛔ Skipped: ${truncatedName}`;
+                     statusColor = '#fca5a5'; // Red
+                 }
+             }
+             
              return (
                 <NeonButton 
                     disabled
@@ -354,7 +449,7 @@ export const LiveView: React.FC = () => {
                     }} />
                     <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{pct}%</span>
-                        <span style={{ fontSize: '0.65rem', opacity: 0.8 }}>{progress.current}/{progress.total} SENT</span>
+                        <span style={{ fontSize: '0.65rem', color: statusColor, fontWeight: 500 }}>{statusText}</span>
                     </div>
                 </NeonButton>
              );
@@ -482,92 +577,159 @@ export const LiveView: React.FC = () => {
                     </div>
                 </GlassPanel>
 
-                {/* 2. SPLIT LISTS (Side by Side) */}
-                <div style={{ flex: 1, display: 'flex', gap: '1rem', overflow: 'hidden' }}>
+                {/* 2. COMBINED ENTITY LIST WITH TABS */}
+                <div style={{ flex: 0.5, display: 'flex', flexDirection: 'column', gap: '0.5rem', overflow: 'hidden', maxWidth: '350px' }}>
                     
-                    {/* LIST A: ACTIVE */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                         <GlassPanel style={{ flex: '0 0 auto', padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-success)', boxShadow: '0 0 8px var(--color-success)' }} />
-                            <h3 style={{ margin: 0, fontSize: '0.95rem', color: 'white', fontWeight: 700, letterSpacing: '0.05em' }}>
-                                IN INSTANCE
-                            </h3>
-                            <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 600 }}>
+                    {/* Tab Header */}
+                    <GlassPanel style={{ flex: '0 0 auto', padding: '0', display: 'flex', overflow: 'hidden' }}>
+                        <button
+                            onClick={() => setEntityTab('active')}
+                            style={{
+                                flex: 1,
+                                padding: '0.8rem 1rem',
+                                background: entityTab === 'active' ? 'rgba(74, 222, 128, 0.1)' : 'transparent',
+                                border: 'none',
+                                borderBottom: entityTab === 'active' ? '2px solid var(--color-success)' : '2px solid transparent',
+                                color: entityTab === 'active' ? 'white' : 'var(--color-text-dim)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px',
+                                transition: 'all 0.2s ease',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                letterSpacing: '0.05em'
+                            }}
+                        >
+                            <div style={{ 
+                                width: '8px', 
+                                height: '8px', 
+                                borderRadius: '50%', 
+                                background: entityTab === 'active' ? 'var(--color-success)' : 'rgba(255,255,255,0.3)',
+                                boxShadow: entityTab === 'active' ? '0 0 8px var(--color-success)' : 'none'
+                            }} />
+                            IN INSTANCE
+                            <span style={{ 
+                                fontSize: '0.7rem', 
+                                background: entityTab === 'active' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(255,255,255,0.1)',
+                                padding: '2px 8px',
+                                borderRadius: '10px'
+                            }}>
                                 {entities.filter(e => e.status === 'active' || e.status === 'joining').length}
-                            </div>
-                        </GlassPanel>
-
-                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
-                            <AnimatePresence>
-                                {entities.filter(e => e.status === 'active' || e.status === 'joining').map(entity => (
-                                    <motion.div
-                                        key={entity.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.9 }}
-                                    >
-                                        <EntityCard 
-                                            entity={entity} 
-                                            onInvite={handleRecruit}
-                                            onKick={handleKick}
-                                            onBan={handleBanClick}
-                                            readOnly={isRoamingMode}
-                                        />
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                            {entities.filter(e => e.status === 'active' || e.status === 'joining').length === 0 && (
-                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-dim)' }}>
-                                    No active entities.<br/>
-                                    <span style={{ fontSize: '0.8rem' }}>(Instance is empty)</span>
-                                </div>
-                            )}
-                             <div style={{ height: '20px' }}></div>
-                        </div>
-                    </div>
-
-                    {/* LIST B: RECENTLY LEFT */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <GlassPanel style={{ flex: '0 0 auto', padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-text-dim)' }} />
-                            <h3 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-text-dim)', fontWeight: 700 }}>
-                                RECENTLY LEFT
-                            </h3>
-                             <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 600 }}>
+                            </span>
+                        </button>
+                        
+                        <button
+                            onClick={() => setEntityTab('left')}
+                            style={{
+                                flex: 1,
+                                padding: '0.8rem 1rem',
+                                background: entityTab === 'left' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                                border: 'none',
+                                borderBottom: entityTab === 'left' ? '2px solid var(--color-text-dim)' : '2px solid transparent',
+                                color: entityTab === 'left' ? 'white' : 'var(--color-text-dim)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px',
+                                transition: 'all 0.2s ease',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                letterSpacing: '0.05em'
+                            }}
+                        >
+                            <div style={{ 
+                                width: '8px', 
+                                height: '8px', 
+                                borderRadius: '50%', 
+                                background: 'rgba(255,255,255,0.3)'
+                            }} />
+                            RECENTLY LEFT
+                            <span style={{ 
+                                fontSize: '0.7rem', 
+                                background: 'rgba(255,255,255,0.1)',
+                                padding: '2px 8px',
+                                borderRadius: '10px'
+                            }}>
                                 {entities.filter(e => e.status === 'left' || e.status === 'kicked').length}
-                            </div>
-                        </GlassPanel>
+                            </span>
+                        </button>
+                    </GlassPanel>
 
-                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
-                             <AnimatePresence>
-                                {entities.filter(e => e.status === 'left' || e.status === 'kicked').length === 0 ? (
-                                    <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem', fontStyle: 'italic' }}>
-                                        History empty
-                                    </div>
-                                ) : (
-                                    entities.filter(e => e.status === 'left' || e.status === 'kicked').map(entity => (
-                                        <motion.div
-                                            key={entity.id}
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 0.5 }}
-                                            exit={{ opacity: 0 }}
-                                        >
-                                            <EntityCard 
-                                                entity={entity} 
-                                                onInvite={() => {}} 
-                                                onKick={() => {}}
-                                                onBan={handleBanClick}
-                                                readOnly={true}
-                                            />
-                                        </motion.div>
-                                    ))
-                                )}
-                            </AnimatePresence>
-                             <div style={{ height: '20px' }}></div>
-                        </div>
+                    {/* Entity List Content */}
+                    <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+                        <AnimatePresence mode="wait">
+                            {entityTab === 'active' ? (
+                                <motion.div
+                                    key="active-tab"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.15 }}
+                                >
+                                    {entities.filter(e => e.status === 'active' || e.status === 'joining').length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-dim)' }}>
+                                            No active entities.<br/>
+                                            <span style={{ fontSize: '0.8rem' }}>(Instance is empty)</span>
+                                        </div>
+                                    ) : (
+                                        entities.filter(e => e.status === 'active' || e.status === 'joining').map(entity => (
+                                            <motion.div
+                                                key={entity.id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.9 }}
+                                            >
+                                                <EntityCard 
+                                                    entity={entity} 
+                                                    onInvite={handleRecruit}
+                                                    onKick={handleKick}
+                                                    onBan={handleBanClick}
+                                                    readOnly={isRoamingMode}
+                                                />
+                                            </motion.div>
+                                        ))
+                                    )}
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="left-tab"
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -10 }}
+                                    transition={{ duration: 0.15 }}
+                                >
+                                    {entities.filter(e => e.status === 'left' || e.status === 'kicked').length === 0 ? (
+                                        <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                                            History empty
+                                        </div>
+                                    ) : (
+                                        entities.filter(e => e.status === 'left' || e.status === 'kicked').map(entity => (
+                                            <motion.div
+                                                key={entity.id}
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 0.6 }}
+                                                exit={{ opacity: 0 }}
+                                            >
+                                                <EntityCard 
+                                                    entity={entity} 
+                                                    onInvite={() => {}} 
+                                                    onKick={() => {}}
+                                                    onBan={handleBanClick}
+                                                    readOnly={true}
+                                                />
+                                            </motion.div>
+                                        ))
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        <div style={{ height: '20px' }}></div>
                     </div>
-
                 </div>
+
             </div>
 
             {/* COLUMN 3: COMMAND UPLINK (ACTIONS & LOGS) */}
@@ -579,6 +741,10 @@ export const LiveView: React.FC = () => {
                         <Crosshair size={16} />
                         {isRoamingMode ? 'ROAMING CONTROLS' : 'INSTANCE ACTIONS'}
                     </h3>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <OscAnnouncementWidget />
+                    </div>
 
                     {!isRoamingMode ? (
                         <div style={{ display: 'grid', gap: '10px' }}>
@@ -639,6 +805,12 @@ export const LiveView: React.FC = () => {
                 onClose={() => setBanUserDialog(null)}
                 user={banDialogUser}
                 initialGroupId={selectedGroup?.id}
+            />
+            <RecruitResultsDialog 
+                isOpen={!!recruitResults}
+                onClose={() => setRecruitResults(null)}
+                blockedUsers={recruitResults?.blocked || []}
+                totalInvited={recruitResults?.invited || 0}
             />
         </div>
     );

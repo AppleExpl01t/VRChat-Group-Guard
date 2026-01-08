@@ -70,6 +70,10 @@ class InstanceLoggerService {
       this.currentWorldId = event.worldId;
       this.currentInstanceId = event.instanceId;
       
+      // Note: Recruitment cache clearing is handled by the 'close-instance' handler
+      // when an instance is explicitly closed. We don't clear on location change
+      // because users may rejoin the same instance.
+      
       const groupMatch = event.location.match(/~group\((grp_[a-f0-9-]+)\)/);
       const groupId = groupMatch ? groupMatch[1] : null;
 

@@ -48,6 +48,7 @@
     "framer-motion": "^12.23.26",
     "keyv-file": "^5.3.3",
     "lucide-react": "^0.562.0",
+    "node-osc": "^11.2.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwind-merge": "^3.4.0",
@@ -57,6 +58,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.4",
+    "@types/node-osc": "^9.1.0",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",

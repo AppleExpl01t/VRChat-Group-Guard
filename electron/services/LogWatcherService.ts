@@ -4,6 +4,7 @@ import log from 'electron-log';
 import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
+import { oscService } from './OscService';
 
 // ============================================
 // TYPES
@@ -24,6 +25,8 @@ export interface PlayerJoinedEvent {
 export interface LocationEvent {
   worldId: string;
   worldName?: string;
+  instanceId?: string;
+  location?: string;
   timestamp: string;
 }
 
@@ -47,6 +50,7 @@ class LogWatcherService extends EventEmitter {
   private currentFileSize = 0;
   private watcherInterval: NodeJS.Timeout | null = null;
   private isWatching = false;
+  private hasAnnouncedConnection = false; // Track if we've sent the connection message
   
   // State for late joiners
   private state: WatcherState = {
@@ -75,6 +79,16 @@ class LogWatcherService extends EventEmitter {
     log.info('[LogWatcher] Starting service...');
     
     this.findLatestLog();
+    
+    // Send one-time OSC connection message if OSC is enabled
+    if (!this.hasAnnouncedConnection) {
+      this.hasAnnouncedConnection = true;
+      const oscConfig = oscService.getConfig();
+      if (oscConfig.enabled) {
+        log.info('[LogWatcher] Sending OSC connection announcement');
+        oscService.send('/chatbox/input', ['Group Guard is connected to VRChat', true, false]);
+      }
+    }
     
     this.watcherInterval = setInterval(() => {
       this.checkLogPath();

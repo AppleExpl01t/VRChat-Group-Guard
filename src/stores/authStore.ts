@@ -125,9 +125,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: false, status: 'idle', error: null });
         return { success: false };
       } else {
-        // Session expired or restoration failed - not an error for the user
-        // Just show the login screen silently
-        console.log('Auto-login: Session needs refresh or credentials needed');
+        // Session expired or restoration failed - just show login screen
         set({ isLoading: false, status: 'idle', error: null });
         return { success: false };
       }

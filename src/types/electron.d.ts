@@ -26,6 +26,7 @@ export interface VRChatUser {
   isFriend?: boolean;
   statusHistory?: string[];
   ageVerified?: boolean;
+  pronouns?: string;
   // Add additional fields as needed
 }
 
@@ -245,6 +246,26 @@ export interface AutoModUserInput {
     tags?: string[];
     dateJoined?: string;
     trustLevel?: string;
+    bio?: string;
+    status?: string;
+    statusDescription?: string;
+    pronouns?: string;
+}
+
+export interface OscConfig {
+    enabled: boolean;
+    senderIp: string;
+    senderPort: number;
+    receiverPort: number;
+}
+
+export interface GroupAnnouncementConfig {
+    greetingEnabled: boolean;
+    greetingMessage: string;
+    greetingMessageMembers?: string;
+    periodicEnabled: boolean;
+    periodicMessage: string;
+    periodicIntervalMinutes: number;
 }
 
 export interface ElectronAPI {
@@ -372,6 +393,15 @@ export interface ElectronAPI {
       saveRule: (rule: AutoModRule) => Promise<AutoModRule>;
       deleteRule: (ruleId: number) => Promise<boolean>;
       checkUser: (user: AutoModUserInput) => Promise<{ action: 'ALLOW' | 'REJECT' | 'AUTO_BLOCK' | 'NOTIFY_ONLY'; reason?: string; ruleName?: string }>;
+  };
+
+  // OSC API
+  osc: {
+      getConfig: () => Promise<OscConfig>;
+      setConfig: (config: Partial<OscConfig>) => Promise<OscConfig>;
+      send: (address: string, args: unknown[]) => Promise<boolean>;
+      getAnnouncementConfig: (groupId: string) => Promise<GroupAnnouncementConfig>;
+      setAnnouncementConfig: (groupId: string, config: Partial<GroupAnnouncementConfig>) => Promise<GroupAnnouncementConfig>;
   };
 }
 

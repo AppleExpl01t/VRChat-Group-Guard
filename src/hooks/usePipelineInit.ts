@@ -27,11 +27,9 @@ export function usePipelineInit(): void {
     if (initRef.current) return;
     initRef.current = true;
 
-    console.log('[usePipelineInit] Initializing Pipeline IPC listeners');
     const cleanup = initializeListeners();
 
     return () => {
-      console.log('[usePipelineInit] Cleaning up Pipeline IPC listeners');
       cleanup();
     };
   }, [initializeListeners]);
@@ -39,10 +37,8 @@ export function usePipelineInit(): void {
   // Connect/disconnect based on auth state
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('[usePipelineInit] User authenticated, connecting to Pipeline');
       pipelineConnect();
     } else {
-      console.log('[usePipelineInit] User not authenticated, disconnecting Pipeline');
       pipelineDisconnect();
     }
   }, [isAuthenticated, pipelineConnect, pipelineDisconnect]);
@@ -51,8 +47,6 @@ export function usePipelineInit(): void {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    console.log('[usePipelineInit] Setting up group store event subscriptions');
-
     // Subscribe to group events and forward to groupStore
     const unsubMember = pipelineSubscribe('group-member-updated', handlePipelineEvent);
     const unsubRole = pipelineSubscribe('group-role-updated', handlePipelineEvent);
@@ -60,7 +54,6 @@ export function usePipelineInit(): void {
     const unsubLeft = pipelineSubscribe('group-left', handlePipelineEvent);
 
     return () => {
-      console.log('[usePipelineInit] Cleaning up group store event subscriptions');
       unsubMember();
       unsubRole();
       unsubJoined();

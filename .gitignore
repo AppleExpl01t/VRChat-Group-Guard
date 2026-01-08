@@ -37,3 +37,6 @@ Thumbs.db
 # Agent & Reference
 .agent/
 reference repos/
+
+# Development Debug Files
+.dev/

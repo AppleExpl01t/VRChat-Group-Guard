@@ -4,6 +4,7 @@ import { NeonButton } from '../../components/ui/NeonButton';
 import { useAuthStore } from '../../stores/authStore';
 import { motion } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
+import { OscSettings } from './OscSettings';
 
 const HueSpectrumPicker: React.FC<{ 
     label: string; 
@@ -159,6 +160,9 @@ export const SettingsView: React.FC = () => {
             </div>
           </GlassPanel>
         </section>
+
+        {/* OSC Integration */}
+        <OscSettings />
 
         {/* About Section */}
         <section>

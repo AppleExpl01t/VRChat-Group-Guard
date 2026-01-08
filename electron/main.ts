@@ -139,6 +139,10 @@ import { setupPipelineHandlers } from './services/PipelineService';
 import { setupLogWatcherHandlers } from './services/LogWatcherService';
 import { setupAutoModHandlers } from './services/AutoModService';
 import { setupInstanceHandlers } from './services/InstanceService';
+import { setupOscHandlers } from './services/OscService';
+import { setupOscAnnouncementHandlers } from './services/OscAnnouncementService';
+
+// ...
 
 import { storageService } from './services/StorageService';
 
@@ -175,7 +179,10 @@ setupCredentialsHandlers();
 setupPipelineHandlers();
 setupLogWatcherHandlers();
 setupAutoModHandlers();
+
 setupInstanceHandlers();
+setupOscHandlers();
+setupOscAnnouncementHandlers();
 
 // Import to initialize (singleton)
 import './services/InstanceLoggerService';

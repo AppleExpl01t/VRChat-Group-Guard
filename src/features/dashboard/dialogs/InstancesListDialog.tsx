@@ -44,11 +44,9 @@ export const InstancesListDialog: React.FC<InstancesListDialogProps> = ({ isOpen
         }
 
         if (worldId && instanceId) {
-            console.log('Joining instance:', worldId, instanceId);
             const res = await window.electron.instance.inviteSelf(worldId, instanceId);
             if (!res.success) {
                 console.error('Failed to join:', res.error);
-                // In a perfect world we would show a notification here
             }
         }
     };
@@ -71,7 +69,6 @@ export const InstancesListDialog: React.FC<InstancesListDialogProps> = ({ isOpen
                 }
             }
 
-            console.log('Closing instance:', worldId, instanceId);
             if (worldId && instanceId) {
                 const res = await window.electron.instance.closeInstance(worldId, instanceId);
                  if (!res.success) {

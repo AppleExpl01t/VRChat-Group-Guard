@@ -172,7 +172,6 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       reconnectAttempts: 0,
       error: null 
     });
-    console.log('[Pipeline Store] Connected to VRChat Pipeline');
   },
 
   handleDisconnected: (code: number, reason: string, willReconnect: boolean) => {
@@ -180,7 +179,6 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       connected: false,
       connecting: willReconnect
     });
-    console.log(`[Pipeline Store] Disconnected (${code}: ${reason}). Will reconnect: ${willReconnect}`);
   },
 
   handleError: (message: string) => {
@@ -255,7 +253,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
  * 
  * @example
  * usePipelineEvent('group-member-updated', (event) => {
- *   console.log('Member updated:', event.content);
+ *   // Handle member update
  * });
  */
 export function usePipelineEvent(

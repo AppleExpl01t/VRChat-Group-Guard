@@ -101,13 +101,11 @@ function App() {
       // Check initial status (in case we missed the event)
       window.electron.updater.checkStatus().then(downloaded => {
           if (downloaded) {
-              console.log('Update already downloaded (found via status check)');
               setIsUpdateReady(true);
           }
       });
 
       const unsubscribe = window.electron.updater.onUpdateDownloaded(() => {
-        console.log('Update downloaded event received');
         setIsUpdateReady(true);
       });
       return unsubscribe;
@@ -116,9 +114,11 @@ function App() {
 
   // Monitor Live Log state to toggle Live Mode UI
   useEffect(() => {
-    // Check roaming mode first
     if (isRoamingMode) {
-      if (!isLiveMode) setIsLiveMode(true);
+      if (!isLiveMode) {
+         const t = setTimeout(() => setIsLiveMode(true), 0);
+         return () => clearTimeout(t);
+      }
       return;
     }
 
@@ -182,18 +182,7 @@ function App() {
         // Check if we have saved credentials and attempt auto-login
         const hasSaved = await window.electron.hasSavedCredentials();
         if (hasSaved) {
-          console.log('Found saved credentials, attempting auto-login...');
-          const result = await autoLogin();
-          if (result.success) {
-            console.log('Auto-login successful!');
-          } else if (result.requires2FA) {
-            console.log('Auto-login requires 2FA verification');
-            // User will need to enter 2FA code - this is expected behavior
-          } else {
-            console.log('Auto-login failed, showing login screen');
-          }
-        } else {
-          console.log('No saved credentials found');
+          await autoLogin();
         }
       } catch (err) {
         console.error('Auto-login error:', err);
@@ -207,10 +196,15 @@ function App() {
   // Auto-switch to Live View when entering Roaming Mode
   useEffect(() => {
     if (isRoamingMode) {
-      if (currentView !== 'live') setCurrentView('live');
+      if (currentView !== 'live') {
+        const t = setTimeout(() => setCurrentView('live'), 0);
+        return () => clearTimeout(t);
+      }
     } else if (currentView === 'live' && !selectedGroup) {
         // If we exited roaming mode and have no group, go back to main
-        setCurrentView('main');
+        // Use setTimeout to avoid synchronous setState within effect
+        const t = setTimeout(() => setCurrentView('main'), 0);
+        return () => clearTimeout(t);
     }
   }, [isRoamingMode, selectedGroup, currentView]);
 

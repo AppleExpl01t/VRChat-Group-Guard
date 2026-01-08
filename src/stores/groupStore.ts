@@ -235,12 +235,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       (event.content as { member?: { groupId?: string } }).member?.groupId ||
       (event.content as { role?: { groupId?: string } }).role?.groupId;
 
-    console.log(`[GroupStore] Pipeline event: ${event.type}`, { 
-      eventGroupId, 
-      selectedGroupId,
-      matches: eventGroupId === selectedGroupId
-    });
-
     switch (event.type) {
       case 'group-member-updated':
         // If this is for our selected group, trigger a members refresh
@@ -341,9 +335,9 @@ function subscribeToPipelineEvent(
   
   // This is a placeholder - the actual subscription will be done
   // in the app initialization using usePipelineStore
-  console.log(`[GroupStore] Registered listener for ${type}`);
+  void type;
   void callback;
   return () => {
-    console.log(`[GroupStore] Unregistered listener for ${type}`);
+    // Cleanup
   };
 }

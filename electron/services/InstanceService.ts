@@ -56,9 +56,19 @@ interface SessionEvent {
 // ============================================
 
 const entityCache = new Map<string, LiveEntity>();
+// Track invited users per instance to prevent spam re-invites
+// Key: fullInstanceId, Value: Set<userId>
+const recruitmentCache = new Map<string, Set<string>>();
 
 // Rate limit helper
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+export function clearRecruitmentCache(fullInstanceKey: string) {
+    if (recruitmentCache.has(fullInstanceKey)) {
+        recruitmentCache.delete(fullInstanceKey);
+        logger.info(`[InstanceService] Cleared recruitment cache for ${fullInstanceKey}`);
+    }
+}
 
 // Queue for background fetching to avoid 429s
 const fetchQueue: string[] = [];
@@ -146,7 +156,8 @@ async function processFetchQueue(groupId?: string) {
             // PERSIST DETAILS TO DISK (SESSION DB)
             // We do this here to ensure 'rank' and 'isGroupMember' are saved to history.
             try {
-                 const { instanceLoggerService } = require('./InstanceLoggerService');
+                 // Dynamic import to avoid circular dependency
+                 const { instanceLoggerService } = await import('./InstanceLoggerService');
                  const cacheKey = groupId ? `${groupId}:${userId}` : `roam:${userId}`;
                  const entity = entityCache.get(cacheKey);
                  
@@ -247,6 +258,19 @@ export function setupInstanceHandlers() {
         const client = getVRChatClient();
         if (!client) throw new Error("Not authenticated");
 
+        // Resolve current instance for cache key
+        const currentWorldId = instanceLoggerService.getCurrentWorldId();
+        const currentInstanceId = instanceLoggerService.getCurrentInstanceId();
+        
+        // If we can't determine instance, we use a global fallback for this session to be safe
+        const fullInstanceKey = currentWorldId && currentInstanceId ? `${currentWorldId}:${currentInstanceId}` : 'global_session_fallback';
+
+        // Check if already invited in this session/instance
+        if (recruitmentCache.has(fullInstanceKey) && recruitmentCache.get(fullInstanceKey)!.has(userId)) {
+            logger.info(`[InstanceService] CACHE HIT: Skipping recruit for ${userId} (Key: ${fullInstanceKey})`);
+            return { success: true, cached: true };
+        }
+
         try {
            logger.info(`[InstanceService] Inviting ${userId} to group ${groupId}...`);
            
@@ -268,6 +292,13 @@ export function setupInstanceHandlers() {
            }
            
            logger.info(`[InstanceService] Recruitment success for ${userId}`);
+           
+           // Add to cache
+           if (!recruitmentCache.has(fullInstanceKey)) {
+               recruitmentCache.set(fullInstanceKey, new Set());
+           }
+           recruitmentCache.get(fullInstanceKey)!.add(userId);
+
            return { success: true };
         } catch (e: unknown) {
             const err = e as VRChatApiError;
@@ -427,6 +458,15 @@ export function setupInstanceHandlers() {
                  return { success: false, error: "No active instance" };
              }
              
+             // Resolve cache key
+             const fullInstanceKey = `${worldId}:${instanceId}`;
+
+             // Check cache
+             if (recruitmentCache.has(fullInstanceKey) && recruitmentCache.get(fullInstanceKey)!.has(userId)) {
+                 logger.info(`[InstanceService] CACHE HIT: Skipping instance invite for ${userId}`);
+                 return { success: true, cached: true };
+             }
+              
               const fullId = `${worldId}:${instanceId}`;
 
              // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -435,6 +475,12 @@ export function setupInstanceHandlers() {
                  body: { instanceId: fullId }
              });
              
+             // Update cache
+             if (!recruitmentCache.has(fullInstanceKey)) {
+                 recruitmentCache.set(fullInstanceKey, new Set());
+             }
+             recruitmentCache.get(fullInstanceKey)!.add(userId);
+
              return { success: true };
          } catch (e: unknown) {
              const err = e as VRChatApiError;
@@ -465,7 +511,7 @@ export function setupInstanceHandlers() {
              logger.info(`[InstanceService] Rally from session ${filename} to ${currentLocation}`);
              
              // 2. Get session events
-             const events = instanceLoggerService.getSessionEvents(filename);
+             const events = await instanceLoggerService.getSessionEvents(filename);
              if (!events || events.length === 0) {
                  return { success: false, error: "No events found in session" };
              }
@@ -578,8 +624,8 @@ export function setupInstanceHandlers() {
              let instanceId = args?.instanceId;
 
              if (!worldId || !instanceId) {
-                 worldId = instanceLoggerService.getCurrentWorldId();
-                 instanceId = instanceLoggerService.getCurrentInstanceId();
+                 worldId = instanceLoggerService.getCurrentWorldId() || undefined;
+                 instanceId = instanceLoggerService.getCurrentInstanceId() || undefined;
              }
              
              if (!worldId || !instanceId) {
@@ -607,6 +653,10 @@ export function setupInstanceHandlers() {
              }
              
              logger.info(`[InstanceService] Instance closed successfully.`);
+             
+             // Clear the invite cache for this instance since it's now dead
+             clearRecruitmentCache(`${worldId}:${instanceId}`);
+             
              return { success: true };
              
          } catch (e: unknown) {
@@ -662,6 +712,10 @@ export function setupInstanceHandlers() {
                   const wRes = await (client as any).getWorld({ path: { worldId } });
                   imageUrl = wRes.data?.thumbnailImageUrl || wRes.data?.imageUrl;
                   apiName = wRes.data?.name;
+                  // ignore API fail, fallback to log name
+                  // If fetching world info fails, it MIGHT be because we aren't online or instance is weird.
+                  // But checking instance status specifically via 'getInstance' (which we don't have separate here) is better.
+                  // However, let's look at invite logic. If the user invokes 'close instance', we know it's gone.
               } catch {
                   // ignore API fail, fallback to log name
               }
@@ -674,5 +728,10 @@ export function setupInstanceHandlers() {
              name: apiName || worldName || 'Unknown World', 
              imageUrl 
          };
+    });
+    
+    // Cleanup cache handler triggered by InstanceLogger or manual close
+    ipcMain.handle('instance:cleanup-cache', (_event, fullInstanceId: string) => {
+        clearRecruitmentCache(fullInstanceId);
     });
 }

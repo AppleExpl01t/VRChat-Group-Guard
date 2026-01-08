@@ -176,6 +176,18 @@ import { contextBridge, ipcRenderer } from 'electron';
          clearHistory: () => ipcRenderer.invoke('automod:clear-history'),
      },
 
+     // OSC API
+     osc: {
+         getConfig: () => ipcRenderer.invoke('osc:get-config'),
+         setConfig: (config: { enabled?: boolean; senderIp?: string; senderPort?: number; receiverPort?: number }) => ipcRenderer.invoke('osc:set-config', config),
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         send: (address: string, args: any[]) => ipcRenderer.invoke('osc:send', { address, args }),
+         
+         getAnnouncementConfig: (groupId: string) => ipcRenderer.invoke('osc:get-announcement-config', groupId),
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         setAnnouncementConfig: (groupId: string, config: any) => ipcRenderer.invoke('osc:set-announcement-config', { groupId, config })
+     },
+
      // Generic IPC Renderer for event listening
      ipcRenderer: {
          // eslint-disable-next-line @typescript-eslint/no-explicit-any

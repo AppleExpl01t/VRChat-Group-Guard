@@ -966,14 +966,14 @@ const GatekeeperView = () => {
         
         // If it's a new rule and no config passed, initialize with defaults
         let initialConfig = {};
-        if (type === 'KEYWORD_REJECTION') {
+        if (type === 'KEYWORD_BLOCK') {
             initialConfig = {
                 keywords: [], 
                 whitelist: [], 
                 matchMode: 'WHOLE_WORD',
                 scanBio: true,
                 scanStatus: true,
-                scanPronouns: false
+                scanPronouns: true  // Now defaults to true
             };
         } else if (type === 'AGE_VERIFICATION') {
             initialConfig = { autoAcceptVerified: false };
@@ -981,7 +981,7 @@ const GatekeeperView = () => {
 
         const newRule = {
             id: existing?.id,
-            name: type === 'AGE_VERIFICATION' ? 'Age Verification Firewall' : (type === 'KEYWORD_REJECTION' ? 'Keyword Text Filter' : 'Unknown Rule'),
+            name: type === 'AGE_VERIFICATION' ? 'Age Verification Firewall' : (type === 'KEYWORD_BLOCK' ? 'Keyword Text Filter' : 'Unknown Rule'),
             type: type,
             // Logic: If config is provided, we are UPDATING parameters, so keep enabled state.
             // If config is NOT provided, we are TOGGLING the enabled state.
@@ -999,7 +999,7 @@ const GatekeeperView = () => {
     const ageRule = rules.find(r => r.type === 'AGE_VERIFICATION');
     const isAgeEnabled = ageRule?.enabled;
 
-    const keywordRule = rules.find(r => r.type === 'KEYWORD_REJECTION');
+    const keywordRule = rules.find(r => r.type === 'KEYWORD_BLOCK');
     const isKeywordEnabled = keywordRule?.enabled;
     const keywordConfig = keywordRule ? JSON.parse(keywordRule.config || '{}') : {};
     
@@ -1015,7 +1015,7 @@ const GatekeeperView = () => {
                 isOpen={showKeywordConfig} 
                 onClose={() => setShowKeywordConfig(false)}
                 config={keywordConfig} 
-                onUpdate={(newConfig) => toggleRule('KEYWORD_REJECTION', newConfig)}
+                onUpdate={(newConfig) => toggleRule('KEYWORD_BLOCK', newConfig)}
             />
 
             <UserActionModal
@@ -1172,7 +1172,7 @@ const GatekeeperView = () => {
                                 {/* Main Toggle */}
                                 <div 
                                     style={{ cursor: 'pointer', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '10px' }}
-                                    onClick={() => toggleRule('KEYWORD_REJECTION')}
+                                    onClick={() => toggleRule('KEYWORD_BLOCK')}
                                 >
                                     <div style={{ 
                                         width: '40px', 
