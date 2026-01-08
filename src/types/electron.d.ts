@@ -26,6 +26,7 @@ export interface VRChatUser {
   isFriend?: boolean;
   statusHistory?: string[];
   ageVerified?: boolean;
+  ageVerificationStatus?: string;
   pronouns?: string;
   // Add additional fields as needed
 }

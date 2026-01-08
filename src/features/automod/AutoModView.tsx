@@ -6,7 +6,7 @@ import { useGroupStore } from '../../stores/groupStore';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // --- Types ---
-type AutoModModule = 'GATEKEEPER' | 'IMMUNITY';
+type AutoModModule = 'GATEKEEPER' | 'GROUP_SCANNER';
 
 // --- Local Components ---
 
@@ -509,7 +509,7 @@ const UserActionModal: React.FC<{
             setUser(null);
         }
         setLoading(false);
-    }, [logEntry?.userId]);
+    }, [logEntry]);
 
     React.useEffect(() => {
         if (isOpen && logEntry?.userId) {
@@ -573,7 +573,14 @@ const UserActionModal: React.FC<{
             }
         } catch (e) {
             console.error(`Failed to perform action: ${action}`, e);
-            alert(`Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+            console.log('Debug Context:', { 
+                action, 
+                groupId, 
+                logEntryUserId: logEntry?.userId,
+                logEntry,
+                selectedGroup 
+            });
+            alert(`Action failed: ${e instanceof Error ? e.message : 'Unknown error'}\n\nCheck console for payload details.`);
         }
         setActionLoading(null);
     };
@@ -782,7 +789,7 @@ const UserActionModal: React.FC<{
                                     {/* AutoMod Action Info */}
                                     <div style={{ 
                                         padding: '1rem 1.5rem', 
-                                        background: actionType === 'BLOCKED' ? 'rgba(239, 68, 68, 0.1)' : actionType === 'ACCEPTED' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(251, 191, 36, 0.1)',
+                                        background: (actionType === 'BLOCKED' || actionType === 'FLAGGED') ? 'rgba(239, 68, 68, 0.1)' : actionType === 'ACCEPTED' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(251, 191, 36, 0.1)',
                                         borderBottom: '1px solid rgba(255,255,255,0.05)'
                                     }}>
                                         <div style={{ 
@@ -795,11 +802,11 @@ const UserActionModal: React.FC<{
                                                 width: '10px', 
                                                 height: '10px', 
                                                 borderRadius: '50%', 
-                                                background: actionType === 'BLOCKED' ? '#f87171' : actionType === 'ACCEPTED' ? '#4ade80' : '#fbbf24'
+                                                background: (actionType === 'BLOCKED' || actionType === 'FLAGGED') ? '#f87171' : actionType === 'ACCEPTED' ? '#4ade80' : '#fbbf24'
                                             }} />
                                             <span style={{ 
                                                 fontWeight: 'bold', 
-                                                color: actionType === 'BLOCKED' ? '#f87171' : actionType === 'ACCEPTED' ? '#4ade80' : '#fbbf24',
+                                                color: (actionType === 'BLOCKED' || actionType === 'FLAGGED') ? '#f87171' : actionType === 'ACCEPTED' ? '#4ade80' : '#fbbf24',
                                                 fontSize: '0.85rem',
                                                 textTransform: 'uppercase'
                                             }}>
@@ -884,7 +891,7 @@ const UserActionModal: React.FC<{
                                         </>
                                     )}
 
-                                    {actionType === 'ACCEPTED' && (
+                                    {(actionType === 'ACCEPTED' || actionType === 'FLAGGED') && (
                                         <>
                                             <button onClick={() => handleAction('kick')} disabled={actionLoading !== null} style={{ 
                                                 width: '100%', padding: '12px', background: 'rgba(251, 191, 36, 0.15)', 
@@ -1301,35 +1308,294 @@ const GatekeeperView = () => {
 
 
 
-const ImmunityView = () => (
-    <motion.div 
-        initial={{ opacity: 0, y: 10 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        exit={{ opacity: 0, y: -10 }}
-        style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-    >
-        <GlassPanel style={{ width: '100%', maxWidth: '600px', padding: '2rem', textAlign: 'center' }}>
-            <div style={{ width: '64px', height: '64px', margin: '0 auto 1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-            </div>
-            <h2 style={{ margin: '0 0 0.5rem' }}>Global Immunity</h2>
-            <p style={{ color: 'var(--color-text-dim)', marginBottom: '2rem' }}>
-                Define entities that bypass all security layers (Gatekeeper & Sentinel).
-            </p>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'left' }}>
-                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontWeight: 'bold' }}>VIP Users</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', marginTop: '4px' }}>Specific usernames</div>
-                </div>
-                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontWeight: 'bold' }}>Trust Ranks</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', marginTop: '4px' }}>System-wide ranks</div>
-                </div>
-            </div>
-        </GlassPanel>
-    </motion.div>
-);
+// --- Group Scanner View ---
+
+const GroupScannerView = () => {
+    const { selectedGroup } = useGroupStore();
+    const [isScanning, setIsScanning] = useState(false);
+    const [progress, setProgress] = useState({ scanned: 0, violations: 0, total: 0 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [results, setResults] = useState<any[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [selectedViolation, setSelectedViolation] = useState<any>(null);
+
+    const startScan = async () => {
+        if (!selectedGroup) return;
+        
+        setIsScanning(true);
+        setResults([]);
+        setProgress({ scanned: 0, violations: 0, total: selectedGroup.memberCount || 0 });
+        // setCurrentScanIndex(0);
+
+        const BATCH_SIZE = 100;
+        let offset = 0;
+        let keepScanning = true;
+        let processedCount = 0;
+
+        try {
+            while (keepScanning) {
+                // Check if scanning was cancelled (though we lack a cancel button currently, could add one)
+                // Fetch batch
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const response = await (window as any).electron.getGroupMembers(selectedGroup.id, offset, BATCH_SIZE);
+                
+                if (!response.success || !response.members || response.members.length === 0) {
+                    keepScanning = false;
+                    break;
+                }
+
+                const members = response.members;
+                
+                // Process batch
+                for (const member of members) {
+                    // Fetch full profile for deep scanning (Bio, Status, Age Verified)
+                    let userToCheck = member.user;
+                    try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const profileRes = await (window as any).electron.getUser(member.userId);
+                        if (profileRes.success && profileRes.user) {
+                            userToCheck = profileRes.user;
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to fetch full profile for ${member.userId}`, e);
+                    }
+
+                    // Construct check input from full user profile
+                    const userInput = {
+                        id: userToCheck.id,
+                        displayName: userToCheck.displayName,
+                        tags: userToCheck.tags,
+                        bio: userToCheck.bio,
+                        status: userToCheck.status,
+                        statusDescription: userToCheck.statusDescription,
+                        pronouns: userToCheck.pronouns,
+                        ageVerified: userToCheck.ageVerified, // Important for 18+ check
+                        ageVerificationStatus: userToCheck.ageVerificationStatus // Strict 18+ check
+                    };
+
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const result = await (window as any).electron.automod.checkUser(userInput);
+
+                    if (result.action !== 'ALLOW') {
+                        setResults(prev => [...prev, {
+                            member: { ...member, user: userToCheck }, // Update member with full user data for display
+                            check: result,
+                            // specific props for UserActionModal
+                            userId: userToCheck.id, // Use reliable ID from user object
+                            groupId: selectedGroup.id, // Ensure group ID is passed
+                            user: userToCheck.displayName,
+                            reason: result.reason,
+                            action: 'FLAGGED', // Special type for existing members who failed scan
+                            timestamp: new Date().toISOString()
+                        }]);
+                        setProgress(p => ({ ...p, violations: p.violations + 1 }));
+                    }
+
+                    processedCount++;
+                    // Update UI every few items to not thrash? state updates are fast enough usually
+                    setProgress(p => ({ ...p, scanned: processedCount }));
+                    
+                    // Small breathing room for UI and to prevent rate limit hammering
+                    await new Promise(r => setTimeout(r, 50)); 
+                }
+
+                offset += members.length;
+                if (members.length < BATCH_SIZE) {
+                    keepScanning = false;
+                }
+                
+                // Small delay to allow UI to breathe and not freeze
+                await new Promise(r => setTimeout(r, 10));
+            }
+        } catch (e) {
+            console.error("Scan failed:", e);
+            alert("Scan failed to complete. See console for details.");
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
+    return (
+        <>
+            <UserActionModal
+                isOpen={selectedViolation !== null}
+                onClose={() => setSelectedViolation(null)}
+                logEntry={selectedViolation}
+                onActionComplete={() => {
+                    // Maybe remove from results?
+                    setResults(prev => prev.filter(r => r.userId !== selectedViolation?.userId));
+                    setSelectedViolation(null);
+                }}
+            />
+
+            <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -10 }}
+                style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: 0 }}
+            >
+                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: '1.5rem', height: '100%', minHeight: 0 }}>
+                    
+                    {/* Control Panel */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <GlassPanel style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', borderLeft: '4px solid #a855f7' }}>
+                            <div style={{ 
+                                width: '64px', height: '64px', marginBottom: '1.5rem', 
+                                background: isScanning ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.05)', 
+                                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                color: isScanning ? '#d8b4fe' : 'var(--color-primary)' 
+                            }}>
+                                {isScanning ? (
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                                    >
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    </motion.div>
+                                ) : (
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                )}
+                            </div>
+                            
+                            <h2 style={{ margin: '0 0 0.5rem' }}>Group Scanner</h2>
+                            <p style={{ color: 'var(--color-text-dim)', marginBottom: '2rem', fontSize: '0.9rem' }}>
+                                Retroactively scan all existing group members against your current AutoMod Keyword & Age rules.
+                            </p>
+
+                            {!isScanning ? (
+                                <button 
+                                    onClick={startScan}
+                                    style={{ 
+                                        padding: '12px 32px', 
+                                        background: '#a855f7', 
+                                        color: 'white', 
+                                        border: 'none', 
+                                        borderRadius: '8px', 
+                                        fontWeight: 'bold', 
+                                        cursor: 'pointer',
+                                        boxShadow: '0 4px 15px rgba(168, 85, 247, 0.4)',
+                                        fontSize: '1rem',
+                                        display: 'flex', alignItems: 'center', gap: '8px'
+                                    }}
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    Start Full Scan
+                                </button>
+                            ) : (
+                                <div style={{ width: '100%' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
+                                        <span>Scanning...</span>
+                                        <span>{Math.round((progress.scanned / (progress.total || 1)) * 100)}%</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${(progress.scanned / (progress.total || 1)) * 100}%` }}
+                                            style={{ height: '100%', background: '#a855f7' }}
+                                        />
+                                    </div>
+                                    <div style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
+                                        <span style={{ color: 'white', fontWeight: 'bold' }}>{progress.scanned}</span>
+                                        <span style={{ color: 'var(--color-text-dim)' }}> scanned</span>
+                                    </div>
+                                </div>
+                            )}
+                        </GlassPanel>
+
+                        {/* Summary Stats */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <GlassPanel style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div style={{ fontSize: '2rem', fontWeight: 800, color: '#f87171' }}>{progress.violations}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', textTransform: 'uppercase' }}>Detected</div>
+                            </GlassPanel>
+                            <GlassPanel style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div style={{ fontSize: '2rem', fontWeight: 800, color: '#4ade80' }}>{results.filter(r => r.check.action === 'ALLOW').length}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', textTransform: 'uppercase' }}>Clean</div>
+                            </GlassPanel>
+                        </div>
+                    </div>
+
+                    {/* Results Area */}
+                    <GlassPanel style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0 }}>Scan Results</h3>
+                            {results.length > 0 && (
+                                <span style={{ fontSize: '0.8rem', padding: '4px 10px', background: 'rgba(248, 113, 113, 0.2)', color: '#f87171', borderRadius: '4px' }}>
+                                    {results.length} Issues Found
+                                </span>
+                            )}
+                        </div>
+                        
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+                            {results.length === 0 ? (
+                                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5, gap: '1rem' }}>
+                                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                                    </div>
+                                    <div style={{ color: 'var(--color-text-dim)' }}>
+                                        {isScanning ? 'Scanning in progress...' : 'No issues found or scan not started.'}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    {results.map((res, i) => (
+                                        <div 
+                                            key={res.member.id + i}
+                                            onClick={() => setSelectedViolation(res)}
+                                            style={{ 
+                                                padding: '12px 1.5rem', 
+                                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                display: 'flex', 
+                                                alignItems: 'center',
+                                                gap: '1rem',
+                                                cursor: 'pointer',
+                                                transition: 'background 0.2s'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            
+                                            <div style={{ 
+                                                width: '40px', height: '40px', borderRadius: '8px', background: '#333', 
+                                                backgroundImage: `url(${res.member.user.currentAvatarThumbnailImageUrl || res.member.user.userIcon})`,
+                                                backgroundSize: 'cover'
+                                            }} />
+                                            
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 'bold', color: 'white', marginBottom: '2px' }}>
+                                                    {res.member.user.displayName}
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: '#f87171' }}>
+                                                    {res.check.reason}
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                                <div style={{ 
+                                                    fontSize: '0.7rem', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px',
+                                                    background: 'rgba(248, 113, 113, 0.2)', color: '#fca5a5'
+                                                }}>
+                                                    {res.check.ruleName || 'AUTOMOD'}
+                                                </div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>
+                                                    Warn: Action Req.
+                                                </div>
+                                            </div>
+                                            
+                                            <div style={{ color: 'var(--color-text-dim)' }}>
+                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </GlassPanel>
+                 </div>
+            </motion.div>
+        </>
+    );
+};
 
 // --- Main Container ---
 
@@ -1351,10 +1617,10 @@ export const AutoModView: React.FC = () => {
 
                     <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', margin: '8px 0' }}></div>
                     <ModuleTab 
-                        active={activeModule === 'IMMUNITY'} 
-                        label="IMMUNITY" 
-                        icon={<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>}
-                        onClick={() => setActiveModule('IMMUNITY')} 
+                        active={activeModule === 'GROUP_SCANNER'} 
+                        label="GROUP SCANNER" 
+                        icon={<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>}
+                        onClick={() => setActiveModule('GROUP_SCANNER')} 
                     />
                 </GlassPanel>
             </div>
@@ -1368,9 +1634,9 @@ export const AutoModView: React.FC = () => {
                         </motion.div>
                     )}
 
-                    {activeModule === 'IMMUNITY' && (
-                        <motion.div key="immunity" style={{ height: '100%' }}>
-                            <ImmunityView />
+                    {activeModule === 'GROUP_SCANNER' && (
+                        <motion.div key="scanner" style={{ height: '100%' }}>
+                            <GroupScannerView />
                         </motion.div>
                     )}
                 </AnimatePresence>

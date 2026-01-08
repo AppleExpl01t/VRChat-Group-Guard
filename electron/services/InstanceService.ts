@@ -366,18 +366,35 @@ export function setupInstanceHandlers() {
         if (!client) throw new Error("Not authenticated");
 
         try {
-           logger.info(`[InstanceService] Kicking (Banning) ${userId} from group ${groupId}`);
-           // Ban user from group (effectively kicks them from group instance)
+           logger.info(`[InstanceService] Kicking ${userId} from group ${groupId} (Ban + Unban sequence)`);
+           
+           // 1. BAN (Remove from group)
            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-           const result = await (client as any).banGroupMember({ 
-               path: { groupId, userId }
+           const banResult = await (client as any).banGroupMember({ 
+               path: { groupId },
+               body: { userId }
            });
            
-           // Check for SDK error pattern
-           if (result.error) {
-               const errorMsg = result.error?.message || JSON.stringify(result.error);
-               logger.error(`[InstanceService] API error kicking ${userId}: ${errorMsg}`);
-               return { success: false, error: errorMsg };
+           if (banResult.error) {
+               const errorMsg = banResult.error?.message || JSON.stringify(banResult.error);
+               logger.error(`[InstanceService] Kick failed at Ban stage for ${userId}: ${errorMsg}`, { payload: { groupId, userId } });
+               return { success: false, error: `Kick failed (Ban stage): ${errorMsg}` };
+           }
+
+           // 2. WAIT (Short delay to ensure consistency)
+           await new Promise(r => setTimeout(r, 500));
+
+           // 3. UNBAN (Clear the ban so they can rejoin if they want, effective 'Kick')
+           try {
+               // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               await (client as any).unbanGroupMember({ 
+                   path: { groupId, userId }
+               });
+               logger.info(`[InstanceService] Unban complete for ${userId} (Kick sequence finished)`);
+           } catch (e) {
+               logger.warn(`[InstanceService] Failed to cleanup ban for ${userId} during kick sequence. User remains banned.`, e);
+               // We still return success because they ARE removed from the group, which was the goal.
+               // But we log it.
            }
 
            return { success: true };

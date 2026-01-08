@@ -147,6 +147,8 @@ export const setupAutoModHandlers = () => {
         status?: string;
         statusDescription?: string;
         pronouns?: string;
+        ageVerified?: boolean;
+        ageVerificationStatus?: string;
     }) => {
         logger.info(`[AutoMod] check-user called for: ${user.displayName} (${user.id})`);
         
@@ -229,6 +231,13 @@ export const setupAutoModHandlers = () => {
                                 logger.debug(`[AutoMod] Keyword "${keyword}" matched but whitelisted`);
                             }
                         }
+                    }
+                } else if (rule.type === 'AGE_VERIFICATION') {
+                    // Check if user is age verified (18+)
+                    // Must be '18+' status to pass this check
+                    if (user.ageVerificationStatus !== '18+') {
+                        matches = true;
+                        reason = "Age Verification (18+) Required";
                     }
                 } else if (rule.type === 'TRUST_CHECK') {
                     // Check trust level via tags
