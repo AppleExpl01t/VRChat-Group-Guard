@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { NeonButton } from '../../../components/ui/NeonButton';
 import { GlassPanel } from '../../../components/ui/GlassPanel';
-import { Users, AlertTriangle, ShieldCheck, CheckCircle } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle } from 'lucide-react';
 import { AppShieldIcon } from '../../../components/ui/AppShieldIcon';
 import { AnimatePresence, motion } from 'framer-motion';
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useGroupStore } from '../../../stores/groupStore';
 import { GlassPanel } from '../../../components/ui/GlassPanel';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { format, subDays, startOfDay, parseISO } from 'date-fns';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { format, subDays, startOfDay } from 'date-fns';
 
 export const AnalyticsView: React.FC = () => {
     const { selectedGroup } = useGroupStore();

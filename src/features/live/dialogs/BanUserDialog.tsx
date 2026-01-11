@@ -3,7 +3,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { GlassPanel } from '../../../components/ui/GlassPanel';
 import { NeonButton } from '../../../components/ui/NeonButton';
 import { useGroupStore } from '../../../stores/groupStore';
-import { ShieldAlert, Check, X, Gavel } from 'lucide-react';
+import { Check, X, Gavel } from 'lucide-react';
 import { AppShieldIcon } from '../../../components/ui/AppShieldIcon';
 import { motion } from 'framer-motion';
 
