@@ -197,6 +197,8 @@ import { contextBridge, ipcRenderer } from 'electron';
              return () => ipcRenderer.removeListener('automod:violation', handler);
          },
          testNotification: () => ipcRenderer.invoke('automod:test-notification'),
+        getLiveAutoBan: () => ipcRenderer.invoke('automod:get-live-autoban'),
+        setLiveAutoBan: (enabled: boolean) => ipcRenderer.invoke('automod:set-live-autoban', enabled),
      },
 
      // OSC API

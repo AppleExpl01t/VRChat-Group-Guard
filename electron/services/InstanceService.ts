@@ -256,29 +256,31 @@ export function setupInstanceHandlers() {
         // Slot 11 = Slot 12 in UI (0-indexed)
         const SLOT_INDEX = 11; 
 
+        // 2. Send Invite
+        const body: any = { instanceId: location };
+        
+        // Only use the slot if we successfully updated it (or if it's safe to assume)
+        // In the try/catch above, we should track success.
+        
+        // Refactored logic:
+        let slotUpdated = false;
         if (message) {
-            try {
+             try {
                 // 1. Overwrite Slot
                 logger.info(`[InstanceService] Overwriting Invite Slot ${SLOT_INDEX} with: "${message}"`);
                 await client.updateInviteMessage({
                     path: { slot: SLOT_INDEX },
-                    body: { message: message.substring(0, 64) } // API limit 64 chars
+                    body: { message: message.substring(0, 64) }
                 });
-                
-                // Short safety delay to ensure propagation?
                 await sleep(200);
-
+                slotUpdated = true;
             } catch (e: any) {
-                logger.warn(`[InstanceService] Failed to update invite message slot: ${e.message}. Sending standard invite.`);
-                // Proceed with standard invite if slot update fails? 
-                // Alternatively, throw error. Let's proceed but log it.
+                logger.warn(`[InstanceService] Failed to update invite message slot: ${e.message}. Sending standard invite to avoid stale message.`);
+                slotUpdated = false;
             }
         }
 
-        // 2. Send Invite
-        // If message was set, use the slot. Otherwise, use standard invite (no slot = default? or just no message)
-        const body: any = { instanceId: location };
-        if (message) {
+        if (slotUpdated) {
             body.messageSlot = SLOT_INDEX;
         }
 

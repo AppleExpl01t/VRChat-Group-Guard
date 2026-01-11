@@ -417,6 +417,8 @@ export interface ElectronAPI {
       checkUser: (user: AutoModUserInput) => Promise<{ action: 'ALLOW' | 'REJECT' | 'AUTO_BLOCK' | 'NOTIFY_ONLY'; reason?: string; ruleName?: string }>;
       onViolation: (callback: (data: { displayName: string; userId: string; action: string; reason: string }) => void) => () => void;
       testNotification: () => Promise<boolean>;
+      getLiveAutoBan: () => Promise<boolean>;
+      setLiveAutoBan: (enabled: boolean) => Promise<boolean>;
   };
 
   // OSC API

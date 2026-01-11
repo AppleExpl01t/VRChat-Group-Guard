@@ -333,15 +333,23 @@ export const OscAnnouncementWidget: React.FC = () => {
     const { selectedGroup } = useGroupStore();
     const [config, setConfig] = useState<GroupAnnouncementConfig | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [isMasterOscEnabled, setIsMasterOscEnabled] = useState(true);
 
     useEffect(() => {
         if (!selectedGroup) return;
         
         let cancelled = false;
+        
+        // Load Announcement Config
         window.electron.osc.getAnnouncementConfig(selectedGroup.id).then(cfg => {
             if (!cancelled) setConfig(cfg);
         }).catch(err => {
             console.error('Failed to load announcement config:', err);
+        });
+
+        // Check Master OSC Status
+        window.electron.osc.getConfig().then(cfg => {
+            if (!cancelled) setIsMasterOscEnabled(cfg.enabled);
         });
 
         return () => { cancelled = true; };
@@ -366,8 +374,9 @@ export const OscAnnouncementWidget: React.FC = () => {
     };
 
     if (!selectedGroup || !config) return null;
-
+    
     const isActive = config.greetingEnabled || config.periodicEnabled;
+    const isError = isActive && !isMasterOscEnabled;
 
     return (
         <>
@@ -376,12 +385,16 @@ export const OscAnnouncementWidget: React.FC = () => {
                 alignItems: 'center', 
                 gap: '8px',
                 padding: '8px 12px',
-                background: isActive ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.03)',
-                border: isActive ? '1px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(255,255,255,0.1)',
+                background: isError ? 'rgba(239, 68, 68, 0.1)' : (isActive ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.03)'),
+                border: isError ? '1px solid #ef4444' : (isActive ? '1px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(255,255,255,0.1)'),
                 borderRadius: '8px',
                 transition: 'all 0.2s ease'
             }}>
-                <MessageSquare size={16} style={{ color: isActive ? '#86efac' : 'var(--color-text-dim)' }} />
+                {isError ? (
+                    <div title="Master OSC is Disabled in Settings! Enable it for this to work." style={{ cursor: 'help' }}>⚠️</div>
+                ) : (
+                    <MessageSquare size={16} style={{ color: isActive ? '#86efac' : 'var(--color-text-dim)' }} />
+                )}
                 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {/* Quick Toggle: Greeter */}

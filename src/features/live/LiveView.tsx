@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { GlassPanel } from '../../components/ui/GlassPanel';
 import { NeonButton } from '../../components/ui/NeonButton';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, Users, Radio, Crosshair, UserPlus, ShieldCheck, Activity, Gavel } from 'lucide-react';
+import { ShieldAlert, Users, Radio, Crosshair, UserPlus, Activity, Gavel } from 'lucide-react';
 import { AppShieldIcon } from '../../components/ui/AppShieldIcon';
 import { useGroupStore } from '../../stores/groupStore';
 import { useInstanceMonitorStore, type LiveEntity } from '../../stores/instanceMonitorStore';
 import { BanUserDialog } from './dialogs/BanUserDialog';
 import { OscAnnouncementWidget } from '../dashboard/widgets/OscAnnouncementWidget';
 import { RecruitResultsDialog } from './dialogs/RecruitResultsDialog';
+import { AutoModAlertOverlay } from './overlays/AutoModAlertOverlay';
+import { useAutoModAlertStore } from '../../stores/autoModAlertStore';
 
 interface LogEntry {
     message: string;
@@ -118,6 +120,19 @@ export const LiveView: React.FC = () => {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [customMessage, setCustomMessage] = useState('');
+    
+    // AutoBan State
+    const [liveAutoBan, setLiveAutoBan] = useState(false);
+    
+    useEffect(() => {
+        window.electron?.automod?.getLiveAutoBan?.().then(setLiveAutoBan).catch(() => {});
+    }, []);
+    
+    const toggleLiveAutoBan = async () => {
+        const newValue = !liveAutoBan;
+        setLiveAutoBan(newValue);
+        await window.electron?.automod?.setLiveAutoBan?.(newValue);
+    };
     
     // Dialog State
     const [banDialogUser, setBanUserDialog] = useState<{ id: string; displayName: string } | null>(null);
@@ -748,6 +763,35 @@ export const LiveView: React.FC = () => {
                         <OscAnnouncementWidget />
                     </div>
 
+                    {/* Live Alerts & AutoBan Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', marginBottom: '1rem' }}>
+                        {/* Alerts */}
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <ShieldAlert size={16} color={useAutoModAlertStore(s => s.isEnabled) ? '#f87171' : 'gray'} />
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'white' }}>Alerts</span>
+                            </div>
+                            <ToggleButton 
+                                enabled={useAutoModAlertStore(s => s.isEnabled)} 
+                                onToggle={useAutoModAlertStore(s => s.toggleEnabled)} 
+                            />
+                        </div>
+                        
+                        <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)' }}></div>
+                        
+                        {/* Auto-Ban */}
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Gavel size={16} color={liveAutoBan ? '#ef4444' : 'gray'} />
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'white' }}>Auto-Ban</span>
+                            </div>
+                            <ToggleButton 
+                                enabled={liveAutoBan} 
+                                onToggle={toggleLiveAutoBan} 
+                            />
+                        </div>
+                    </div>
+
                     {/* Custom Invite Message Input */}
                     {!isRoamingMode && (
                         <div style={{ marginBottom: '0.5rem' }}>
@@ -840,7 +884,28 @@ export const LiveView: React.FC = () => {
                 blockedUsers={recruitResults?.blocked || []}
                 totalInvited={recruitResults?.invited || 0}
             />
+
+            <AutoModAlertOverlay />
         </div>
     );
 };
+
+const ToggleButton = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+    <div 
+        onClick={onToggle}
+        style={{
+            width: '40px', height: '22px', 
+            background: enabled ? 'var(--color-success)' : 'rgba(255,255,255,0.2)',
+            borderRadius: '20px', position: 'relative', cursor: 'pointer',
+            transition: 'background 0.2s'
+        }}
+    >
+        <div style={{
+            width: '18px', height: '18px', 
+            background: 'white', borderRadius: '50%',
+            position: 'absolute', top: '2px', left: enabled ? '20px' : '2px',
+            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+        }} />
+    </div>
+);
 

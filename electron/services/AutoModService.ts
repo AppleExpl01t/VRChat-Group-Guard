@@ -31,14 +31,15 @@ export interface AutoModRule {
 
 interface AutoModStoreSchema {
     rules: AutoModRule[];
+    liveAutoBan: boolean;
 }
 
-// Initialize store
 // Initialize store
 export const store = new Store<AutoModStoreSchema>({
     name: 'automod-rules',
     defaults: {
-        rules: []
+        rules: [],
+        liveAutoBan: false
     }
 });
 
@@ -190,7 +191,16 @@ export const processJoinRequest = async (
                 return { processed: false, action: 'skip', reason: 'API error on accept' };
             }
         } else {
-            // User failed a rule - auto-reject
+            // User failed a rule - auto-reject/block logic
+
+            // Check Master Switch for destructive actions
+            const liveAutoBanEnabled = store.get('liveAutoBan') === true;
+            if (!liveAutoBanEnabled) {
+                logger.info(`[AutoMod] 🛑 Auto-Ban/Reject SKIPPED for ${displayName} (Auto-Ban Toggle is OFF). Reason: ${evaluation.reason}`);
+                // We SKIP the rejection. The request remains pending.
+                return { processed: false, action: 'skip', reason: 'Auto-Ban Disabled' };
+            }
+
             try {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const clientAny = client as any;
@@ -382,6 +392,15 @@ export const setupAutoModHandlers = () => {
         return store.get('rules');
     });
 
+    ipcMain.handle('automod:get-live-autoban', () => {
+        return store.get('liveAutoBan');
+    });
+
+    ipcMain.handle('automod:set-live-autoban', (_e, enabled: boolean) => {
+        store.set('liveAutoBan', enabled);
+        return enabled;
+    });
+
     ipcMain.handle('automod:save-rule', (_e, rule: AutoModRule) => {
         const rules = store.get('rules');
         if (rule.id) {
@@ -466,7 +485,7 @@ export const setupAutoModHandlers = () => {
         return match ? match[1] : null;
     };
 
-    const executeAction = async (player: { userId: string; displayName: string }, rule: AutoModRule, groupId: string) => {
+    const executeAction = async (player: { userId: string; displayName: string }, rule: AutoModRule, groupId: string, notifyOnly: boolean = false) => {
         // SECURITY: Validate that we have permission to moderate this group
         if (!groupAuthorizationService.isGroupAllowed(groupId)) {
             logger.warn(`[AutoMod] [SECURITY BLOCK] Attempted action on unauthorized group: ${groupId}. Skipping.`);
@@ -492,27 +511,39 @@ export const setupAutoModHandlers = () => {
 
         // NOTIFY RENDERER (TOAST)
         // NOTIFY RENDERER (TOAST)
+        // NOTIFY RENDERER (TOAST)
         windowService.broadcast('automod:violation', {
             displayName: player.displayName,
             userId: player.userId,
             action: rule.actionType,
-            reason: rule.name
+            reason: rule.name,
+            skipped: notifyOnly // Tell frontend if action was skipped
         });
 
         // WEBHOOK
-        const actionColor = rule.actionType === 'REJECT' || rule.actionType === 'AUTO_BLOCK' ? 0xED4245 : 0xFEE75C;
+        const isActionable = rule.actionType === 'REJECT' || rule.actionType === 'AUTO_BLOCK';
+        const actionColor = isActionable ? 0xED4245 : 0xFEE75C;
+        
+        let title = `🛡️ AutoMod Violation: ${rule.actionType}`;
+        let actionValue = rule.actionType;
+        
+        if (notifyOnly && isActionable) {
+            title = `🛡️ AutoMod Alert: ${rule.actionType} (Action Skipped)`;
+            actionValue = `${rule.actionType} (Prevented by Auto-Ban OFF)`;
+        }
+
         discordWebhookService.sendEvent(
             groupId,
-            `🛡️ AutoMod Violation: ${rule.actionType}`,
+            title,
             `**User**: ${player.displayName} (${player.userId})\n**Reason**: ${rule.name}`,
             actionColor,
             [
-                { name: 'Action Taken', value: rule.actionType, inline: true },
+                { name: 'Action Taken', value: actionValue, inline: true },
                 { name: 'Location', value: getCurrentGroupId() === groupId ? 'Current Group Instance' : 'Remote Request', inline: true }
             ]
         );
 
-        if (rule.actionType === 'REJECT' || rule.actionType === 'AUTO_BLOCK') {
+        if (!notifyOnly && (rule.actionType === 'REJECT' || rule.actionType === 'AUTO_BLOCK')) {
             try {
                 // Ban from Group (Kick)
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -536,55 +567,71 @@ export const setupAutoModHandlers = () => {
         const rules = store.get('rules').filter(r => r.enabled) as AutoModRule[];
         if (rules.length === 0) return;
 
-        logger.info(`[AutoMod] Checking ${player.displayName} against ${rules.length} rules...`);
+        // Fetch detailed user info for accurate checking (Trust, Age, Bio, etc.)
+        let fullUser: {
+            userId: string;
+            displayName: string;
+            tags?: string[];
+            bio?: string;
+            status?: string;
+            statusDescription?: string;
+            pronouns?: string;
+            ageVerificationStatus?: string;
+        } = { 
+            userId: player.userId,
+            displayName: player.displayName
+        };
 
-        // Fetch detailed user info if needed for rules (Trust Rank, etc)
-        // For simple name checks we don't need API
-        let fullUser = null;
-        
-        for (const rule of rules) {
-            let matches = false;
+        try {
+             // fetchUser is robust and cached
+             const userDetails = await fetchUser(player.userId);
+             if (userDetails) {
+                 fullUser = { ...fullUser, ...userDetails };
+             }
+        } catch (e) {
+            logger.warn(`[AutoMod] Failed to fetch user details for ${player.displayName}`, e);
+        }
 
-            if (rule.type === 'KEYWORD_BLOCK') {
-                if (rule.config && player.displayName.toLowerCase().includes(rule.config.toLowerCase())) {
-                    matches = true;
-                }
-            } else if (rule.type === 'AGE_CHECK' || rule.type === 'TRUST_CHECK') {
-                // We need full user profile
-                if (!fullUser) {
-                    try {
-                         const client = getVRChatClient();
-                         if (client) {
-                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                             const res = await (client as any).getUser({ path: { userId: player.userId } });
-                             fullUser = res.data;
-                         }
-                    } catch (e) {
-                        logger.warn(`[AutoMod] Failed to fetch user details for ${player.displayName}`, e);
-                    }
-                }
+        // Evaluate using central logic
+        const evaluation = await evaluateUser({
+            id: player.userId,
+            displayName: player.displayName,
+            tags: fullUser.tags,
+            bio: fullUser.bio,
+            status: fullUser.status,
+            statusDescription: fullUser.statusDescription,
+            pronouns: fullUser.pronouns,
+            ageVerificationStatus: fullUser.ageVerificationStatus
+        });
 
-                if (fullUser) {
-                     if (rule.type === 'TRUST_CHECK') {
-                         // config might be "known", "trusted" etc.
-                         // Implementation depends on tags
-                         // const tags = fullUser.tags || [];
-                         // Simple logic: if config is 'user' and they are 'visitor', block?
-                         // For now, placeholder or simple check
-                         logger.debug('[AutoMod] Trust Check logic pending refinement');
-                     }
-                }
-            }
+        if (evaluation.action !== 'ALLOW') {
+            logger.info(`[AutoMod] Detected violation for ${player.displayName}: ${evaluation.reason}`);
+            
+            // Execute Action
+            // Construct a synthetic rule object to pass to executeAction
+            const syntheticRule: AutoModRule = {
+                id: Date.now(),
+                name: evaluation.reason || evaluation.ruleName || 'AutoMod Violation',
+                enabled: true,
+                type: 'AUTO_DETECTED',
+                config: '',
+                actionType: evaluation.action as AutoModActionType,
+                createdAt: new Date().toISOString()
+            };
 
-            if (matches) {
-                await executeAction(player, rule, groupId);
-                processedRequests.add(key);
-                break; // Stop after first violation
-            }
+            // Notify only depending on setting
+            // Default liveAutoBan is false.
+            const liveAutoBanSetting = store.get('liveAutoBan');
+            const notifyOnly = liveAutoBanSetting !== true; // Only valid if explicitly true
+            
+            logger.info(`[AutoMod] Action Triggered. LiveAutoBan: ${liveAutoBanSetting}, NotifyOnly: ${notifyOnly}`);
+
+            await executeAction(player, syntheticRule, groupId, notifyOnly);
         }
         
-        // Mark as checked to prevent loop spam (API rate limits)
+        // Mark as checked
         processedRequests.add(key);
+        pruneProcessedCache();
     };
 
     const runAutoModCycle = async () => {

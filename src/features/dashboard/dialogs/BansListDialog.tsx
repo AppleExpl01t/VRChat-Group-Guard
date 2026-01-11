@@ -21,6 +21,23 @@ export const BansListDialog: React.FC<Props> = ({ isOpen, onClose }) => {
         }
     }, [isOpen, selectedGroup, fetchGroupBans]);
 
+    const handleUnban = async (userId: string, displayName: string) => {
+        if (!selectedGroup) return;
+        if (!confirm(`Are you sure you want to UNBAN ${displayName}?`)) return;
+
+        try {
+            const res = await window.electron.unbanUser(selectedGroup.id, userId);
+            if (res.success) {
+                fetchGroupBans(selectedGroup.id);
+            } else {
+                alert(`Error unbanning user: ${res.error}`);
+            }
+        } catch (e) {
+            console.error("Unban failed", e);
+            alert("Failed to unban user. Check console.");
+        }
+    };
+
     const filteredBans = bans.filter(ban => 
         ban.user.displayName.toLowerCase().includes(search.toLowerCase())
     );
@@ -71,7 +88,7 @@ export const BansListDialog: React.FC<Props> = ({ isOpen, onClose }) => {
                                     </div>
                                 </div>
                             </div>
-                             <NeonButton variant="ghost">Unban</NeonButton>
+                             <NeonButton variant="ghost" onClick={() => handleUnban(ban.user.id, ban.user.displayName)}>Unban</NeonButton>
                         </GlassPanel>
                     ))
                 ) : (

@@ -102,7 +102,9 @@ const logger = log.scope('AutoModService');
                          continue; 
                     } 
                     
-                    if (user.ageVerificationStatus !== '18+') {
+                    const normalizedStatus = (user.ageVerificationStatus || '').toLowerCase();
+                    // Check against '18+' (exact) or 'hidden' (case-insensitive normalized)
+                    if (user.ageVerificationStatus !== '18+' && normalizedStatus !== 'hidden') {
                         matches = true;
                         reason = `Age Verification Required (Found: ${user.ageVerificationStatus})`;
                     }
