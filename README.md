@@ -22,7 +22,6 @@ Automate your instance security to keep trolls and bad actors out.
 - **Rule Engine**: Create custom rules based on Trust Rank, Account Age, Keywords (in Bio/Status), and more.
 - **Actions**: Automatically Notify when a rule is triggered.
 
-
 ### 📡 Live Ops Command Center
 
 Monitor and control your active instance in real-time.
@@ -46,7 +45,6 @@ Enhance in-game communication without typing.
 
 - **Announcer**: Automatically send welcome messages to new joins or periodic announcements (e.g., "Join our Discord!").
 
-
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -55,12 +53,14 @@ Enhance in-game communication without typing.
 - [Node.js](https://nodejs.org/) (v16+)
 - VRChat Account (with VRC+ for some features, though not strictly required)
 
-### Installation (Development)
+### Running from Source
+
+> **Note**: Running from source is recommended to get the absolute latest features and bug fixes that may not yet be in the public release.
 
 1.  **Clone the repo**:
     ```bash
-    git clone https://github.com/YourUsername/group-guard.git
-    cd group-guard
+    git clone https://github.com/AppleExpl01t/VRChat-Group-Guard.git
+    cd VRChat-Group-Guard
     ```
 2.  **Install dependencies**:
     ```bash
