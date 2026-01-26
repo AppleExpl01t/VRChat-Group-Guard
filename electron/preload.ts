@@ -227,6 +227,17 @@ contextBridge.exposeInMainWorld('electron', {
         scanGroupMembers: (groupId: string) => ipcRenderer.invoke('automod:scan-group-members', groupId),
     },
 
+    // Instance Guard API
+    instanceGuard: {
+        getHistory: (groupId: string) => ipcRenderer.invoke('instance-guard:get-history', groupId),
+        clearHistory: () => ipcRenderer.invoke('instance-guard:clear-history'),
+        onEvent: (callback: (data: unknown) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+            ipcRenderer.on('instance-guard:event', handler);
+            return () => ipcRenderer.removeListener('instance-guard:event', handler);
+        },
+    },
+
     // OSC API
     osc: {
         getConfig: () => ipcRenderer.invoke('osc:get-config'),

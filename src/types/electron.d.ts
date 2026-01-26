@@ -225,12 +225,34 @@ export interface AutoModRule {
     id: number;
     name: string;
     enabled: boolean;
-    type: 'AGE_CHECK' | 'TRUST_CHECK' | 'KEYWORD_BLOCK' | 'WHITELIST_CHECK' | 'BAN_EVASION_CHECK' | 'AGE_VERIFICATION' | 'BLACKLISTED_GROUPS';
+    type: 'AGE_CHECK' | 'TRUST_CHECK' | 'KEYWORD_BLOCK' | 'WHITELIST_CHECK' | 'BAN_EVASION_CHECK' | 'AGE_VERIFICATION' | 'BLACKLISTED_GROUPS' | 'INSTANCE_18_GUARD';
     config: string;
     actionType: 'REJECT' | 'AUTO_BLOCK' | 'NOTIFY_ONLY';
     createdAt?: string;
     whitelistedUserIds?: string[];
     whitelistedGroupIds?: string[];
+}
+
+// Instance Guard event type
+export interface InstanceGuardEvent {
+    id: string;
+    timestamp: number;
+    action: 'OPENED' | 'CLOSED' | 'AUTO_CLOSED' | 'INSTANCE_CLOSED';
+    worldId: string;
+    worldName: string;
+    instanceId: string;
+    groupId: string;
+    reason?: string;
+    closedBy?: string;
+    wasAgeGated?: boolean;
+    userCount?: number;
+    // Owner/starter info
+    ownerId?: string;
+    ownerName?: string;
+    // World info for modal display
+    worldThumbnailUrl?: string;
+    worldAuthorName?: string;
+    worldCapacity?: number;
 }
 
 // Type for Live Entity (used in instance monitoring)
@@ -476,7 +498,12 @@ export interface ElectronAPI {
       evaluateMember: (args: { groupId: string; member: { user: VRChatUser } }) => Promise<ScanResult>;
   };
 
-
+  // Instance Guard API
+  instanceGuard?: {
+      getHistory: (groupId: string) => Promise<InstanceGuardEvent[]>;
+      clearHistory: () => Promise<boolean>;
+      onEvent: (callback: (data: InstanceGuardEvent) => void) => () => void;
+  };
 
   // OSC API
   osc: {

@@ -179,6 +179,51 @@ const CHECK_INTERVAL = 60 * 1000; // Check every minute
 const processedRequests = new Set<string>();
 const PROCESSED_CACHE_MAX_SIZE = 1000;
 
+// Instance Guard event history (in-memory, persists for session)
+interface InstanceGuardEvent {
+  id: string;
+  timestamp: number;
+  action: 'OPENED' | 'CLOSED' | 'AUTO_CLOSED' | 'INSTANCE_CLOSED';
+  worldId: string;
+  worldName: string;
+  instanceId: string;
+  groupId: string;
+  reason?: string;
+  closedBy?: string;
+  wasAgeGated?: boolean;
+  userCount?: number;
+  // Owner/starter info
+  ownerId?: string;
+  ownerName?: string;
+  // World info for modal display
+  worldThumbnailUrl?: string;
+  worldAuthorName?: string;
+  worldCapacity?: number;
+}
+const instanceGuardHistory: InstanceGuardEvent[] = [];
+const INSTANCE_HISTORY_MAX_SIZE = 200;
+
+// Track instances that have already been closed to prevent spam
+// Key format: "groupId:worldId:instanceId"
+const closedInstancesCache = new Set<string>();
+const CLOSED_INSTANCES_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const closedInstancesTimestamps = new Map<string, number>();
+
+// Track known instances to detect new ones (for OPENED events)
+// Key format: "groupId:worldId:instanceId"
+const knownInstancesCache = new Set<string>();
+
+// Prune old entries from closed instances cache
+const pruneClosedInstancesCache = () => {
+  const now = Date.now();
+  for (const [key, timestamp] of closedInstancesTimestamps.entries()) {
+    if (now - timestamp > CLOSED_INSTANCES_CACHE_TTL) {
+      closedInstancesCache.delete(key);
+      closedInstancesTimestamps.delete(key);
+    }
+  }
+};
+
 // Clear old entries if cache gets too large
 const pruneProcessedCache = () => {
   if (processedRequests.size > PROCESSED_CACHE_MAX_SIZE) {
@@ -1185,6 +1230,247 @@ export const processGroupJoinNotification = async (notification: {
   await processJoinRequest(groupId, userId, displayName);
 };
 
+// ===== INSTANCE 18+ GUARD =====
+// Auto-close group instances that are not marked as 18+ age-gated
+
+export const processInstanceGuard = async (): Promise<{
+  totalClosed: number;
+  groupsChecked: number;
+}> => {
+  const authorizedGroups = groupAuthorizationService.getAllowedGroupIds();
+  if (authorizedGroups.length === 0) {
+    return { totalClosed: 0, groupsChecked: 0 };
+  }
+
+  // Prune old entries from closed instances cache
+  pruneClosedInstancesCache();
+
+  let totalClosed = 0;
+  let groupsChecked = 0;
+
+  for (const groupId of authorizedGroups) {
+    try {
+      // Check if INSTANCE_18_GUARD rule is enabled for this group
+      const config = getGroupConfig(groupId);
+      const instanceGuardRule = config.rules.find(r => r.type === 'INSTANCE_18_GUARD' && r.enabled);
+
+      if (!instanceGuardRule) {
+        continue; // Skip groups without the rule enabled
+      }
+
+      groupsChecked++;
+      const ruleConfig = JSON.parse(instanceGuardRule.config || '{}');
+      const whitelistedWorlds: string[] = ruleConfig.whitelistedWorlds || [];
+      const blacklistedWorlds: string[] = ruleConfig.blacklistedWorlds || [];
+
+      // Fetch all instances for this group
+      const result = await vrchatApiService.getGroupInstances(groupId);
+      if (!result.success || !result.data) {
+        logger.warn(`[InstanceGuard] Failed to fetch instances for group ${groupId}: ${result.error}`);
+        continue;
+      }
+
+      const instances = result.data;
+      logger.debug(`[InstanceGuard] Checking ${instances.length} instances for group ${groupId}`);
+
+      for (const instance of instances) {
+        const worldId = instance.worldId || instance.world?.id;
+        const instanceId = instance.instanceId || instance.name;
+        const worldName = instance.world?.name || 'Unknown World';
+        const ownerId = instance.ownerId;
+        const worldThumbnailUrl = instance.world?.thumbnailImageUrl;
+        const worldAuthorName = instance.world?.authorName;
+        const worldCapacity = instance.capacity || instance.world?.capacity;
+
+        if (!worldId || !instanceId) {
+          logger.warn(`[InstanceGuard] Skipping instance with missing worldId or instanceId`);
+          continue;
+        }
+
+        // Create a unique key for this instance
+        const instanceKey = `${groupId}:${worldId}:${instanceId}`;
+
+        // Check if this is a NEW instance we haven't seen before
+        const isNewInstance = !knownInstancesCache.has(instanceKey) && !closedInstancesCache.has(instanceKey);
+
+        if (isNewInstance) {
+          // Mark as known
+          knownInstancesCache.add(instanceKey);
+
+          // Fetch owner name if we have an ownerId
+          let ownerName: string | undefined;
+          if (ownerId && ownerId.startsWith('usr_')) {
+            try {
+              const ownerResult = await vrchatApiService.getUser(ownerId);
+              if (ownerResult.success && ownerResult.data) {
+                ownerName = ownerResult.data.displayName;
+              }
+            } catch (e) {
+              logger.warn(`[InstanceGuard] Failed to fetch owner name for ${ownerId}:`, e);
+            }
+          }
+
+          // Log the OPENED event
+          const hasAgeGate = instance.ageGate === true;
+          const openEvent: InstanceGuardEvent = {
+            id: `ig_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: Date.now(),
+            action: 'OPENED',
+            worldId,
+            worldName,
+            instanceId,
+            groupId,
+            wasAgeGated: hasAgeGate,
+            userCount: instance.n_users || instance.userCount,
+            ownerId,
+            ownerName,
+            worldThumbnailUrl,
+            worldAuthorName,
+            worldCapacity
+          };
+
+          // Add to history
+          instanceGuardHistory.unshift(openEvent);
+          if (instanceGuardHistory.length > INSTANCE_HISTORY_MAX_SIZE) {
+            instanceGuardHistory.pop();
+          }
+
+          // Broadcast to UI
+          windowService.broadcast('instance-guard:event', openEvent);
+
+          logger.info(`[InstanceGuard] New instance opened: ${worldName} by ${ownerName || ownerId || 'Unknown'} (18+: ${hasAgeGate})`);
+        }
+
+        // Skip if we've already closed this instance recently
+        if (closedInstancesCache.has(instanceKey)) {
+          logger.debug(`[InstanceGuard] Skipping already-closed instance: ${worldName} (${instanceKey})`);
+          continue;
+        }
+
+        // Check blacklist first (always close blacklisted worlds)
+        const isBlacklisted = blacklistedWorlds.includes(worldId);
+
+        // Check whitelist (allow whitelisted worlds even if not 18+)
+        const isWhitelisted = whitelistedWorlds.includes(worldId);
+
+        // Check if instance has 18+ age gate
+        const hasAgeGate = instance.ageGate === true;
+
+        // Determine if we should close this instance
+        let shouldClose = false;
+        let closeReason = '';
+
+        if (isBlacklisted) {
+          shouldClose = true;
+          closeReason = `World "${worldName}" is blacklisted`;
+        } else if (!hasAgeGate && !isWhitelisted) {
+          shouldClose = true;
+          closeReason = `Instance is not 18+ age-gated`;
+        }
+
+        if (shouldClose) {
+          logger.info(`[InstanceGuard] Closing instance: ${worldName} (${worldId}:${instanceId}) - Reason: ${closeReason}`);
+
+          try {
+            const closeResult = await vrchatApiService.closeInstance(worldId, instanceId);
+
+            if (closeResult.success) {
+              totalClosed++;
+
+              // Mark this instance as closed to prevent duplicate actions
+              closedInstancesCache.add(instanceKey);
+              closedInstancesTimestamps.set(instanceKey, Date.now());
+
+              // Log the action (skipBroadcast to avoid spamming AutoMod log)
+              await persistAction({
+                timestamp: new Date(),
+                user: 'System',
+                userId: 'system',
+                groupId,
+                action: 'INSTANCE_CLOSED',
+                reason: closeReason,
+                module: 'InstanceGuard',
+                details: {
+                  worldId,
+                  instanceId,
+                  worldName,
+                  wasAgeGated: hasAgeGate,
+                  wasBlacklisted: isBlacklisted,
+                  ruleName: '18+ Instance Guard'
+                },
+                skipBroadcast: true // Don't send to AutoMod UI - Instance Guard has its own log
+              });
+
+              // Fetch owner name if we have an ownerId (for the close event)
+              let ownerName: string | undefined;
+              if (ownerId && ownerId.startsWith('usr_')) {
+                try {
+                  const ownerResult = await vrchatApiService.getUser(ownerId);
+                  if (ownerResult.success && ownerResult.data) {
+                    ownerName = ownerResult.data.displayName;
+                  }
+                } catch (e) {
+                  // Ignore - we may have already fetched this for the open event
+                }
+              }
+
+              // Create event entry
+              const eventEntry: InstanceGuardEvent = {
+                id: `ig_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                timestamp: Date.now(),
+                action: 'AUTO_CLOSED',
+                worldId,
+                worldName,
+                instanceId,
+                groupId,
+                reason: closeReason,
+                closedBy: 'System',
+                wasAgeGated: hasAgeGate,
+                userCount: instance.n_users || instance.userCount,
+                ownerId,
+                ownerName,
+                worldThumbnailUrl,
+                worldAuthorName,
+                worldCapacity
+              };
+
+              // Add to history
+              instanceGuardHistory.unshift(eventEntry);
+              if (instanceGuardHistory.length > INSTANCE_HISTORY_MAX_SIZE) {
+                instanceGuardHistory.pop();
+              }
+
+              // Broadcast to UI
+              windowService.broadcast('instance-guard:event', eventEntry);
+
+              logger.info(`[InstanceGuard] Successfully closed instance: ${worldName}`);
+            } else {
+              // If the close failed, also add to cache to prevent spamming retries
+              // (e.g., if the instance was already closed or we don't have permission)
+              closedInstancesCache.add(instanceKey);
+              closedInstancesTimestamps.set(instanceKey, Date.now());
+              logger.error(`[InstanceGuard] Failed to close instance ${worldName}: ${closeResult.error}`);
+            }
+          } catch (closeError) {
+            // On error, also cache to prevent spam retries
+            closedInstancesCache.add(instanceKey);
+            closedInstancesTimestamps.set(instanceKey, Date.now());
+            logger.error(`[InstanceGuard] Error closing instance ${worldName}:`, closeError);
+          }
+        }
+      }
+    } catch (groupError) {
+      logger.error(`[InstanceGuard] Error processing group ${groupId}:`, groupError);
+    }
+  }
+
+  if (totalClosed > 0) {
+    logger.info(`[InstanceGuard] Processing complete: ${totalClosed} instances closed across ${groupsChecked} groups`);
+  }
+
+  return { totalClosed, groupsChecked };
+};
+
 export const startAutoModService = () => {
   // Stop any existing interval first
   if (autoModInterval) {
@@ -1204,6 +1490,11 @@ export const startAutoModService = () => {
     logger.debug("[AutoMod] Running periodic join request check...");
     processAllPendingRequests().catch((err) =>
       logger.error("[AutoMod] Periodic request processing failed", err)
+    );
+
+    // Also run Instance Guard check
+    processInstanceGuard().catch((err) =>
+      logger.error("[AutoMod] Instance Guard processing failed", err)
     );
   }, CHECK_INTERVAL);
 };
@@ -1477,6 +1768,18 @@ export const setupAutoModHandlers = () => {
       logger.error("Failed to scan group members", error);
       return { success: false, error: String(error) };
     }
+  });
+
+  // ===== INSTANCE GUARD HANDLERS =====
+
+  ipcMain.handle("instance-guard:get-history", (_e, groupId: string) => {
+    if (!groupId) return [];
+    return instanceGuardHistory.filter(e => e.groupId === groupId);
+  });
+
+  ipcMain.handle("instance-guard:clear-history", () => {
+    instanceGuardHistory.length = 0;
+    return true;
   });
 
   // Helper to extract Group ID from current location

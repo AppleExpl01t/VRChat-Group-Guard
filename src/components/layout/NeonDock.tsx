@@ -1,18 +1,19 @@
 import React, { memo, useState, useCallback, useMemo } from 'react';
 import styles from './NeonDock.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Home, 
-  LayoutDashboard, 
-  Activity, 
-  Shield, 
-  List, 
-  ClipboardList, 
-  Database
+import {
+  Home,
+  LayoutDashboard,
+  Activity,
+  Shield,
+  List,
+  ClipboardList,
+  Database,
+  Users
 } from 'lucide-react';
 import { DockItem } from './DockItem';
 
-export type DockView = 'main' | 'moderation' | 'audit' | 'database' | 'settings' | 'live' | 'watchlist';
+export type DockView = 'main' | 'moderation' | 'instances' | 'audit' | 'database' | 'settings' | 'live' | 'watchlist';
 
 interface NeonDockProps {
   currentView: DockView;
@@ -46,6 +47,7 @@ export const NeonDock: React.FC<NeonDockProps> = memo(({
   const handleLiveClick = useCallback(() => onViewChange('live'), [onViewChange]);
   const handleModerationClick = useCallback(() => onViewChange('moderation'), [onViewChange]);
   const handleWatchlistClick = useCallback(() => onViewChange('watchlist'), [onViewChange]);
+  const handleInstancesClick = useCallback(() => onViewChange('instances'), [onViewChange]);
   const handleAuditClick = useCallback(() => onViewChange('audit'), [onViewChange]);
   const handleDatabaseClick = useCallback(() => onViewChange('database'), [onViewChange]);
 
@@ -149,12 +151,20 @@ export const NeonDock: React.FC<NeonDockProps> = memo(({
 
                       {selectedGroup && (
                       <>
-                          <DockItem 
+                          <DockItem
                             label="Auto-Mod"
                             isActive={currentView === 'moderation'}
                             onClick={handleModerationClick}
                             color="var(--color-primary)"
                             icon={Shield}
+                          />
+
+                          <DockItem
+                            label="Instances"
+                            isActive={currentView === 'instances'}
+                            onClick={handleInstancesClick}
+                            color="#ffc045"
+                            icon={Users}
                           />
 
                           <DockItem

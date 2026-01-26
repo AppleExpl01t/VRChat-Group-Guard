@@ -189,8 +189,6 @@ export const AutoModView: React.FC = () => {
     const blacklistConfig = blacklistRule ? JSON.parse(blacklistRule.config || '{}') : { groupIds: [], groups: [] };
     const isBlacklistConfigured = (blacklistConfig.groupIds && blacklistConfig.groupIds.length > 0);
 
-
-
     const handleScanGroup = async () => {
         if (!selectedGroup) return;
         setShowScanResults(true);
