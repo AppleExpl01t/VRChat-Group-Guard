@@ -19,7 +19,8 @@
     "build:electron": "esbuild electron/main.ts --bundle --platform=node --outfile=dist-electron/main.cjs --minify --external:electron --external:vrchat && esbuild electron/preload.ts --bundle --platform=node --outfile=dist-electron/preload.cjs --minify --external:electron",
     "lint": "eslint .",
     "test": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "patch-package"
   },
   "build": {
     "appId": "com.vrchatgroupguard.app",
@@ -87,6 +88,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^27.4.0",
+    "patch-package": "^8.0.1",
     "prisma": "^5.11.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",

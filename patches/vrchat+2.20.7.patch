@@ -1,0 +1,26 @@
+diff --git a/node_modules/vrchat/dist/index.js b/node_modules/vrchat/dist/index.js
+index d1fa4ed..4cd852c 100644
+--- a/node_modules/vrchat/dist/index.js
++++ b/node_modules/vrchat/dist/index.js
+@@ -5508,7 +5508,7 @@ var VRChat = class extends VRChatInternal {
+       return request;
+     });
+     interceptors.response.use(async (response, request, options2) => {
+-      const { meta } = options2;
++      const { meta = {} } = options2;
+       await this.saveCookies(response.headers);
+       if (response.status === 401 && !meta[authenticateSymbol]) {
+         const error = VRChatError.from(await response.clone().json());
+diff --git a/node_modules/vrchat/dist/index.mjs b/node_modules/vrchat/dist/index.mjs
+index 8c60321..ed7a72f 100644
+--- a/node_modules/vrchat/dist/index.mjs
++++ b/node_modules/vrchat/dist/index.mjs
+@@ -5502,7 +5502,7 @@ var VRChat = class extends VRChatInternal {
+       return request;
+     });
+     interceptors.response.use(async (response, request, options2) => {
+-      const { meta } = options2;
++      const { meta = {} } = options2;
+       await this.saveCookies(response.headers);
+       if (response.status === 401 && !meta[authenticateSymbol]) {
+         const error = VRChatError.from(await response.clone().json());

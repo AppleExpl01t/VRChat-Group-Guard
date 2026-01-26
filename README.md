@@ -22,6 +22,16 @@ Automate your instance security to keep trolls and bad actors out.
 - **Rule Engine**: Create custom rules based on Trust Rank, Account Age, Keywords (in Bio/Status), and more.
 - **Actions**: Automatically Notify when a rule is triggered.
 
+### 🔞 Instance Guard
+
+Enforce 18+ age-gating on your group instances automatically.
+
+- **Auto-Close**: Automatically closes group instances that are not marked as 18+ age-gated.
+- **Activity Log**: Track all instance open/close events with detailed information.
+- **Owner Tracking**: See who started each instance and view their profile.
+- **Event Details**: Click any log entry to view world info, user count, and instance starter details.
+- **Smart Caching**: Prevents duplicate close attempts with intelligent deduplication.
+
 ### 📡 Live Ops Command Center
 
 Monitor and control your active instance in real-time.
