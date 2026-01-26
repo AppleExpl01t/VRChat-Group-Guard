@@ -140,43 +140,39 @@ export const InstanceGuardView: React.FC = () => {
                 )}
 
                 {/* Header Section */}
-                <GlassPanel style={{ flexShrink: 0, padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
+                <GlassPanel style={{ flexShrink: 0, padding: '0.75rem 1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div style={{ minWidth: '150px' }}>
                             <h1 style={{
                                 margin: 0,
-                                fontSize: '1.75rem',
-                                fontWeight: 700,
-                                background: 'linear-gradient(135deg, #ffc045 0%, #ff9500 100%)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                backgroundClip: 'text'
+                                fontSize: '1.5rem',
+                                fontWeight: 800,
+                                lineHeight: 1.2
                             }}>
                                 Instance Guard
                             </h1>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginTop: '0.25rem', letterSpacing: '0.1em' }}>
-                                AUTOMATED INSTANCE MANAGEMENT
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginTop: '2px', letterSpacing: '0.05em' }}>
+                                18+ AGE-GATE ENFORCEMENT
                             </div>
                         </div>
-                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '1.5rem' }}>
-                        <StatTile
-                            label="CLOSED TODAY"
-                            value={closedToday}
-                            color="#ffc045"
-                        />
-                        <StatTile
-                            label="TOTAL EVENTS"
-                            value={instanceLog.length}
-                            color="var(--color-primary)"
-                        />
-                        <StatTile
-                            label="STATUS"
-                            value={isInstanceGuardEnabled ? "ACTIVE" : "STANDBY"}
-                            color={isInstanceGuardEnabled ? "var(--color-success)" : "var(--color-text-dim)"}
-                            headerRight={isInstanceGuardEnabled && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#4ade80]"></span>}
-                        />
+                        <div style={{ display: 'flex', gap: '0.5rem', flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            <StatTile
+                                label="CLOSED"
+                                value={closedToday}
+                                color="#ffc045"
+                            />
+                            <StatTile
+                                label="EVENTS"
+                                value={instanceLog.length}
+                                color="var(--color-primary)"
+                            />
+                            <StatTile
+                                label="STATUS"
+                                value={isInstanceGuardEnabled ? "ACTIVE" : "OFF"}
+                                color={isInstanceGuardEnabled ? "var(--color-success)" : "var(--color-text-dim)"}
+                            />
+                        </div>
                     </div>
                 </GlassPanel>
 

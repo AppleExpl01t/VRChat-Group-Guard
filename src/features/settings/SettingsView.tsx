@@ -428,7 +428,7 @@ export const SettingsView: React.FC = () => {
                         Version 1.0.7 (Beta)
                     </p>
                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', opacity: 0.6, marginTop: '0.5rem' }}>
-                       Developed by <a href="https://vrchat.com/home/user/usr_11357725-018b-40b3-9f1c-f891ee1001fd" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>pawtistic</a> • Electron • React • Vite
+                       Developed by <a href="https://vrchat.com/home/user/usr_ef7c23be-3c3c-40b4-a01c-82f59b2a8229" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>AppleExpl01t</a> • Electron • React • Vite
                      </div>
                    </div>
                  </div>
