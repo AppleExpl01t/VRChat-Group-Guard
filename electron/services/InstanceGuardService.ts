@@ -249,7 +249,7 @@ export const instanceGuardService = {
                     if (useAgeGateLogic && !isBlacklisted) {
                         try {
                             logger.debug(`[InstanceGuard] Fetching complete instance data for age gate check: ${worldName}`);
-                            const instId = instance.instanceId || instance.name || name;
+                            const instId = instance.instanceId || instance.name;
                             if (instId) {
                                 const instanceResult = await vrchatApiService.getInstance(instance.worldId || worldId, instId);
 
@@ -267,7 +267,15 @@ export const instanceGuardService = {
                                             };
                                         }
                                     }
-                                    logger.info(`[InstanceGuard] Fetched age gate for ${worldName}: instance.ageGate=${instance.ageGate}, world.ageGate=${instance.world?.ageGate}`);
+                                    
+                                    // Additional check: Inspect location string for "ageGate" tag (from reference logic)
+                                    // Some instances might not have the flag set correctly in API but have it in location
+                                    if (instance.location && instance.location.includes('ageGate')) {
+                                        instance.ageGate = true;
+                                        logger.debug(`[InstanceGuard] Detected 'ageGate' tag in location string for ${worldName}: ${instance.location}`);
+                                    }
+
+                                    logger.info(`[InstanceGuard] Fetched and verified age gate for ${worldName}: instance.ageGate=${instance.ageGate}, world.ageGate=${instance.world?.ageGate}`);
                                 } else {
                                     logger.warn(`[InstanceGuard] Failed to fetch complete instance data for ${worldName}: ${instanceResult.error}`);
                                 }

@@ -59,11 +59,18 @@ class QuickstartService {
 
     public getSavedWorlds(groupId: string): SavedWorld[] {
         const allWorlds = this.store.get('savedWorlds');
+        if (!allWorlds) return [];
         return allWorlds[groupId] || [];
     }
 
     public async addSavedWorld(groupId: string, worldId: string): Promise<SavedWorld | null> {
-        const allWorlds = this.store.get('savedWorlds');
+        // Validation
+        if (!groupId || !worldId) {
+            logger.error('Invalid arguments for addSavedWorld:', { groupId, worldId });
+            return null;
+        }
+
+        const allWorlds = this.store.get('savedWorlds') || {};
         const groupWorlds = allWorlds[groupId] || [];
 
         // Check if already exists
@@ -72,6 +79,8 @@ class QuickstartService {
             return groupWorlds.find(w => w.worldId === worldId) || null;
         }
 
+        logger.info(`Fetching info for world ${worldId}...`);
+
         // Try to fetch world info
         let worldInfo: { name?: string; authorName?: string; imageUrl?: string } = {};
         try {
@@ -79,6 +88,8 @@ class QuickstartService {
             if (client) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const result = await (client as any).getWorld({ path: { worldId } });
+                logger.debug('World fetch result:', result);
+
                 if (result.data) {
                     worldInfo = {
                         name: result.data.name,
@@ -86,14 +97,17 @@ class QuickstartService {
                         imageUrl: result.data.imageUrl || result.data.thumbnailImageUrl
                     };
                 }
+            } else {
+                logger.warn('No VRChat client available for fetching world info');
             }
         } catch (e) {
             logger.warn(`Failed to fetch world info for ${worldId}:`, e);
+            // We continue anyway to allow saving even if API fails
         }
 
         const savedWorld: SavedWorld = {
             worldId,
-            name: worldInfo.name,
+            name: worldInfo.name || worldId, // Fallback to ID if name missing
             authorName: worldInfo.authorName,
             imageUrl: worldInfo.imageUrl,
             addedAt: Date.now()
@@ -101,14 +115,21 @@ class QuickstartService {
 
         groupWorlds.push(savedWorld);
         allWorlds[groupId] = groupWorlds;
-        this.store.set('savedWorlds', allWorlds);
 
-        this.notifyUpdate(groupId);
-        return savedWorld;
+        try {
+            this.store.set('savedWorlds', allWorlds);
+            logger.info(`Saved world ${worldId} for group ${groupId}`);
+
+            this.notifyUpdate(groupId);
+            return savedWorld;
+        } catch (e) {
+            logger.error('Failed to write to store:', e);
+            return null;
+        }
     }
 
     public removeSavedWorld(groupId: string, worldId: string): boolean {
-        const allWorlds = this.store.get('savedWorlds');
+        const allWorlds = this.store.get('savedWorlds') || {};
         const groupWorlds = allWorlds[groupId] || [];
 
         const filtered = groupWorlds.filter(w => w.worldId !== worldId);
@@ -223,8 +244,15 @@ class QuickstartService {
 
         // Add a world to saved worlds
         ipcMain.handle('quickstart:add-world', async (_, { groupId, worldId }: { groupId: string; worldId: string }) => {
-            const world = await this.addSavedWorld(groupId, worldId);
-            return { success: !!world, world };
+            logger.info(`[IPC] add-world called with groupId=${groupId}, worldId=${worldId}`);
+            try {
+                const world = await this.addSavedWorld(groupId, worldId);
+                logger.info(`[IPC] add-world result: success=${!!world}`, world);
+                return { success: !!world, world };
+            } catch (e) {
+                logger.error('[IPC] add-world exception:', e);
+                return { success: false, error: (e as Error).message };
+            }
         });
 
         // Remove a world from saved worlds
@@ -234,7 +262,7 @@ class QuickstartService {
         });
 
         // Launch an instance
-        ipcMain.handle('quickstart:launch-instance', async (_, { groupId, options }: { groupId: string; options: LaunchOptions }) => {
+        ipcMain.handle('quickstart:create-instance', async (_, { groupId, options }: { groupId: string; options: LaunchOptions }) => {
             return this.launchInstance(groupId, options);
         });
 

@@ -682,16 +682,23 @@ export const SettingsView: React.FC = () => {
 {/* === ABOUT TAB === */}
 {activeTab === 'about' && (
   <section>
-    <h2
-      style={{
-        color: 'var(--color-text-main)',
-        marginBottom: '1rem',
-        borderBottom: '1px solid var(--border-color)',
-        paddingBottom: '0.5rem'
-      }}
-    >
-      About Group Guard
-    </h2>
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center', 
+      marginBottom: '1rem', 
+      borderBottom: '1px solid var(--border-color)', 
+      paddingBottom: '0.5rem' 
+    }}>
+      <h2 style={{ color: 'var(--color-text-main)', margin: 0 }}>About Group Guard</h2>
+      <NeonButton
+         variant="secondary"
+         onClick={() => window.open('https://discord.gg/eDKC5yEQJN', '_blank')}
+         style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
+      >
+         Join Discord Server
+      </NeonButton>
+    </div>
 
     {/* === MAIN ABOUT INFO === */}
     <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
@@ -709,7 +716,7 @@ export const SettingsView: React.FC = () => {
           />
         </div>
         <div style={{ flex: 1 }}>
-          <h3 style={{ margin: 0, fontSize: '1.4rem' }}>VRChat Group Guard</h3>
+          <h3 style={{ margin: 0, fontSize: '1.4rem' }}>Group Guard for VRChat</h3>
           <p
             style={{
               color: 'var(--color-text-dim)',
@@ -793,6 +800,8 @@ export const SettingsView: React.FC = () => {
         © 2026 Group Guard • Protecting VRChat Communities
       </div>
     </div>
+
+
   </section>
  )}
 

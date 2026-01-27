@@ -311,15 +311,19 @@ contextBridge.exposeInMainWorld('electron', {
         getAudioData: (path: string) => ipcRenderer.invoke('settings:get-audio', path),
     },
 
-    // Quickstart API
+// Quickstart API
     quickstart: {
-        getWorlds: (groupId: string) => ipcRenderer.invoke('quickstart:get-worlds', groupId),
-        addWorld: (groupId: string, worldId: string) => ipcRenderer.invoke('quickstart:add-world', { groupId, worldId }),
-        removeWorld: (groupId: string, worldId: string) => ipcRenderer.invoke('quickstart:remove-world', { groupId, worldId }),
-        launchInstance: (groupId: string, options: unknown) => ipcRenderer.invoke('quickstart:launch-instance', { groupId, options }),
-        getRoles: (groupId: string) => ipcRenderer.invoke('quickstart:get-roles', groupId),
-        onUpdate: (callback: (data: { groupId: string; savedWorlds: unknown[] }) => void) => {
-            const handler = (_event: Electron.IpcRendererEvent, data: { groupId: string; savedWorlds: unknown[] }) => callback(data);
+      getWorlds: (groupId: string) => ipcRenderer.invoke('quickstart:get-worlds', groupId),
+      addWorld: (groupId: string, worldId: string) => ipcRenderer.invoke('quickstart:add-world', {
+          groupId, worldId }),
+      removeWorld: (groupId: string, worldId: string) =>
+          ipcRenderer.invoke('quickstart:remove-world', { groupId, worldId }),
+      createInstance: (groupId: string, options: unknown) =>
+          ipcRenderer.invoke('quickstart:create-instance', { groupId, options }),
+      getRoles: (groupId: string) => ipcRenderer.invoke('quickstart:get-roles', groupId),
+      onUpdate: (callback: (data: { groupId: string; savedWorlds: unknown[] }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { groupId: string; savedWorlds:
+               unknown[] }) => callback(data);
             ipcRenderer.on('quickstart:update', handler);
             return () => ipcRenderer.removeListener('quickstart:update', handler);
         }

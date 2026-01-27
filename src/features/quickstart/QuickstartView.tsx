@@ -22,8 +22,8 @@ const containerVariants = {
 
 interface SavedWorld {
     worldId: string;
-    name: string;
-    thumbnailUrl?: string;
+    name?: string;
+    imageUrl?: string;
     authorName?: string;
     capacity?: number;
     addedAt: number;
@@ -66,9 +66,9 @@ const SavedWorldCard: React.FC<{
             }}
         >
             {/* Thumbnail */}
-            {world.thumbnailUrl ? (
+            {world.imageUrl ? (
                 <img
-                    src={world.thumbnailUrl}
+                    src={world.imageUrl}
                     alt={world.name}
                     style={{
                         width: '80px',
@@ -177,10 +177,18 @@ const AddWorldModal: React.FC<{
     const [error, setError] = useState<string | null>(null);
 
     const handleAdd = async () => {
-        if (!worldId.trim()) return;
+        const input = worldId.trim();
+        if (!input) return;
 
-        if (!worldId.trim().startsWith('wrld_')) {
-            setError('World ID must start with "wrld_"');
+        // Extract world ID from URL if present
+        let extractedId = input;
+        const urlMatch = input.match(/(wrld_[a-f0-9-]{36})/i);
+        if (urlMatch) {
+            extractedId = urlMatch[1];
+        }
+
+        if (!extractedId.startsWith('wrld_')) {
+            setError('Invalid World ID. Must start with "wrld_" or be a valid world URL.');
             return;
         }
 
@@ -188,11 +196,12 @@ const AddWorldModal: React.FC<{
         setError(null);
 
         try {
-            await onAdd(worldId.trim());
+            await onAdd(extractedId);
             setWorldId('');
             onClose();
         } catch (e) {
-            setError(String(e));
+            console.error('Add world error:', e);
+            setError(String(e).replace('Error: ', ''));
         } finally {
             setLoading(false);
         }
@@ -323,10 +332,29 @@ export const QuickstartView: React.FC = () => {
 
     // Add world
     const handleAddWorld = async (worldId: string) => {
-        if (!selectedGroup) return;
+        if (!selectedGroup) {
+            console.error('[Quickstart] No group selected');
+            throw new Error('Please select a group first.');
+        }
 
-        await window.electron.quickstart?.addWorld?.(selectedGroup.id, worldId);
-        await loadWorlds();
+        console.log('[Quickstart] Adding world:', worldId, 'to group:', selectedGroup.id);
+        console.log('[Quickstart] quickstart API available:', !!window.electron.quickstart);
+        console.log('[Quickstart] addWorld function available:', !!window.electron.quickstart?.addWorld);
+
+        try {
+            const result = await window.electron.quickstart?.addWorld?.(selectedGroup.id, worldId);
+            console.log('[Quickstart] addWorld result:', result);
+
+            if (!result?.success) {
+                console.error('[Quickstart] Add world failed:', result);
+                throw new Error(result?.error || 'Failed to save world. Please check if the ID is valid and try again.');
+            }
+
+            await loadWorlds();
+        } catch (e) {
+            console.error('[Quickstart] Exception during addWorld:', e);
+            throw e;
+        }
     };
 
     // Remove world
@@ -351,7 +379,7 @@ export const QuickstartView: React.FC = () => {
                 'public': 'groupPublic'
             };
 
-            const result = await window.electron.quickstart?.launchInstance?.(
+            const result = await window.electron.quickstart?.createInstance?.(
                 selectedGroup.id,
                 {
                     worldId,
@@ -375,11 +403,6 @@ export const QuickstartView: React.FC = () => {
             setLaunchingWorld(null);
         }
     };
-
-    // Stats
-    const lastLaunched = savedWorlds.length > 0
-        ? new Date(Math.max(...savedWorlds.map(w => w.addedAt))).toLocaleDateString()
-        : 'Never';
 
     return (
         <>

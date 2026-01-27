@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserCheck, Plus, Trash2, Shield, Search, RefreshCw, Loader2, Crown } from 'lucide-react';
+import { Plus, Trash2, Shield, RefreshCw, Loader2, Crown, ShieldAlert, UserX, Globe, ScanFace } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { GlassPanel } from '../../components/ui/GlassPanel';
@@ -155,79 +155,33 @@ const StaffMemberCard: React.FC<{
 const AddStaffModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (userId: string) => Promise<void>;
-    groupId: string;
-}> = ({ isOpen, onClose, onAdd, groupId }) => {
-    const [searchMode, setSearchMode] = useState<'id' | 'search'>('id');
-    const [userId, setUserId] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<Array<{ id: string; displayName: string; avatarUrl?: string }>>([]);
+    onAdd: (identifier: string) => Promise<void>;
+    groupId?: string; // Optional/Unused now
+}> = ({ isOpen, onClose, onAdd }) => {
+    const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
-    const [searching, setSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleAddById = async () => {
-        if (!userId.trim()) return;
-
-        if (!userId.trim().startsWith('usr_')) {
-            setError('User ID must start with "usr_"');
-            return;
-        }
+    const handleAdd = async () => {
+        if (!inputValue.trim()) return;
 
         setLoading(true);
         setError(null);
 
         try {
-            await onAdd(userId.trim());
-            setUserId('');
+            await onAdd(inputValue.trim());
+            setInputValue('');
             onClose();
         } catch (e) {
-            setError(String(e));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSearch = async () => {
-        if (!searchQuery.trim() || !groupId) return;
-
-        setSearching(true);
-        setError(null);
-
-        try {
-            const result = await window.electron.staff?.searchMembers?.(groupId, searchQuery.trim());
-            if (result?.success && result.members) {
-                const formattedResults = result.members.map((m: { user?: { id: string; displayName: string; currentAvatarThumbnailImageUrl?: string } }) => ({
-                    id: m.user?.id || '',
-                    displayName: m.user?.displayName || 'Unknown',
-                    avatarUrl: m.user?.currentAvatarThumbnailImageUrl
-                })).filter((r: { id: string }) => r.id);
-                setSearchResults(formattedResults);
-                if (formattedResults.length === 0) {
-                    setError('No users found');
-                }
-            } else {
-                setSearchResults([]);
-                setError(result?.error || 'No users found');
-            }
-        } catch (e) {
-            setError(String(e));
-        } finally {
-            setSearching(false);
-        }
-    };
-
-    const handleSelectUser = async (selectedUserId: string) => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            await onAdd(selectedUserId);
-            setSearchQuery('');
-            setSearchResults([]);
-            onClose();
-        } catch (e) {
-            setError(String(e));
+            let msg = String(e);
+            // Clean up error message
+            if (msg.includes('Error: ')) msg = msg.replace(/^Error: /, '');
+            // If it's the specific JSON error object
+            try {
+                const json = JSON.parse(msg);
+                if (json.message) msg = json.message;
+            } catch { /* ignore */ }
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -238,150 +192,49 @@ const AddStaffModal: React.FC<{
             isOpen={isOpen}
             onClose={onClose}
             title="Add Staff Member"
-            width="500px"
-            footer={searchMode === 'id' ? (
+            width="450px"
+            footer={
                 <>
                     <NeonButton variant="ghost" onClick={onClose}>Cancel</NeonButton>
-                    <NeonButton onClick={handleAddById} disabled={loading || !userId.trim()} glow>
+                    <NeonButton onClick={handleAdd} disabled={loading || !inputValue.trim()} glow>
                         {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                         Add Staff
                     </NeonButton>
                 </>
-            ) : (
-                <NeonButton variant="ghost" onClick={onClose}>Close</NeonButton>
-            )}
+            }
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                    Add a staff member to protect them from all AutoMod actions.
+                    Add a staff member by <b>User ID</b> or <b>Exact Username</b>.
+                    <br />
+                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                        The system will automatically resolve the user and whitelist them from all AutoMod actions, kicks, and bans.
+                    </span>
                 </p>
 
-                {/* Mode Toggle */}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                        onClick={() => setSearchMode('id')}
+                <div>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--color-text-main)', marginBottom: '0.5rem', display: 'block' }}>
+                        User ID or Username
+                    </label>
+                    <input
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => { setInputValue(e.target.value); setError(null); }}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                        placeholder="usr_... or Username"
                         style={{
-                            flex: 1,
-                            padding: '0.6rem',
-                            background: searchMode === 'id' ? 'var(--color-primary)' : 'var(--color-surface-dark)',
+                            width: '100%',
+                            padding: '0.75rem 1rem',
+                            background: 'var(--color-surface-dark)',
                             border: '1px solid var(--border-color)',
-                            borderRadius: '6px',
+                            borderRadius: '8px',
                             color: 'var(--color-text-main)',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: searchMode === 'id' ? 600 : 400
+                            fontSize: '0.9rem',
+                            outline: 'none'
                         }}
-                    >
-                        By User ID
-                    </button>
-                    <button
-                        onClick={() => setSearchMode('search')}
-                        style={{
-                            flex: 1,
-                            padding: '0.6rem',
-                            background: searchMode === 'search' ? 'var(--color-primary)' : 'var(--color-surface-dark)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: '6px',
-                            color: 'var(--color-text-main)',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: searchMode === 'search' ? 600 : 400
-                        }}
-                    >
-                        Search User
-                    </button>
+                        autoFocus
+                    />
                 </div>
-
-                {searchMode === 'id' ? (
-                    <div>
-                        <label style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--color-text-main)', marginBottom: '0.5rem', display: 'block' }}>
-                            User ID
-                        </label>
-                        <input
-                            type="text"
-                            value={userId}
-                            onChange={(e) => { setUserId(e.target.value); setError(null); }}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddById()}
-                            placeholder="usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem 1rem',
-                                background: 'var(--color-surface-dark)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '8px',
-                                color: 'var(--color-text-main)',
-                                fontSize: '0.9rem',
-                                outline: 'none'
-                            }}
-                        />
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                placeholder="Search by username..."
-                                style={{
-                                    flex: 1,
-                                    padding: '0.75rem 1rem',
-                                    background: 'var(--color-surface-dark)',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: '8px',
-                                    color: 'var(--color-text-main)',
-                                    fontSize: '0.9rem',
-                                    outline: 'none'
-                                }}
-                            />
-                            <NeonButton onClick={handleSearch} disabled={searching || !searchQuery.trim()}>
-                                {searching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                            </NeonButton>
-                        </div>
-
-                        {searchResults.length > 0 && (
-                            <div style={{
-                                maxHeight: '200px',
-                                overflowY: 'auto',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0.5rem'
-                            }}>
-                                {searchResults.map((user) => (
-                                    <div
-                                        key={user.id}
-                                        onClick={() => handleSelectUser(user.id)}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.75rem',
-                                            padding: '0.6rem',
-                                            background: 'var(--color-surface-dark)',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {user.avatarUrl ? (
-                                            <img src={user.avatarUrl} alt={user.displayName} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-                                        ) : (
-                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-surface-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <UserCheck size={16} style={{ color: 'var(--color-text-dim)' }} />
-                                            </div>
-                                        )}
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{user.displayName}</div>
-                                            <code style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>{user.id}</code>
-                                        </div>
-                                        <Plus size={16} style={{ color: 'var(--color-success)' }} />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
 
                 {error && (
                     <div style={{
@@ -390,8 +243,12 @@ const AddStaffModal: React.FC<{
                         border: '1px solid rgba(239, 68, 68, 0.2)',
                         borderRadius: '6px',
                         color: '#f87171',
-                        fontSize: '0.8rem'
+                        fontSize: '0.8rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
                     }}>
+                        <ShieldAlert size={14} />
                         {error}
                     </div>
                 )}
@@ -407,49 +264,69 @@ const ProtectionToggle: React.FC<{
     enabled: boolean;
     onChange: (enabled: boolean) => void;
     color?: string;
-}> = ({ label, description, enabled, onChange, color = '#4ade80' }) => {
+    icon?: React.ReactNode;
+}> = ({ label, description, enabled, onChange, color = '#4ade80', icon }) => {
     return (
-        <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            padding: '0.75rem',
-            background: enabled ? `${color}10` : 'var(--color-surface-dark)',
-            borderRadius: '8px',
-            border: enabled ? `1px solid ${color}30` : '1px solid var(--border-color)',
-            gap: '1rem',
-            transition: 'all 0.2s'
-        }}>
-            <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--color-text-main)' }}>{label}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '0.2rem' }}>{description}</div>
-            </div>
-            <button
-                onClick={() => onChange(!enabled)}
-                style={{
-                    width: '44px',
-                    height: '24px',
-                    borderRadius: '20px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: enabled ? color : 'var(--color-surface-overlay)',
-                    position: 'relative',
-                    transition: 'background 0.2s',
-                    flexShrink: 0
-                }}
-            >
+        <div
+            onClick={() => onChange(!enabled)}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.85rem 1rem',
+                background: enabled ? `${color}10` : 'var(--color-surface-dark)',
+                borderRadius: '8px',
+                border: enabled ? `1px solid ${color}60` : '1px solid var(--border-color)', // Highlighted vs Grey
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                gap: '1rem',
+                position: 'relative',
+                overflow: 'hidden'
+            }}
+            className="hover:bg-[rgba(255,255,255,0.03)]" // Slight hover effect
+        >
+            {/* Active Glow Bar for extra flair matching site theme */}
+            {enabled && (
                 <div style={{
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: '50%',
-                    background: 'white',
                     position: 'absolute',
-                    top: '2px',
-                    left: enabled ? '22px' : '2px',
-                    transition: 'left 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '3px',
+                    background: color,
+                    boxShadow: `0 0 10px ${color}`
                 }} />
-            </button>
+            )}
+
+            <div style={{ flex: 1, paddingLeft: enabled ? '0.5rem' : '0', transition: 'padding 0.2s' }}>
+                <div style={{
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    color: enabled ? 'var(--color-text-main)' : 'var(--color-text-dim)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    marginBottom: '0.2rem'
+                }}>
+                    {icon && <span style={{ color: enabled ? color : 'currentColor', opacity: enabled ? 1 : 0.5 }}>{icon}</span>}
+                    {label}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '0.1rem', opacity: 0.8 }}>{description}</div>
+            </div>
+
+            <div style={{
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: enabled ? color : 'var(--color-text-dim)',
+                background: enabled ? `${color}15` : 'rgba(255,255,255,0.03)',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                border: enabled ? `1px solid ${color}30` : '1px solid transparent'
+            }}>
+                {enabled ? 'ON' : 'OFF'}
+            </div>
         </div>
     );
 };
@@ -472,21 +349,28 @@ export const StaffView: React.FC = () => {
     // Load staff members
     const loadStaff = useCallback(async () => {
         if (!selectedGroup) {
+            console.log('[Staff] No group selected, clearing staff list');
             setStaffMembers([]);
             setLoading(false);
             return;
         }
 
+        console.log('[Staff] Loading staff for group:', selectedGroup.id);
+        console.log('[Staff] staff API available:', !!window.electron.staff);
+        console.log('[Staff] getMembers available:', !!window.electron.staff?.getMembers);
+
         try {
             const members = await window.electron.staff?.getMembers?.(selectedGroup.id);
+            console.log('[Staff] Loaded members:', members);
             setStaffMembers(members || []);
 
             const savedSettings = await window.electron.staff?.getSettings?.(selectedGroup.id);
+            console.log('[Staff] Loaded settings:', savedSettings);
             if (savedSettings) {
                 setSettings(savedSettings);
             }
         } catch (e) {
-            console.error('Failed to load staff:', e);
+            console.error('[Staff] Failed to load staff:', e);
         } finally {
             setLoading(false);
         }
@@ -498,17 +382,35 @@ export const StaffView: React.FC = () => {
 
     // Add staff member
     const handleAddStaff = async (userId: string) => {
-        if (!selectedGroup) return;
+        if (!selectedGroup) {
+            console.error('[Staff] No group selected');
+            throw new Error('Please select a group first');
+        }
 
-        await window.electron.staff?.addMember?.(selectedGroup.id, userId);
-        await loadStaff();
+        console.log('[Staff] Adding staff member:', userId, 'to group:', selectedGroup.id);
+
+        try {
+            const result = await window.electron.staff?.addMember?.(selectedGroup.id, userId);
+            console.log('[Staff] addMember result:', result);
+
+            if (!result?.success) {
+                throw new Error(result?.error || 'Failed to add staff member');
+            }
+
+            await loadStaff();
+        } catch (e) {
+            console.error('[Staff] Failed to add staff:', e);
+            throw e;
+        }
     };
 
     // Remove staff member
     const handleRemoveStaff = async (userId: string) => {
         if (!selectedGroup) return;
 
-        await window.electron.staff?.removeMember?.(selectedGroup.id, userId);
+        console.log('[Staff] Removing staff member:', userId, 'from group:', selectedGroup.id);
+        const result = await window.electron.staff?.removeMember?.(selectedGroup.id, userId);
+        console.log('[Staff] removeMember result:', result);
         await loadStaff();
     };
 
@@ -516,8 +418,10 @@ export const StaffView: React.FC = () => {
     const handleSettingsChange = async (newSettings: StaffProtectionSettings) => {
         if (!selectedGroup) return;
 
+        console.log('[Staff] Updating settings for group:', selectedGroup.id, newSettings);
         setSettings(newSettings);
-        await window.electron.staff?.setSettings?.(selectedGroup.id, newSettings);
+        const result = await window.electron.staff?.setSettings?.(selectedGroup.id, newSettings);
+        console.log('[Staff] setSettings result:', result);
     };
 
     return (
@@ -661,18 +565,23 @@ export const StaffView: React.FC = () => {
                                     description="Staff won't be scanned by AutoMod rules"
                                     enabled={settings.skipAutoModScans}
                                     onChange={(v) => handleSettingsChange({ ...settings, skipAutoModScans: v })}
+                                    icon={<ScanFace size={18} />}
                                 />
                                 <ProtectionToggle
                                     label="Prevent Kicks"
                                     description="Staff can't be kicked from the group"
                                     enabled={settings.preventKicks}
                                     onChange={(v) => handleSettingsChange({ ...settings, preventKicks: v })}
+                                    color="#f87171"
+                                    icon={<UserX size={18} />}
                                 />
                                 <ProtectionToggle
                                     label="Prevent Bans"
                                     description="Staff can't be banned from the group"
                                     enabled={settings.preventBans}
                                     onChange={(v) => handleSettingsChange({ ...settings, preventBans: v })}
+                                    color="#ef4444"
+                                    icon={<ShieldAlert size={18} />}
                                 />
                                 <ProtectionToggle
                                     label="Allow All Instances"
@@ -680,6 +589,7 @@ export const StaffView: React.FC = () => {
                                     enabled={settings.allowAllInstances}
                                     onChange={(v) => handleSettingsChange({ ...settings, allowAllInstances: v })}
                                     color="#3b82f6"
+                                    icon={<Globe size={18} />}
                                 />
                             </div>
                         </GlassPanel>

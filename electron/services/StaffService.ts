@@ -10,6 +10,7 @@ import { ipcMain } from 'electron';
 import log from 'electron-log';
 import { windowService } from './WindowService';
 import { getVRChatClient } from './AuthService';
+import { vrchatApiService } from './VRChatApiService';
 
 const logger = log.scope('StaffService');
 
@@ -67,46 +68,85 @@ class StaffService {
 
     public getStaffMembers(groupId: string): StaffMember[] {
         const allStaff = this.store.get('staffMembers');
+        if (!allStaff) return [];
         return allStaff[groupId] || [];
     }
 
     public async addStaffMember(
         groupId: string,
-        userId: string,
+        identifier: string,
         addedBy?: string,
         notes?: string
     ): Promise<StaffMember | null> {
-        const allStaff = this.store.get('staffMembers');
+        let userId = identifier.trim();
+        let displayName = identifier.trim();
+        let avatarUrl: string | undefined;
+
+        // Heuristic: If input is a UUID, prepend 'usr_'
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!userId.startsWith('usr_') && uuidRegex.test(userId)) {
+            userId = `usr_${userId}`;
+            logger.info(`[StaffService] Auto-corrected UUID input to ${userId}`);
+        }
+
+        // Resolve User ID or Search by Username
+        if (userId.startsWith('usr_')) {
+            // userId is already set correctly above
+            logger.info(`[StaffService] Resolving User ID: ${userId}`);
+            // Fetch checks
+            const result = await vrchatApiService.getUser(userId);
+            if (result.success && result.data) {
+                logger.info(`[StaffService] User ID resolved to: ${result.data.displayName}`);
+                displayName = result.data.displayName;
+                avatarUrl = result.data.currentAvatarThumbnailImageUrl || result.data.currentAvatarImageUrl;
+            } else {
+                logger.warn(`[StaffService] Failed to resolve User ID ${userId}: ${result.error || 'Unknown error'}`);
+            }
+        } else {
+            // It's a username - search for it
+            logger.info(`[StaffService] Resolving staff username: "${identifier}"`);
+
+            try {
+                const result = await vrchatApiService.searchUsers(identifier, 10);
+
+                logger.info(`[StaffService] Search result success: ${result.success}, data length: ${result.data?.length}`);
+                if (result.error) logger.warn(`[StaffService] Search returned error: ${result.error}`);
+
+                if (result.success && result.data && result.data.length > 0) {
+                    // Find exact match (case-insensitive)
+                    const exactMatch = result.data.find(u => u.displayName.toLowerCase() === identifier.toLowerCase());
+                    const bestMatch = exactMatch || result.data[0];
+
+                    userId = bestMatch.id;
+                    displayName = bestMatch.displayName;
+                    avatarUrl = bestMatch.currentAvatarThumbnailImageUrl || bestMatch.currentAvatarImageUrl;
+                    logger.info(`[StaffService] Resolved '${identifier}' to ${userId} (${displayName})`);
+                } else {
+                    logger.warn(`[StaffService] Could not find user with name: ${identifier}`);
+                    // Per user request "shouldn't fail ever", but we need a valid ID for whitelist to work.
+                    // We will throw a clear error that the frontend can display.
+                    throw new Error(`User '${identifier}' not found. Please check spelling or use User ID.`);
+                }
+            } catch (error) {
+                logger.error(`[StaffService] Exception during user search for "${identifier}":`, error);
+                throw error;
+            }
+        }
+
+        const allStaff = this.store.get('staffMembers') || {};
         const groupStaff = allStaff[groupId] || [];
 
         // Check if already exists
         if (groupStaff.some(s => s.userId === userId)) {
             logger.info(`User ${userId} is already staff for group ${groupId}`);
+            // Return existing member if found (idempotent-ish)
             return groupStaff.find(s => s.userId === userId) || null;
-        }
-
-        // Try to fetch user info
-        let userInfo: { displayName?: string; avatarUrl?: string } = {};
-        try {
-            const client = getVRChatClient();
-            if (client) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const result = await (client as any).getUser({ path: { userId } });
-                if (result.data) {
-                    userInfo = {
-                        displayName: result.data.displayName,
-                        avatarUrl: result.data.currentAvatarThumbnailImageUrl || result.data.currentAvatarImageUrl
-                    };
-                }
-            }
-        } catch (e) {
-            logger.warn(`Failed to fetch user info for ${userId}:`, e);
         }
 
         const staffMember: StaffMember = {
             userId,
-            displayName: userInfo.displayName || userId,
-            avatarUrl: userInfo.avatarUrl,
+            displayName,
+            avatarUrl,
             addedAt: Date.now(),
             addedBy,
             notes
@@ -117,12 +157,12 @@ class StaffService {
         this.store.set('staffMembers', allStaff);
 
         this.notifyUpdate(groupId);
-        logger.info(`Added ${userId} as staff for group ${groupId}`);
+        logger.info(`Added ${userId} (${displayName}) as staff for group ${groupId}`);
         return staffMember;
     }
 
     public removeStaffMember(groupId: string, userId: string): boolean {
-        const allStaff = this.store.get('staffMembers');
+        const allStaff = this.store.get('staffMembers') || {};
         const groupStaff = allStaff[groupId] || [];
 
         const filtered = groupStaff.filter(s => s.userId !== userId);
@@ -139,7 +179,7 @@ class StaffService {
     }
 
     public updateStaffMember(groupId: string, userId: string, updates: Partial<StaffMember>): StaffMember | null {
-        const allStaff = this.store.get('staffMembers');
+        const allStaff = this.store.get('staffMembers') || {};
         const groupStaff = allStaff[groupId] || [];
 
         const index = groupStaff.findIndex(s => s.userId === userId);
@@ -189,12 +229,12 @@ class StaffService {
     // ============================================
 
     public getProtectionSettings(groupId: string): StaffProtectionSettings {
-        const allSettings = this.store.get('protectionSettings');
+        const allSettings = this.store.get('protectionSettings') || {};
         return allSettings[groupId] || { ...DEFAULT_PROTECTION_SETTINGS };
     }
 
     public setProtectionSettings(groupId: string, settings: Partial<StaffProtectionSettings>): StaffProtectionSettings {
-        const allSettings = this.store.get('protectionSettings');
+        const allSettings = this.store.get('protectionSettings') || {};
         const current = allSettings[groupId] || { ...DEFAULT_PROTECTION_SETTINGS };
 
         const updated = {
@@ -225,7 +265,10 @@ class StaffService {
     private setupHandlers() {
         // Get staff members for a group
         ipcMain.handle('staff:get-members', (_, groupId: string) => {
-            return this.getStaffMembers(groupId);
+            logger.info(`[IPC] staff:get-members called for group ${groupId}`);
+            const members = this.getStaffMembers(groupId);
+            logger.info(`[IPC] staff:get-members returning ${members.length} members`);
+            return members;
         });
 
         // Add a staff member
@@ -235,13 +278,22 @@ class StaffService {
             addedBy?: string;
             notes?: string;
         }) => {
-            const member = await this.addStaffMember(groupId, userId, addedBy, notes);
-            return { success: !!member, member };
+            logger.info(`[IPC] staff:add-member called: groupId=${groupId}, userId=${userId}`);
+            try {
+                const member = await this.addStaffMember(groupId, userId, addedBy, notes);
+                logger.info(`[IPC] staff:add-member result: success=${!!member}`, member);
+                return { success: !!member, member };
+            } catch (e) {
+                logger.error('[IPC] staff:add-member exception:', e);
+                return { success: false, error: (e as Error).message };
+            }
         });
 
         // Remove a staff member
         ipcMain.handle('staff:remove-member', (_, { groupId, userId }: { groupId: string; userId: string }) => {
+            logger.info(`[IPC] staff:remove-member called: groupId=${groupId}, userId=${userId}`);
             const removed = this.removeStaffMember(groupId, userId);
+            logger.info(`[IPC] staff:remove-member result: success=${removed}`);
             return { success: removed };
         });
 
@@ -262,7 +314,10 @@ class StaffService {
 
         // Get protection settings
         ipcMain.handle('staff:get-settings', (_, groupId: string) => {
-            return this.getProtectionSettings(groupId);
+            logger.info(`[IPC] staff:get-settings called for group ${groupId}`);
+            const settings = this.getProtectionSettings(groupId);
+            logger.debug(`[IPC] staff:get-settings returning:`, settings);
+            return settings;
         });
 
         // Set protection settings
@@ -270,7 +325,9 @@ class StaffService {
             groupId: string;
             settings: Partial<StaffProtectionSettings>;
         }) => {
+            logger.info(`[IPC] staff:set-settings called for group ${groupId}:`, settings);
             const updated = this.setProtectionSettings(groupId, settings);
+            logger.info(`[IPC] staff:set-settings updated:`, updated);
             return { success: true, settings: updated };
         });
 
