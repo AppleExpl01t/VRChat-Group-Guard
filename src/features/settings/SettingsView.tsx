@@ -14,6 +14,9 @@ import { SettingsTabBar, type SettingsTab } from './SettingsTabBar';
 import { SettingsSearch, matchesSearch } from './SettingsSearch';
 import { SearchX } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
+import paw from '../../assets/images/paw.png';
+import credit from '../../assets/images/credit.png';
+import appIcon from '../../assets/icon.png';
 
 // Inner card style for settings sections (used inside main GlassPanel)
 const innerCardStyle: React.CSSProperties = {
@@ -32,6 +35,7 @@ const TAB_SEARCH_DATA: Record<SettingsTab, string[]> = {
     osc: ['OSC', 'Integration', 'VRChat', 'Open Sound Control', 'Port', 'IP', 'Chatbox'],
     discord: ['Discord', 'Webhook', 'RPC', 'Rich Presence', 'Status', 'Activity', 'Logs', 'Channel'],
     about: ['About', 'System', 'Version', 'Group Guard'],
+    credits: ['Credits', 'Developers', 'Contributors', 'Team', 'Authors', 'Thanks'],
     debug: ['Debug', 'Crash', 'Test', 'Internal'],
 };
 
@@ -156,7 +160,7 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  // Determine which tabs match the search
+// Determine which tabs match the search
   const visibleTabs = useMemo(() => {
     const result: Record<SettingsTab, boolean> = {
         appearance: false,
@@ -166,6 +170,7 @@ export const SettingsView: React.FC = () => {
         osc: false,
         discord: false,
         about: false,
+        credits: false,
         debug: false,
     };
 
@@ -176,13 +181,13 @@ export const SettingsView: React.FC = () => {
     return result;
   }, [searchQuery]);
 
-  // Count for search badges (1 if tab matches, 0 otherwise)
+// Count for search badges (1 if tab matches, 0 otherwise)
   const tabCounts = useMemo(() => {
     if (!searchQuery.trim()) return undefined;
 
     const counts: Record<SettingsTab, number> = {
         appearance: 0, audio: 0, notifications: 0, security: 0,
-        osc: 0, discord: 0, about: 0, debug: 0
+        osc: 0, discord: 0, about: 0, credits: 0, debug: 0
     };
 
     for (const tab of Object.keys(counts) as SettingsTab[]) {
@@ -202,8 +207,8 @@ export const SettingsView: React.FC = () => {
     // If current tab has results, stay here
     if (visibleTabs[activeTab]) return;
 
-    // Find the first tab that has results
-    const tabOrder: SettingsTab[] = ['appearance', 'audio', 'notifications', 'security', 'osc', 'discord', 'about', 'debug'];
+// Find the first tab that has results
+    const tabOrder: SettingsTab[] = ['appearance', 'audio', 'notifications', 'security', 'osc', 'discord', 'about', 'credits', 'debug'];
     for (const tab of tabOrder) {
       if (visibleTabs[tab]) {
         setActiveTab(tab);
@@ -674,28 +679,241 @@ export const SettingsView: React.FC = () => {
             </>
           )}
 
-          {/* === ABOUT TAB === */}
-          {activeTab === 'about' && (
+{/* === ABOUT TAB === */}
+{activeTab === 'about' && (
+  <section>
+    <h2
+      style={{
+        color: 'var(--color-text-main)',
+        marginBottom: '1rem',
+        borderBottom: '1px solid var(--border-color)',
+        paddingBottom: '0.5rem'
+      }}
+    >
+      About Group Guard
+    </h2>
+
+    {/* === MAIN ABOUT INFO === */}
+    <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div>
+          <img
+            src={appIcon}
+            alt="Group Guard Icon"
+            style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '16px',
+              filter: 'drop-shadow(0 0 10px var(--color-primary))'
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ margin: 0, fontSize: '1.4rem' }}>VRChat Group Guard</h3>
+          <p
+            style={{
+              color: 'var(--color-text-dim)',
+              margin: '0.2rem 0',
+              cursor: 'pointer',
+              userSelect: 'none',
+              fontSize: '1rem'
+            }}
+            onClick={handleVersionClick}
+            title="Click 5 times to unlock debug mode"
+          >
+            Version 1.0.7 (Beta)
+          </p>
+          <div style={{ 
+            color: 'var(--color-text-dim)', 
+            fontSize: '0.9rem', 
+            marginTop: '0.25rem',
+            opacity: 0.8
+          }}>
+            Advanced Group Protection System
+          </div>
+        </div>
+      </div>
+
+      {/* Application Details */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div>
+          <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Technology Stack</h4>
+          <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+            • Electron Desktop App<br/>
+            • React 18 + TypeScript<br/>
+            • Vite Build System<br/>
+            • Framer Motion Animations
+          </div>
+        </div>
+        <div>
+          <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Features</h4>
+          <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+            • Real-time Group Monitoring<br/>
+            • Custom Notification System<br/>
+            • OSC Integration<br/>
+            • Discord Rich Presence<br/>
+            • Advanced Theme System
+          </div>
+        </div>
+      </div>
+
+      {/* Build Information */}
+      <div style={{ 
+        borderTop: '1px solid var(--border-color)', 
+        paddingTop: '1rem',
+        marginTop: '1rem'
+      }}>
+        <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Build Information</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+          <div>
+            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>Build Date</div>
+            <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>January 2026</div>
+          </div>
+          <div>
+            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>Platform</div>
+            <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>Windows/macOS/Linux</div>
+          </div>
+          <div>
+            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>License</div>
+            <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>MIT License</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        textAlign: 'center',
+        marginTop: '1.5rem',
+        paddingTop: '1rem',
+        borderTop: '1px solid var(--border-color)',
+        color: 'var(--color-text-dim)',
+        fontSize: '0.8rem',
+        opacity: 0.6
+      }}>
+        © 2026 Group Guard • Protecting VRChat Communities
+      </div>
+    </div>
+  </section>
+ )}
+
+          {/* === CREDITS TAB === */}
+          {activeTab === 'credits' && (
             <section>
-               <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>About System</h2>
-               <div style={innerCardStyle}>
-                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                   <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 0 10px var(--color-primary))' }}>🛡️</div>
-                   <div>
-                     <h3 style={{ margin: 0, fontSize: '1.2rem' }}>VRChat Group Guard</h3>
-                     <p
-                        style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0', cursor: 'pointer', userSelect: 'none' }}
-                        onClick={handleVersionClick}
-                        title="Click 5 times to unlock debug mode"
+              <h2
+                style={{
+                  color: 'var(--color-text-main)',
+                  marginBottom: '1rem',
+                  borderBottom: '1px solid var(--border-color)',
+                  paddingBottom: '0.5rem'
+                }}
+              >
+                Credits
+              </h2>
+
+              {/* === APPLEEXPLO1T CARD === */}
+              <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 0 10px var(--color-primary))' }}>🛡️</div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>AppleExpl01t</h3>
+                    <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Lead Developer • Project Founder</p>
+
+                    <div
+                      style={{
+                        fontSize: '0.8rem',
+                        color: 'var(--color-text-dim)',
+                        opacity: 0.6,
+                        marginTop: '0.5rem'
+                      }}
                     >
-                        Version 1.0.7 (Beta)
-                    </p>
-                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', opacity: 0.6, marginTop: '0.5rem' }}>
-                       Developed by <a href="https://vrchat.com/home/user/usr_ef7c23be-3c3c-40b4-a01c-82f59b2a8229" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>AppleExpl01t</a> • Electron • React • Vite
-                     </div>
-                   </div>
-                 </div>
-               </div>
+                      <a
+                        href="https://vrchat.com/home/user/usr_ef7c23be-3c3c-40b4-a01c-82f59b2a8229"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        VRChat
+                      </a>
+                      {' • '}
+                      <a
+                        href="https://github.com/AppleExpl01t"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        GitHub
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* === PAWTISTIC CARD === */}
+              <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div>
+                    <img
+                      src={paw}
+                      alt="Pawtistic Logo"
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '8px',
+                        filter: 'drop-shadow(0 0 10px var(--color-primary))'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Pawtistic</h3>
+                    <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Theme System & Visual Design</p>
+
+                    <div
+                      style={{
+                        fontSize: '0.8rem',
+                        color: 'var(--color-text-dim)',
+                        opacity: 0.6,
+                        marginTop: '0.5rem'
+                      }}
+                    >
+                      <a href="https://github.com/gooseontheloose" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>GitHub</a>
+                      {' • '}
+                      <a href="https://vrchat.com/home/user/usr_..." target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>VRChat</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* === COMFYCHLOE CARD === */}
+              <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+<div style={{ 
+                      fontSize: '3.5rem', 
+                      filter: 'drop-shadow(0 0 10px var(--color-primary))',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '60px',
+                      width: '60px',
+                      lineHeight: '60px',
+                      textAlign: 'center'
+                     }}>🌸</div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>ComfyChloe</h3>
+                    <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Special thanks • Support & Testing</p>
+
+                    <div
+                      style={{
+                        fontSize: '0.8rem',
+                        color: 'var(--color-text-dim)',
+                        opacity: 0.6,
+                        marginTop: '0.5rem'
+                      }}
+                    >
+                      <a href="https://vrchat.com/home/user/usr_..." target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>VRChat</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </section>
           )}
 

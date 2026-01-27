@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, memo, useRef } from 'react';
+import React, { useEffect, useState, memo, useRef } from 'react';
 import { useGroupStore } from '../../stores/groupStore';
 import { useAuditStore } from '../../stores/auditStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
@@ -17,6 +17,7 @@ import styles from './DashboardView.module.css';
 import { motion } from 'framer-motion';
 
 import { formatDistanceToNow } from 'date-fns';
+import paw from '../../assets/images/paw.png';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -191,14 +192,24 @@ export const DashboardView: React.FC = memo(() => {
                 <h1 className={`${styles.title} text-gradient`}>
                     {selectedGroup?.name || 'Dashboard'}
                 </h1>
-                <div style={{ display: 'flex', gap: '20px' }}>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                     <div 
                         className={styles.subtitle} 
                         style={{ color: 'var(--color-primary)', borderBottom: '2px solid var(--color-primary)' }}
                     >
                         COMMAND CENTER
                     </div>
-                </div>
+                    <img 
+                        src={paw} 
+                        alt="Paw Logo" 
+                        style={{ 
+                            width: '20px', 
+                            height: '20px', 
+                            opacity: 0.7,
+                            filter: 'brightness(1.2) saturate(1.5)'
+                        }} 
+                    />
+</div>
             </div>
 
             <div className={styles.statsGrid}>

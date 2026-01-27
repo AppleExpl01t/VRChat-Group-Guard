@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Palette, Volume2, Bell, Shield, Radio, MessageSquare, Info, Bug } from 'lucide-react';
+import { Palette, Volume2, Bell, Shield, Radio, MessageSquare, Info, Award, Bug } from 'lucide-react';
 
-export type SettingsTab = 'appearance' | 'audio' | 'notifications' | 'security' | 'osc' | 'discord' | 'about' | 'debug';
+export type SettingsTab = 'appearance' | 'audio' | 'notifications' | 'security' | 'osc' | 'discord' | 'about' | 'credits' | 'debug';
 
 interface SettingsTabBarProps {
     activeTab: SettingsTab;
@@ -19,6 +19,7 @@ const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { id: 'osc', label: 'OSC', icon: <Radio size={16} /> },
     { id: 'discord', label: 'Discord', icon: <MessageSquare size={16} /> },
     { id: 'about', label: 'About', icon: <Info size={16} /> },
+    { id: 'credits', label: 'Credits', icon: <Award size={16} /> },
     { id: 'debug', label: 'Debug', icon: <Bug size={16} /> },
 ];
 
@@ -30,17 +31,26 @@ export const SettingsTabBar: React.FC<SettingsTabBarProps> = ({
 }) => {
     const visibleTabs = tabs.filter(t => t.id !== 'debug' || showDebug);
 
-    return (
+return (
         <div style={{
             display: 'flex',
-            gap: '0.25rem',
+            justifyContent: 'center',
+            gap: '0.5rem',
             marginBottom: '1.5rem',
             borderBottom: '1px solid var(--border-color)',
             paddingBottom: '0',
             overflowX: 'auto',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
+            width: '100%',
         }}>
+            <div style={{
+                display: 'flex',
+                gap: '0.5rem',
+                justifyContent: 'space-between',
+                width: '100%',
+                maxWidth: '800px',
+            }}>
             {visibleTabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const count = tabCounts?.[tab.id];
@@ -64,7 +74,7 @@ export const SettingsTabBar: React.FC<SettingsTabBarProps> = ({
                             transition: 'color 0.2s ease',
                             marginBottom: '-1px',
                             whiteSpace: 'nowrap',
-                            flexShrink: 0,
+                            flex: 1,
                         }}
                     >
                         <span style={{ 
@@ -110,6 +120,7 @@ export const SettingsTabBar: React.FC<SettingsTabBarProps> = ({
                     </button>
                 );
             })}
+            </div>
         </div>
     );
 };

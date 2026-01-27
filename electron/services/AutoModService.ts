@@ -416,6 +416,7 @@ export const processGroupJoinNotification = async (notification: {
   await processJoinRequest(groupId, userId, displayName);
 };
 
+
 export const startAutoModService = () => {
   if (autoModInterval) {
     clearInterval(autoModInterval);
