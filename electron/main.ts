@@ -29,12 +29,12 @@ logger.info('========================================');
 // Catch unhandled exceptions
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
-  
+
   // Specific mitigation for the "verified:false" VRChat API error
   // This seems to be a non-fatal API response bubbling up as an error
   if (error.message && error.message.includes('"verified":false')) {
-      logger.warn('Ignored "verified:false" error to prevent crash.');
-      return;
+    logger.warn('Ignored "verified:false" error to prevent crash.');
+    return;
   }
 
   dialog.showErrorBox('Critical Error', `An unexpected error occurred:\n\n${error.message}\n\nThe application will attempt to continue, but you may need to restart if features break.`);
@@ -156,9 +156,9 @@ import { processService } from './services/ProcessService';
 
 // Process Service API (Debug/Status)
 ipcMain.handle('process:get-status', async () => {
-    return {
-        running: processService.isRunning
-    };
+  return {
+    running: processService.isRunning
+  };
 });
 
 
@@ -195,14 +195,13 @@ discordBroadcastService.connect().catch(err => logger.error('Failed to connect D
 
 
 databaseService.initialize().catch(err => {
-    logger.error('Failed to initialize database:', err);
+  logger.error('Failed to initialize database:', err);
 });
 
 import { watchlistService } from './services/WatchlistService';
 watchlistService.initialize();
 
-import { quickstartService } from './services/QuickstartService';
-quickstartService.initialize();
+
 
 import { staffService } from './services/StaffService';
 staffService.initialize();
@@ -230,19 +229,19 @@ import { settingsService, AppSettings } from './services/SettingsService';
 settingsService.initialize();
 
 ipcMain.handle('settings:get', () => {
-    return settingsService.getSettings();
+  return settingsService.getSettings();
 });
 
 ipcMain.handle('settings:update', (_event, settings: Partial<AppSettings>) => {
-    return settingsService.updateSettings(settings);
+  return settingsService.updateSettings(settings);
 });
 
 ipcMain.handle('settings:select-audio', () => {
-    return settingsService.selectAudioFile(mainWindow!);
+  return settingsService.selectAudioFile(mainWindow!);
 });
 
 ipcMain.handle('settings:get-audio', (_event, path: string) => {
-    return settingsService.getAudioData(path);
+  return settingsService.getAudioData(path);
 });
 
 // Import to initialize (singleton)
@@ -271,7 +270,7 @@ ipcMain.handle('window:close', () => {
 
 app.whenReady().then(async () => {
   logger.info('App ready, creating window...');
-  
+
   // Track update state
   let updateDownloaded = false;
 
@@ -284,66 +283,66 @@ app.whenReady().then(async () => {
 
   // Check for updates (Production only)
   if (process.env.NODE_ENV !== 'development') {
-      try {
-          autoUpdater.logger = log;
-          // @ts-expect-error - log types might mismatch slightly but it works
-          autoUpdater.logger.transports.file.level = 'info';
+    try {
+      autoUpdater.logger = log;
+      // @ts-expect-error - log types might mismatch slightly but it works
+      autoUpdater.logger.transports.file.level = 'info';
 
-          logger.info('Initializing auto-updater...');
+      logger.info('Initializing auto-updater...');
 
-          autoUpdater.on('checking-for-update', () => {
-              logger.info('Checking for updates...');
-          });
+      autoUpdater.on('checking-for-update', () => {
+        logger.info('Checking for updates...');
+      });
 
-          autoUpdater.on('update-available', (info) => {
-              logger.info('Update available:', info);
-              mainWindow?.webContents.send('updater:update-available', info);
-          });
+      autoUpdater.on('update-available', (info) => {
+        logger.info('Update available:', info);
+        mainWindow?.webContents.send('updater:update-available', info);
+      });
 
-          autoUpdater.on('update-not-available', (info) => {
-              logger.info('Update not available:', info);
-          });
+      autoUpdater.on('update-not-available', (info) => {
+        logger.info('Update not available:', info);
+      });
 
-          autoUpdater.on('error', (err) => {
-              logger.error('Error in auto-updater:', err);
-              mainWindow?.webContents.send('updater:error', err.message);
-          });
+      autoUpdater.on('error', (err) => {
+        logger.error('Error in auto-updater:', err);
+        mainWindow?.webContents.send('updater:error', err.message);
+      });
 
-          autoUpdater.on('download-progress', (progressObj) => {
-              logger.info(`Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}%`);
-              mainWindow?.webContents.send('updater:download-progress', progressObj);
-          });
+      autoUpdater.on('download-progress', (progressObj) => {
+        logger.info(`Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}%`);
+        mainWindow?.webContents.send('updater:download-progress', progressObj);
+      });
 
-          // Check but don't force notify yet, we'll handle the UI
-          autoUpdater.checkForUpdatesAndNotify();
-          
-          // When update is ready, tell the UI to show the modal
-          autoUpdater.on('update-downloaded', (info) => {
-              logger.info('Update downloaded:', info);
-              updateDownloaded = true;
-              // Small delay to ensure UI is ready if it happened on startup
-              setTimeout(() => {
-                  mainWindow?.webContents.send('updater:update-downloaded', info);
-              }, 2000);
-          });
-      } catch (err) {
-          logger.error('Failed to check for updates:', err);
-      }
+      // Check but don't force notify yet, we'll handle the UI
+      autoUpdater.checkForUpdatesAndNotify();
+
+      // When update is ready, tell the UI to show the modal
+      autoUpdater.on('update-downloaded', (info) => {
+        logger.info('Update downloaded:', info);
+        updateDownloaded = true;
+        // Small delay to ensure UI is ready if it happened on startup
+        setTimeout(() => {
+          mainWindow?.webContents.send('updater:update-downloaded', info);
+        }, 2000);
+      });
+    } catch (err) {
+      logger.error('Failed to check for updates:', err);
+    }
   }
 
   // Handle explicit install request from UI
   ipcMain.handle('updater:quit-and-install', () => {
-      autoUpdater.quitAndInstall();
+    autoUpdater.quitAndInstall();
   });
 
   // Handle status check (in case UI loads after update is downloaded)
   ipcMain.handle('updater:check-status', async () => {
-      // Return true if an update file exists in the downloaded cache
-      // Note: This is an approximation. Ideally we track the state.
-      // But autoUpdater doesn't expose a simple "isDownloaded" property.
-      // We'll rely on the event for now for the push, but we can't easily poll without state tracking.
-      // Let's add simple state tracking variable.
-      return updateDownloaded; 
+    // Return true if an update file exists in the downloaded cache
+    // Note: This is an approximation. Ideally we track the state.
+    // But autoUpdater doesn't expose a simple "isDownloaded" property.
+    // We'll rely on the event for now for the push, but we can't easily poll without state tracking.
+    // Let's add simple state tracking variable.
+    return updateDownloaded;
   });
 
 
