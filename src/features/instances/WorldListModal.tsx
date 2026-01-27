@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, ShieldOff, Plus, Trash2, Search, Loader2, ExternalLink } from 'lucide-react';
+import { Globe, ShieldOff, Plus, Trash2, Loader2, ExternalLink } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { NeonButton } from '../../components/ui/NeonButton';
 
@@ -51,9 +51,9 @@ export const WorldListModal: React.FC<WorldListModalProps> = ({
                         ...prev,
                         [worldId]: {
                             id: worldId,
-                            name: result.world.name,
-                            thumbnailUrl: result.world.thumbnailImageUrl,
-                            authorName: result.world.authorName
+                            name: result.world?.name || 'Unknown World',
+                            thumbnailUrl: result.world?.imageUrl,
+                            authorName: result.world?.authorName
                         }
                     }));
                 }
@@ -91,9 +91,9 @@ export const WorldListModal: React.FC<WorldListModalProps> = ({
                     ...prev,
                     [trimmedId]: {
                         id: trimmedId,
-                        name: result.world.name,
-                        thumbnailUrl: result.world.thumbnailImageUrl,
-                        authorName: result.world.authorName
+                        name: result.world?.name || 'Unknown World',
+                        thumbnailUrl: result.world?.imageUrl,
+                        authorName: result.world?.authorName
                     }
                 }));
                 setWorldIds([...worldIds, trimmedId]);

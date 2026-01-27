@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Palette, Volume2, Bell, Shield, Radio, Webhook, MessageSquare, Info, Bug } from 'lucide-react';
+import { Palette, Volume2, Bell, Shield, Radio, MessageSquare, Info, Bug } from 'lucide-react';
 
 export type SettingsTab = 'appearance' | 'audio' | 'notifications' | 'security' | 'osc' | 'discord' | 'about' | 'debug';
 

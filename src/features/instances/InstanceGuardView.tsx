@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassPanel } from '../../components/ui/GlassPanel';
 import { NeonButton } from '../../components/ui/NeonButton';
 import { RuleCard } from '../automod/components/RuleCard';
+import type { AutoModRuleType, AutoModActionType } from '../automod/types';
 import { StatTile } from '../dashboard/components/StatTile';
 import { useGroupStore } from '../../stores/groupStore';
 import { WorldListModal } from './WorldListModal';
@@ -228,10 +229,10 @@ export const InstanceGuardView: React.FC = () => {
     // Rules State
     const [rules, setRules] = useState<Array<{
         id: number;
-        type: string;
+        type: AutoModRuleType;
         name: string;
         enabled: boolean;
-        actionType: string;
+        actionType: AutoModActionType;
         config: string;
     }>>([]);
 
@@ -277,7 +278,7 @@ export const InstanceGuardView: React.FC = () => {
     };
 
     // Toggle Rule
-    const toggleRule = async (ruleType: string) => {
+    const toggleRule = async (ruleType: AutoModRuleType) => {
         if (!selectedGroup) return;
 
         const existingRule = rules.find(r => r.type === ruleType);
@@ -312,7 +313,7 @@ export const InstanceGuardView: React.FC = () => {
             await saveRule({
                 id: existingRule?.id || 0,
                 name: ruleType === 'INSTANCE_18_GUARD' ? '18+ Instance Guard' : 'Close All Instances',
-                type: ruleType,
+            type: ruleType as AutoModRuleType,
                 enabled: existingRule?.enabled || false,
                 actionType: 'REJECT',
                 config: JSON.stringify(config)

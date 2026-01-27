@@ -303,10 +303,8 @@ export const GroupSelectionView: React.FC = memo(() => {
           comparison = (a.activeInstanceCount || 0) - (b.activeInstanceCount || 0);
           break;
         case 'age':
-          // Use createdAt if available, otherwise fall back to id comparison
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          comparison = dateA - dateB;
+          // Fall back to id comparison since createdAt is not available
+          comparison = a.id.localeCompare(b.id);
           break;
         case 'alphabetical':
         default:

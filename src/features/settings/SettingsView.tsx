@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme, type ThemeMode } from '../../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 import { OscSettings } from './OscSettings';
 import { DiscordRpcSettings } from './DiscordRpcSettings';
 import { DiscordWebhookSettings } from './DiscordWebhookSettings';
