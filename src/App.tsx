@@ -29,6 +29,8 @@ const LiveView = lazy(() => import('./features/live/LiveView').then(m => ({ defa
 const AuditLogView = lazy(() => import('./features/audit/AuditLogView').then(m => ({ default: m.AuditLogView })));
 const WatchlistView = lazy(() => import('./features/watchlist/WatchlistView').then(m => ({ default: m.WatchlistView })));
 const InstanceGuardView = lazy(() => import('./features/instances/InstanceGuardView').then(m => ({ default: m.InstanceGuardView })));
+const QuickstartView = lazy(() => import('./features/quickstart/QuickstartView').then(m => ({ default: m.QuickstartView })));
+const StaffView = lazy(() => import('./features/staff/StaffView').then(m => ({ default: m.StaffView })));
 
 import { ViewLoader } from './components/ui/ViewLoader';
 import { AutoLoginLoadingScreen } from './features/auth/AutoLoginLoadingScreen';
@@ -216,7 +218,7 @@ function App() {
         return;
     }
 
-    if ((view === 'moderation' || view === 'instances' || view === 'audit' || view === 'database' || view === 'live' || view === 'watchlist') && !selectedGroup) {
+    if ((view === 'moderation' || view === 'instances' || view === 'audit' || view === 'database' || view === 'live' || view === 'watchlist' || view === 'quickstart' || view === 'staff') && !selectedGroup) {
       // If trying to access group features without a group, go to group selection
       selectGroup(null);
       startTransition(() => setCurrentView('main'));
@@ -242,6 +244,10 @@ function App() {
         return <WatchlistView />;
       case 'database':
         return <DatabaseView />;
+      case 'quickstart':
+        return <QuickstartView />;
+      case 'staff':
+        return <StaffView />;
 
       case 'main':
       default:

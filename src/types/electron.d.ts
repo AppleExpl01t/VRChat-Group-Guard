@@ -336,6 +336,54 @@ export interface GroupAnnouncementConfig {
     displayDurationSeconds?: number;
 }
 
+// Quickstart Types
+export interface SavedWorld {
+    worldId: string;
+    name?: string;
+    authorName?: string;
+    imageUrl?: string;
+    addedAt: number;
+}
+
+export interface LaunchOptions {
+    worldId: string;
+    type: 'group' | 'group+' | 'groupPublic';
+    region: 'us' | 'use' | 'eu' | 'jp';
+    ageGate: boolean;
+    queueEnabled: boolean;
+    roleIds: string[];
+}
+
+export interface GroupRole {
+    id: string;
+    groupId?: string;
+    name: string;
+    description?: string;
+    order?: number;
+    permissions?: string[];
+    isSelfAssignable?: boolean;
+    requiresTwoFactor?: boolean;
+    requiresPurchase?: boolean;
+    isDefault?: boolean;
+}
+
+// Staff Types
+export interface StaffMember {
+    userId: string;
+    displayName: string;
+    avatarUrl?: string;
+    addedAt: number;
+    addedBy?: string;
+    notes?: string;
+}
+
+export interface StaffProtectionSettings {
+    skipAutoModScans: boolean;
+    preventKicks: boolean;
+    preventBans: boolean;
+    allowAllInstances: boolean;
+}
+
 export interface AppSettings {
     audio: {
         notificationSoundPath: string | null;
@@ -559,6 +607,29 @@ export interface ElectronAPI {
       update: (settings: Partial<AppSettings>) => Promise<AppSettings>;
       selectAudio: () => Promise<{ path: string; name: string; data: string } | null>;
       getAudioData: (path: string) => Promise<string | null>;
+  };
+
+  // Quickstart API
+  quickstart: {
+      getWorlds: (groupId: string) => Promise<SavedWorld[]>;
+      addWorld: (groupId: string, worldId: string) => Promise<{ success: boolean; world?: SavedWorld }>;
+      removeWorld: (groupId: string, worldId: string) => Promise<{ success: boolean }>;
+      launchInstance: (groupId: string, options: LaunchOptions) => Promise<{ success: boolean; instanceId?: string; error?: string }>;
+      getRoles: (groupId: string) => Promise<{ success: boolean; roles?: GroupRole[]; error?: string }>;
+      onUpdate: (callback: (data: { groupId: string; savedWorlds: SavedWorld[] }) => void) => () => void;
+  };
+
+  // Staff API
+  staff: {
+      getMembers: (groupId: string) => Promise<StaffMember[]>;
+      addMember: (groupId: string, userId: string, addedBy?: string, notes?: string) => Promise<{ success: boolean; member?: StaffMember }>;
+      removeMember: (groupId: string, userId: string) => Promise<{ success: boolean }>;
+      updateMember: (groupId: string, userId: string, updates: Partial<StaffMember>) => Promise<{ success: boolean; member?: StaffMember }>;
+      isStaff: (groupId: string, userId: string) => Promise<boolean>;
+      getSettings: (groupId: string) => Promise<StaffProtectionSettings>;
+      setSettings: (groupId: string, settings: Partial<StaffProtectionSettings>) => Promise<{ success: boolean; settings?: StaffProtectionSettings }>;
+      searchMembers: (groupId: string, query: string) => Promise<{ success: boolean; members?: GroupMember[]; error?: string }>;
+      onUpdate: (callback: (data: { groupId: string; staffMembers: StaffMember[]; protectionSettings: StaffProtectionSettings }) => void) => () => void;
   };
 
   // User Profile API (comprehensive profile data)

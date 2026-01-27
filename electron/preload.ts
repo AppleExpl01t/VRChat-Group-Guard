@@ -311,6 +311,39 @@ contextBridge.exposeInMainWorld('electron', {
         getAudioData: (path: string) => ipcRenderer.invoke('settings:get-audio', path),
     },
 
+    // Quickstart API
+    quickstart: {
+        getWorlds: (groupId: string) => ipcRenderer.invoke('quickstart:get-worlds', groupId),
+        addWorld: (groupId: string, worldId: string) => ipcRenderer.invoke('quickstart:add-world', { groupId, worldId }),
+        removeWorld: (groupId: string, worldId: string) => ipcRenderer.invoke('quickstart:remove-world', { groupId, worldId }),
+        launchInstance: (groupId: string, options: unknown) => ipcRenderer.invoke('quickstart:launch-instance', { groupId, options }),
+        getRoles: (groupId: string) => ipcRenderer.invoke('quickstart:get-roles', groupId),
+        onUpdate: (callback: (data: { groupId: string; savedWorlds: unknown[] }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { groupId: string; savedWorlds: unknown[] }) => callback(data);
+            ipcRenderer.on('quickstart:update', handler);
+            return () => ipcRenderer.removeListener('quickstart:update', handler);
+        }
+    },
+
+    // Staff API
+    staff: {
+        getMembers: (groupId: string) => ipcRenderer.invoke('staff:get-members', groupId),
+        addMember: (groupId: string, userId: string, addedBy?: string, notes?: string) =>
+            ipcRenderer.invoke('staff:add-member', { groupId, userId, addedBy, notes }),
+        removeMember: (groupId: string, userId: string) => ipcRenderer.invoke('staff:remove-member', { groupId, userId }),
+        updateMember: (groupId: string, userId: string, updates: unknown) =>
+            ipcRenderer.invoke('staff:update-member', { groupId, userId, updates }),
+        isStaff: (groupId: string, userId: string) => ipcRenderer.invoke('staff:is-staff', { groupId, userId }),
+        getSettings: (groupId: string) => ipcRenderer.invoke('staff:get-settings', groupId),
+        setSettings: (groupId: string, settings: unknown) => ipcRenderer.invoke('staff:set-settings', { groupId, settings }),
+        searchMembers: (groupId: string, query: string) => ipcRenderer.invoke('staff:search-members', { groupId, query }),
+        onUpdate: (callback: (data: { groupId: string; staffMembers: unknown[]; protectionSettings: unknown }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { groupId: string; staffMembers: unknown[]; protectionSettings: unknown }) => callback(data);
+            ipcRenderer.on('staff:update', handler);
+            return () => ipcRenderer.removeListener('staff:update', handler);
+        }
+    },
+
     // Generic IPC Renderer for event listening
     ipcRenderer: {
         on: (channel: string, callback: (event: Electron.IpcRendererEvent, ...args: unknown[]) => void) => {

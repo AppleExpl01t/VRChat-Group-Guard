@@ -9,11 +9,13 @@ import {
   List,
   ClipboardList,
   Database,
-  Users
+  Users,
+  Rocket,
+  UserCog
 } from 'lucide-react';
 import { DockItem } from './DockItem';
 
-export type DockView = 'main' | 'moderation' | 'instances' | 'audit' | 'database' | 'settings' | 'live' | 'watchlist';
+export type DockView = 'main' | 'moderation' | 'instances' | 'audit' | 'database' | 'settings' | 'live' | 'watchlist' | 'quickstart' | 'staff';
 
 interface NeonDockProps {
   currentView: DockView;
@@ -50,6 +52,8 @@ export const NeonDock: React.FC<NeonDockProps> = memo(({
   const handleInstancesClick = useCallback(() => onViewChange('instances'), [onViewChange]);
   const handleAuditClick = useCallback(() => onViewChange('audit'), [onViewChange]);
   const handleDatabaseClick = useCallback(() => onViewChange('database'), [onViewChange]);
+  const handleQuickstartClick = useCallback(() => onViewChange('quickstart'), [onViewChange]);
+  const handleStaffClick = useCallback(() => onViewChange('staff'), [onViewChange]);
 
   // Memoize static style objects
   const groupSectionStyle = useMemo(() => ({ overflow: 'hidden' as const }), []);
@@ -118,12 +122,19 @@ export const NeonDock: React.FC<NeonDockProps> = memo(({
 
                       {selectedGroup && (
                       <>
-                          <DockItem 
+                          <DockItem
                             label="Dashboard"
                             isActive={currentView === 'main' && !!selectedGroup}
                             onClick={handleMainClick}
                             color="var(--color-accent)"
                             icon={LayoutDashboard}
+                          />
+                          <DockItem
+                            label="Quickstart"
+                            isActive={currentView === 'quickstart'}
+                            onClick={handleQuickstartClick}
+                            color="#22d3ee"
+                            icon={Rocket}
                           />
                       </>
                       )}
@@ -160,6 +171,14 @@ export const NeonDock: React.FC<NeonDockProps> = memo(({
                             onClick={handleModerationClick}
                             color="var(--color-primary)"
                             icon={Shield}
+                          />
+
+                          <DockItem
+                            label="Staff"
+                            isActive={currentView === 'staff'}
+                            onClick={handleStaffClick}
+                            color="#a855f7"
+                            icon={UserCog}
                           />
 
                           <DockItem

@@ -442,7 +442,18 @@ export function setupGroupHandlers() {
     if (!authCheck.allowed) {
       return { success: false, error: authCheck.error };
     }
-    
+
+    // Staff Protection Check - Prevent bans on staff members
+    try {
+      const { staffService } = await import('./StaffService');
+      if (staffService.shouldProtect(groupId, userId, 'preventBans')) {
+        logger.info(`[GroupService] Ban blocked - ${userId} is a protected staff member`);
+        return { success: false, error: "Cannot ban: User is a protected staff member" };
+      }
+    } catch (e) {
+      // Staff service not available, continue
+    }
+
     return networkService.execute(async () => {
         const client = getVRChatClient();
         if (!client) throw new Error("Not authenticated");

@@ -200,6 +200,12 @@ databaseService.initialize().catch(err => {
 import { watchlistService } from './services/WatchlistService';
 watchlistService.initialize();
 
+import { quickstartService } from './services/QuickstartService';
+quickstartService.initialize();
+
+import { staffService } from './services/StaffService';
+staffService.initialize();
+
 // Setup handlers
 setupAuthHandlers();
 setupGroupHandlers();

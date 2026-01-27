@@ -193,6 +193,17 @@ export function setupInstanceHandlers() {
         const authCheck = groupAuthorizationService.validateAccessSafe(groupId, 'instance:kick-user');
         if (!authCheck.allowed) return { success: false, error: authCheck.error };
 
+        // Staff Protection Check - Prevent kicks on staff members
+        try {
+            const { staffService } = await import('./StaffService');
+            if (staffService.shouldProtect(groupId, userId, 'preventKicks')) {
+                logger.info(`[InstanceService] Kick blocked - ${userId} is a protected staff member`);
+                return { success: false, error: "Cannot kick: User is a protected staff member" };
+            }
+        } catch (e) {
+            // Staff service not available, continue
+        }
+
         const client = getVRChatClient();
         if (!client) return { success: false, error: "Not authenticated" };
 

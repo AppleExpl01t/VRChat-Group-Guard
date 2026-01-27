@@ -346,6 +346,18 @@ export const evaluateUser = async (
   ruleId?: number;
 }> => {
   try {
+    // Staff Protection Check - Skip AutoMod scans for staff members
+    try {
+      const { staffService } = await import('./StaffService');
+      if (staffService.shouldProtect(groupId, user.id, 'skipAutoModScans')) {
+        logger.debug(`[AutoMod] Skipping scan for staff member: ${user.displayName} (${user.id})`);
+        return { action: "ALLOW", reason: "Staff member - protected from AutoMod" };
+      }
+    } catch (e) {
+      // Staff service not available, continue with normal evaluation
+      logger.debug('[AutoMod] Staff service not available for protection check');
+    }
+
     const config = getGroupConfig(groupId);
     const rules = config.rules.filter((r) => r.enabled);
 
