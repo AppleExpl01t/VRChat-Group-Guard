@@ -15,6 +15,7 @@ import { useAutoModAlertStore } from '../../stores/autoModAlertStore';
 import { ReportGeneratorDialog } from '../reports/ReportGeneratorDialog';
 import { StatTile } from '../dashboard/components/StatTile';
 import { EntityCard } from './components/EntityCard';
+import { OperationStartDialog } from './dialogs/OperationStartDialog';
 
 import { useConfirm } from '../../context/ConfirmationContext';
 import { useNotificationStore } from '../../stores/notificationStore';
@@ -114,6 +115,19 @@ export const LiveView: React.FC = () => {
     
     // Report Dialog State
     const [reportContext, setReportContext] = useState<ReportContext | null>(null);
+
+    // Operation Start Dialog State
+    const [operationDialog, setOperationDialog] = useState<{
+        isOpen: boolean;
+        type: 'recruit' | 'rally';
+        title: string;
+        count: number;
+    }>({
+        isOpen: false,
+        type: 'recruit',
+        title: '',
+        count: 0
+    });
     
     // Tab state for entity list
     const [entityTab, setEntityTab] = useState<'active' | 'left'>('active');
@@ -263,10 +277,38 @@ export const LiveView: React.FC = () => {
     const [progressMode, setProgressMode] = useState<'recruit' | 'rally' | null>(null);
     const [currentProcessingUser, setCurrentProcessingUser] = useState<{ name: string; phase: 'checking' | 'inviting' | 'skipped' } | null>(null);
 
-    // Rate limit delay for invites (in seconds)
-    const [inviteDelay, setInviteDelay] = useState<number>(2);
+    const handleRecruitAll = () => {
+        console.log('[LiveView] handleRecruitAll clicked');
+        if (!effectiveGroup) {
+            console.log('[LiveView] handleRecruitAll: No effective group selected');
+            addLog(`[CMD] Cannot invite without a selected group.`, 'warn');
+            return;
+        }
+        if (!entities.length) {
+            addLog(`[CMD] No players detected yet. Try leaving and re-entering the instance.`, 'warn');
+            return;
+        }
 
-    const handleRecruitAll = async () => {
+        const targets = entities.filter(e => !e.isGroupMember && e.status === 'active');
+        
+        if (targets.length === 0) {
+            addLog(`[CMD] No strangers to recruit.`, 'warn');
+            return;
+        }
+
+        console.log('[LiveView] Opening recruit operation dialog for', targets.length, 'targets');
+
+        setOperationDialog({
+            isOpen: true,
+            type: 'recruit',
+            title: 'Confirm Mass Invite',
+            count: targets.length
+        });
+    };
+
+    const executeRecruit = async (speedDelay: number) => {
+        setOperationDialog(prev => ({ ...prev, isOpen: false }));
+
         if (!effectiveGroup) {
             addLog(`[CMD] Cannot invite without a selected group.`, 'warn');
             return;
@@ -346,8 +388,9 @@ export const LiveView: React.FC = () => {
 
             count++;
             setProgress({ current: count + blocked.length, total: targets.length });
-            // Use configurable delay between invites
-            await new Promise(r => setTimeout(r, inviteDelay * 1000));
+            count++;
+            setProgress({ current: count + blocked.length, total: targets.length });
+            await new Promise(r => setTimeout(r, speedDelay * 1000));
         }
         
         addLog(`[CMD] Recruitment complete. Sent ${count} invites to ${effectiveGroup.name}.`, 'success');
@@ -367,6 +410,32 @@ export const LiveView: React.FC = () => {
     };
 
     const handleRally = async () => {
+        console.log('[LiveView] handleRally clicked');
+        if (!selectedGroup) return;
+        setIsLoading(true);
+        try {
+            const res = await window.electron.instance.getRallyTargets(selectedGroup.id);
+            if (res.success && res.targets && res.targets.length > 0) {
+                 console.log('[LiveView] Opening rally operation dialog for', res.targets.length, 'targets');
+                 setOperationDialog({
+                    isOpen: true,
+                    type: 'rally',
+                    title: 'Confirm Group Rally',
+                    count: res.targets.length
+                });
+            } else {
+                addLog(`[CMD] No rally targets found (recent members).`, 'warn');
+            }
+        } catch {
+            console.error('[LiveView] handleRally error');
+            addLog(`[CMD] Failed to check for rally targets.`, 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const executeRally = async (speedDelay: number) => {
+        setOperationDialog(prev => ({ ...prev, isOpen: false }));
         if (!selectedGroup) return;
         
         addLog(`[CMD] Fetching rally targets...`, 'info');
@@ -402,8 +471,9 @@ export const LiveView: React.FC = () => {
 
                 count++;
                 setProgress({ current: count, total: targets.length });
-                // Use configurable delay between invites
-                await new Promise(r => setTimeout(r, inviteDelay * 1000));
+                count++;
+                setProgress({ current: count, total: targets.length });
+                await new Promise(r => setTimeout(r, speedDelay * 1000));
             }
 
             addLog(`[CMD] Rally complete. Sent ${count} invites.`, 'success');
@@ -852,65 +922,7 @@ export const LiveView: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* Invite Rate Limit Slider */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                padding: '8px 10px',
-                                background: 'var(--color-surface-card)',
-                                borderRadius: '8px'
-                            }}>
-                                <span style={{
-                                    fontSize: '0.7rem',
-                                    color: 'var(--color-text-dim)',
-                                    whiteSpace: 'nowrap',
-                                    fontWeight: 600
-                                }}>
-                                    DELAY
-                                </span>
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="45"
-                                    value={inviteDelay}
-                                    onChange={(e) => setInviteDelay(Number(e.target.value))}
-                                    style={{
-                                        flex: 1,
-                                        height: '4px',
-                                        cursor: 'pointer',
-                                        accentColor: 'var(--color-primary)'
-                                    }}
-                                />
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    minWidth: '55px'
-                                }}>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="45"
-                                        value={inviteDelay}
-                                        onChange={(e) => {
-                                            const val = Math.min(45, Math.max(1, Number(e.target.value) || 1));
-                                            setInviteDelay(val);
-                                        }}
-                                        style={{
-                                            width: '36px',
-                                            padding: '4px',
-                                            background: 'var(--color-surface-elevated)',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '4px',
-                                            color: 'var(--color-text-main)',
-                                            fontSize: '0.75rem',
-                                            textAlign: 'center'
-                                        }}
-                                    />
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>sec</span>
-                                </div>
-                            </div>
+                            {/* Invite Rate Limit Slider REMOVED - Moved to Contextual Dialog */}
 
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 {renderRecruitButton()}
@@ -1004,6 +1016,22 @@ export const LiveView: React.FC = () => {
                 isOpen={!!reportContext}
                 onClose={() => setReportContext(null)}
                 context={reportContext}
+            />
+
+            {/* Operation Start Dialog */}
+            <OperationStartDialog 
+                isOpen={operationDialog.isOpen}
+                onClose={() => setOperationDialog(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={(speed) => {
+                    if (operationDialog.type === 'recruit') {
+                        executeRecruit(speed);
+                    } else {
+                        executeRally(speed);
+                    }
+                }}
+                title={operationDialog.title}
+                count={operationDialog.count}
+                type={operationDialog.type}
             />
         </>
     );

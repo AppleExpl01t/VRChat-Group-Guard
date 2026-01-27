@@ -15,7 +15,7 @@ import { SettingsSearch, matchesSearch } from './SettingsSearch';
 import { SearchX } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import paw from '../../assets/images/paw.png';
-import credit from '../../assets/images/credit.png';
+
 import appIcon from '../../assets/icon.png';
 
 // Inner card style for settings sections (used inside main GlassPanel)

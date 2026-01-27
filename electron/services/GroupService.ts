@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron';
 import log from 'electron-log';
 const logger = log.scope('GroupService');
-import { getVRChatClient, getCurrentUserId, getAuthCookieStringAsync, getAuthCookieString } from './AuthService';
-import { vrchatApiService } from './VRChatApiService';
+import { getVRChatClient, getCurrentUserId, getAuthCookieStringAsync } from './AuthService';
+// import { vrchatApiService } from './VRChatApiService';
 import { databaseService } from './DatabaseService';
 import { groupAuthorizationService } from './GroupAuthorizationService';
 import { networkService } from './NetworkService';
@@ -29,8 +29,7 @@ export function setupGroupHandlers() {
           }
           
           const response = await client.getUserGroups({ 
-            path: { userId: safeUserId },
-            query: { n: 100, offset: 0 }
+            path: { userId: safeUserId }
           });
 
           if (response.error) {
@@ -375,7 +374,7 @@ export function setupGroupHandlers() {
     const strategies = [
         // Strategy 1: SDK getUserGroupInstancesForGroup
         async () => {
-            const clientAny = client as Record<string, unknown>;
+            const clientAny = client as unknown as Record<string, unknown>;
             if (typeof clientAny.getUserGroupInstancesForGroup === 'function') {
                 const response = await (clientAny.getUserGroupInstancesForGroup as CallableFunction)({ path: { userId, groupId } });
                 const data = (response as { data?: unknown })?.data ?? response;
@@ -385,7 +384,7 @@ export function setupGroupHandlers() {
         },
         // Strategy 2: SDK getUserGroupInstances (all) + Filter
         async () => {
-             const clientAny = client as Record<string, unknown>;
+             const clientAny = client as unknown as Record<string, unknown>;
              if (typeof clientAny.getUserGroupInstances !== 'function') throw new Error('SDK method missing');
              
              const response = await (clientAny.getUserGroupInstances as CallableFunction)({ path: { userId } });
@@ -412,7 +411,7 @@ export function setupGroupHandlers() {
         },
         // Strategy 3: Client.get Fallback
         async () => {
-            const clientAny = client as Record<string, unknown>;
+            const clientAny = client as unknown as Record<string, unknown>;
             if (typeof clientAny.get !== 'function') throw new Error('Client.get missing');
             const url = `users/${userId}/instances/groups/${groupId}`;
             const response = await (clientAny.get as CallableFunction)(url);
@@ -421,7 +420,7 @@ export function setupGroupHandlers() {
         },
         // Strategy 4: getGroupInstances
         async () => {
-             const clientAny = client as Record<string, unknown>;
+             const clientAny = client as unknown as Record<string, unknown>;
              if (typeof clientAny.getGroupInstances !== 'function') throw new Error('SDK method missing');
              const response = await (clientAny.getGroupInstances as CallableFunction)({ path: { groupId } });
              const data = (response as { data?: unknown })?.data ?? response;
@@ -504,7 +503,7 @@ export function setupGroupHandlers() {
         },
          // Strategy 2: Raw Fetch (DELETE /groups/{groupId}/bans/{userId})
          async () => {
-             const cookies = getAuthCookieString();
+             const cookies = await getAuthCookieStringAsync();
              const url = `https://api.vrchat.cloud/api/1/groups/${groupId}/bans/${userId}`;
              const response = await fetch(url, {
                 method: 'DELETE',
@@ -570,7 +569,7 @@ export function setupGroupHandlers() {
         },
         // Strategy 3: Raw Request (Fetch)
         async () => {
-             const cookies = getAuthCookieString();
+             const cookies = await getAuthCookieStringAsync();
              const url = `https://api.vrchat.cloud/api/1/groups/${groupId}/roles`;
              const response = await fetch(url, {
                 method: 'GET',
@@ -621,7 +620,7 @@ export function setupGroupHandlers() {
         },
         // Strategy 3: Raw Request (Fetch)
         async () => {
-             const cookies = getAuthCookieString();
+             const cookies = await getAuthCookieStringAsync();
              const url = `https://api.vrchat.cloud/api/1/groups/${groupId}/members/${userId}/roles/${roleId}`;
              const response = await fetch(url, {
                 method: 'PUT',
@@ -696,7 +695,7 @@ export function setupGroupHandlers() {
 
           // Strategy 3: Raw Request (Fetch)
           try {
-               const cookies = getAuthCookieString();
+               const cookies = await getAuthCookieStringAsync();
                const url = `https://api.vrchat.cloud/api/1/groups/${groupId}/members/${userId}/roles/${roleId}`;
                
                const response = await fetch(url, {
@@ -778,7 +777,7 @@ export function setupGroupHandlers() {
           },
           // Strategy 4: Raw Fetch
           async () => {
-               const cookies = getAuthCookieString();
+               const cookies = await getAuthCookieStringAsync();
                const url = `https://api.vrchat.cloud/api/1/groups/${groupId}/requests/${userId}`;
                const response = await fetch(url, {
                    method: 'PUT',

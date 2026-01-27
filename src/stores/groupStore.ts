@@ -74,7 +74,7 @@ interface GroupState {
   fetchGroupBans: (groupId: string) => Promise<void>;
   fetchGroupMembers: (groupId: string, offset?: number) => Promise<void>;
   fetchGroupInstances: (groupId: string) => Promise<void>;
-  respondToRequest: (groupId: string, userId: string, action: 'accept' | 'deny') => Promise<void>;
+  respondToRequest: (groupId: string, userId: string, action: 'accept' | 'deny') => Promise<{ success: boolean; error?: string }>;
   
   // Get timestamp helper
   getLastFetchedAt: (type: keyof typeof REFRESH_INTERVALS) => number;
@@ -240,8 +240,10 @@ export const useGroupStore = create<GroupState>((set, get) => ({
           } else {
               console.error(`Failed to ${action} request:`, result.error);
           }
+          return result;
       } catch (error) {
           console.error(`Failed to ${action} request:`, error);
+          return { success: false, error: getErrorMessage(error) };
       }
   },
 

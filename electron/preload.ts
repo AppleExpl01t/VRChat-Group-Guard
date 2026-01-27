@@ -219,7 +219,7 @@ contextBridge.exposeInMainWorld('electron', {
         getWhitelistedEntities: (groupId: string) => ipcRenderer.invoke('automod:getWhitelistedEntities', groupId),
         removeFromWhitelist: (groupId: string, id: string, type: 'user' | 'group') => ipcRenderer.invoke('automod:removeFromWhitelist', { groupId, id, type }),
         getStatus: (groupId: string) => ipcRenderer.invoke('automod:get-status', groupId),
-        setAutoReject: (enabled: boolean, groupId: string) => ipcRenderer.invoke('automod:set-auto-reject', { enabled, groupId }),
+        setAutoProcess: (enabled: boolean, groupId: string) => ipcRenderer.invoke('automod:set-auto-process', { enabled, groupId }),
         setAutoBan: (enabled: boolean, groupId: string) => ipcRenderer.invoke('automod:set-auto-ban', { enabled, groupId }),
         searchGroups: (query: string) => ipcRenderer.invoke('automod:search-groups', query),
         fetchMembers: (groupId: string) => ipcRenderer.invoke('automod:fetch-members', groupId),

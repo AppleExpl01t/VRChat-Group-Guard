@@ -535,8 +535,8 @@ export interface ElectronAPI {
       addToWhitelist: (groupId: string, ruleId: number, target: { userId?: string; groupId?: string }) => Promise<boolean>;
       getWhitelistedEntities: (groupId: string) => Promise<{ users: { id: string; name: string; rules: string[] }[]; groups: { id: string; name: string; rules: string[] }[] }>;
       removeFromWhitelist: (groupId: string, id: string, type: 'user' | 'group') => Promise<boolean>;
-      getStatus: (groupId: string) => Promise<{ autoReject: boolean; autoBan: boolean }>;
-      setAutoReject: (enabled: boolean, groupId: string) => Promise<boolean>;
+      getStatus: (groupId: string) => Promise<{ autoProcess: boolean; autoBan: boolean }>;
+      setAutoProcess: (enabled: boolean, groupId: string) => Promise<boolean>;
       setAutoBan: (enabled: boolean, groupId: string) => Promise<boolean>;
       getHistory: (groupId?: string) => Promise<unknown[]>;
       clearHistory: () => Promise<boolean>;

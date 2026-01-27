@@ -645,7 +645,7 @@ export const vrchatApiService = {
 
             // Log a sample instance for debugging age gate structure
             if (instances.length > 0) {
-                logger.debug(`[VRChatAPI] Sample instance structure:`, JSON.stringify(instances[0], null, 2));
+                logger.debug(`[VRChatAPI] Sample instance structure:`, networkService.safeStringify(instances[0]));
             }
 
             return instances;

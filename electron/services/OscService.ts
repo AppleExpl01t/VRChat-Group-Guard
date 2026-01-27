@@ -87,7 +87,7 @@ class OscService {
         return this.config;
     }
 
-    public send(address: string, args: any[]): Promise<boolean> {
+    public send(address: string, args: unknown[]): Promise<boolean> {
         return new Promise((resolve, reject) => {
             if (!this.config.enabled) {
                 logger.debug('OSC Send skipped: Disabled');
@@ -96,8 +96,13 @@ class OscService {
                 return;
             }
 
+            if (this.config.enabled && !this.client) {
+                logger.warn('OSC Enabled but client not initialized. Attempting lazy start...');
+                this.start();
+            }
+
             if (!this.client) {
-                logger.error('OSC Send failed: Client not initialized');
+                logger.error(`OSC Send failed: Client not initialized. Enabled=${this.config.enabled}`);
                 reject(new Error("OSC Client not initialized"));
                 return;
             }
@@ -113,7 +118,8 @@ class OscService {
                     args = newArgs;
                 }
 
-                this.client.send(address, ...args, (err: Error | null) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                this.client.send(address, ...(args as any[]), (err: Error | null) => {
                     if (err) {
                         logger.error(`OSC Send Error (${address}):`, err);
                         reject(err);
@@ -142,8 +148,7 @@ export function setupOscHandlers() {
         return oscService.setConfig(config);
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ipcMain.handle('osc:send', (_event, { address, args }: { address: string, args: any[] }) => {
+    ipcMain.handle('osc:send', (_event, { address, args }: { address: string, args: unknown[] }) => {
         return oscService.send(address, args);
     });
 }

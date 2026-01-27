@@ -65,11 +65,56 @@ export const RequestsListDialog: React.FC<Props> = ({ isOpen, onClose }) => {
                                 <NeonButton 
                                     variant="ghost" 
                                     style={{ color: '#ef4444' }}
-                                    onClick={() => selectedGroup && respondToRequest(selectedGroup.id, req.user.id, 'deny')}
+                                    onClick={async () => {
+                                        if (selectedGroup) {
+                                            await respondToRequest(selectedGroup.id, req.user.id, 'deny');
+                                        }
+                                    }}
                                 >Deny</NeonButton>
                                 <NeonButton 
                                     variant="primary"
-                                    onClick={() => selectedGroup && respondToRequest(selectedGroup.id, req.user.id, 'accept')}
+                                    onClick={async () => {
+                                        if (selectedGroup) {
+                                            const result = await respondToRequest(selectedGroup.id, req.user.id, 'accept');
+                                            
+                                            // Handle "Too Many Groups" error (403)
+                                            if (!result.success && result.error && (
+                                                result.error.includes('too many groups') || 
+                                                result.error.includes('403')
+                                            )) {
+                                                console.log('User in too many groups, handling fallback...');
+                                                
+                                                // 1. Decline the request to clear it
+                                                await respondToRequest(selectedGroup.id, req.user.id, 'deny');
+                                                
+                                                // 2. Send invite to current location so they can fix it
+                                                try {
+                                                    const instanceInfo = await window.electron.instance.getInstanceInfo();
+                                                    
+                                                    // Only send invite if valid instance
+                                                    if (instanceInfo && instanceInfo.instanceId) {
+                                                        const inviteResult = await window.electron.instance.inviteToCurrent(
+                                                            req.user.id, 
+                                                            "You are in too many groups! Please leave one and re-apply."
+                                                        );
+                                                        
+                                                        if (inviteResult.success) {
+                                                            console.log(`User ${req.user.displayName} is in too many groups. Request declined and invite sent.`);
+                                                        } else {
+                                                            console.warn(`User in too many groups. Declined request, but failed to send invite: ${inviteResult.error}`);
+                                                        }
+                                                    } else {
+                                                        console.log(`User ${req.user.displayName} is in too many groups. Request declined (no active instance to invite to).`);
+                                                    }
+                                                } catch (e) {
+                                                    console.error('Failed to handle too many groups fallback', e);
+                                                }
+                                            } else if (!result.success) {
+                                                // Generic error alert
+                                                 alert(`Failed to accept: ${result.error}`);
+                                            }
+                                        }
+                                    }}
                                 >Accept</NeonButton>
                             </div>
                         </GlassPanel>
