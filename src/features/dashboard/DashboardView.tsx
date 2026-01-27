@@ -17,7 +17,6 @@ import styles from './DashboardView.module.css';
 import { motion } from 'framer-motion';
 
 import { formatDistanceToNow } from 'date-fns';
-import paw from '../../assets/images/paw.png';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -199,16 +198,6 @@ export const DashboardView: React.FC = memo(() => {
                     >
                         COMMAND CENTER
                     </div>
-                    <img 
-                        src={paw} 
-                        alt="Paw Logo" 
-                        style={{ 
-                            width: '20px', 
-                            height: '20px', 
-                            opacity: 0.7,
-                            filter: 'brightness(1.2) saturate(1.5)'
-                        }} 
-                    />
 </div>
             </div>
 
