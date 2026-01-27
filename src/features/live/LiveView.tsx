@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { GlassPanel } from '../../components/ui/GlassPanel';
 import { NeonButton } from '../../components/ui/NeonButton';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crosshair, ShieldAlert, Radio, RefreshCw, Activity, UserPlus } from 'lucide-react';
+import { Crosshair, ShieldAlert, Radio, RefreshCw, Activity, UserPlus, ChevronDown } from 'lucide-react';
 import { AppShieldIcon } from '../../components/ui/AppShieldIcon';
 import { useGroupStore } from '../../stores/groupStore';
 import { useInstanceMonitorStore, type LiveEntity } from '../../stores/instanceMonitorStore';
@@ -56,6 +56,16 @@ export const LiveView: React.FC = () => {
     // PERF FIX: Use individual selectors instead of destructuring entire store
     const selectedGroup = useGroupStore(state => state.selectedGroup);
     const isRoamingMode = useGroupStore(state => state.isRoamingMode);
+    const myGroups = useGroupStore(state => state.myGroups);
+
+    // Roaming mode: selected group for invites
+    const [roamingSelectedGroupId, setRoamingSelectedGroupId] = useState<string | null>(null);
+    const roamingSelectedGroup = useMemo(() =>
+        myGroups.find(g => g.id === roamingSelectedGroupId) || null
+    , [myGroups, roamingSelectedGroupId]);
+
+    // The effective group to use for invites (either selected or roaming-selected)
+    const effectiveGroup = selectedGroup || roamingSelectedGroup;
     
     const currentWorldName = useInstanceMonitorStore(state => state.currentWorldName);
     const currentWorldId = useInstanceMonitorStore(state => state.currentWorldId);
@@ -212,15 +222,15 @@ export const LiveView: React.FC = () => {
 
     // Actions
     const handleRecruit = useCallback(async (userId: string, name: string) => {
-        if (!selectedGroup) return;
+        if (!effectiveGroup) return;
         addLog(`[CMD] Inviting ${name}...`, 'info');
         try {
-            await window.electron.instance.recruitUser(selectedGroup.id, userId);
+            await window.electron.instance.recruitUser(effectiveGroup.id, userId);
             addLog(`[CMD] Invite sent to ${name}`, 'success');
         } catch {
             addLog(`[CMD] Failed to invite ${name}`, 'error');
         }
-    }, [selectedGroup, addLog]);
+    }, [effectiveGroup, addLog]);
 
     const handleKick = useCallback(async (userId: string, name: string) => {
         if (!selectedGroup) return;
@@ -253,8 +263,11 @@ export const LiveView: React.FC = () => {
     const [progressMode, setProgressMode] = useState<'recruit' | 'rally' | null>(null);
     const [currentProcessingUser, setCurrentProcessingUser] = useState<{ name: string; phase: 'checking' | 'inviting' | 'skipped' } | null>(null);
 
+    // Rate limit delay for invites (in seconds)
+    const [inviteDelay, setInviteDelay] = useState<number>(2);
+
     const handleRecruitAll = async () => {
-        if (!selectedGroup) {
+        if (!effectiveGroup) {
             addLog(`[CMD] Cannot invite without a selected group.`, 'warn');
             return;
         }
@@ -267,12 +280,12 @@ export const LiveView: React.FC = () => {
             addLog(`[CMD] No strangers to recruit.`, 'warn');
             return;
         }
-        
+
         addLog(`[CMD] SENDING MASS INVITES TO ${targets.length} STRANGERS...`, 'warn');
-        
+
         let keywordRuleInvoked = false;
         try {
-            const rules = await window.electron.automod.getRules(selectedGroup.id);
+            const rules = await window.electron.automod.getRules(effectiveGroup.id);
             keywordRuleInvoked = rules.some(r => r.type === 'KEYWORD_BLOCK' && r.enabled);
             if (keywordRuleInvoked) {
                 addLog(`[AUTOMOD] Keyword Filter Active: Scanning profiles...`, 'info');
@@ -283,15 +296,15 @@ export const LiveView: React.FC = () => {
 
         setProgress({ current: 0, total: targets.length });
         setProgressMode('recruit');
-        
+
         let count = 0;
         const blocked: { name: string; reason?: string }[] = [];
-        
+
         for (const t of targets) {
             if (keywordRuleInvoked) {
                 setCurrentProcessingUser({ name: t.displayName, phase: 'checking' });
                 await new Promise(r => setTimeout(r, 200));
-                
+
                 try {
                     const userRes = await window.electron.getUser(t.id);
                     if (userRes.success && userRes.user) {
@@ -303,7 +316,7 @@ export const LiveView: React.FC = () => {
                             status: userRes.user.status,
                             statusDescription: userRes.user.statusDescription,
                             pronouns: userRes.user.pronouns
-                        }, selectedGroup.id);
+                        }, effectiveGroup.id);
 
                         if (checkRes.action === 'REJECT' || checkRes.action === 'AUTO_BLOCK') {
                             setCurrentProcessingUser({ name: t.displayName, phase: 'skipped' });
@@ -311,29 +324,34 @@ export const LiveView: React.FC = () => {
                             addLog(`[AUTOMOD] Skipped ${t.displayName} (Match: ${checkRes.reason})`, 'warn');
                             setProgress({ current: count + blocked.length, total: targets.length });
                             await new Promise(r => setTimeout(r, 300));
-                            continue; 
+                            continue;
                         }
                     }
                 } catch (e) {
                     console.error("AutoMod check failed for user", t.displayName, e);
                 }
             }
-            
+
             setCurrentProcessingUser({ name: t.displayName, phase: 'inviting' });
-            const res = await window.electron.instance.recruitUser(selectedGroup!.id, t.id);
-            
+            const res = await window.electron.instance.recruitUser(effectiveGroup.id, t.id);
+
             if (!res.success && res.error === 'RATE_LIMIT') {
                 addLog(`[WARN] RATE LIMIT DETECTED! Cooling down for 10s...`, 'warn');
                 await new Promise(r => setTimeout(r, 10000));
+            } else if (res.success) {
+                addLog(`[INVITE] ${t.displayName} ✓ Sent`, 'success');
+            } else {
+                addLog(`[INVITE] ${t.displayName} ✗ Failed: ${res.error || 'Unknown'}`, 'error');
             }
-            
+
             count++;
             setProgress({ current: count + blocked.length, total: targets.length });
-            await new Promise(r => setTimeout(r, 250));
+            // Use configurable delay between invites
+            await new Promise(r => setTimeout(r, inviteDelay * 1000));
         }
         
-        addLog(`[CMD] Recruitment complete. Sent ${count} invites.`, 'success');
-        
+        addLog(`[CMD] Recruitment complete. Sent ${count} invites to ${effectiveGroup.name}.`, 'success');
+
         if (keywordRuleInvoked || blocked.length > 0) {
             if (blocked.length > 0) {
                 addLog(`[AUTOMOD] Blocked ${blocked.length} users from invite list.`, 'warn');
@@ -342,7 +360,7 @@ export const LiveView: React.FC = () => {
             }
             setRecruitResults({ blocked, invited: count });
         }
-        
+
         setCurrentProcessingUser(null);
         setProgress(null);
         setProgressMode(null);
@@ -372,15 +390,20 @@ export const LiveView: React.FC = () => {
             let count = 0;
             for (const t of targets) {
                 const invRes = await window.electron.instance.inviteToCurrent(t.id ?? '', customMessage);
-                
+
                 if (!invRes.success && invRes.error === 'RATE_LIMIT') {
                     addLog(`[WARN] RATE LIMIT DETECTED! Cooling down for 10s...`, 'warn');
                     await new Promise(r => setTimeout(r, 10000));
+                } else if (invRes.success) {
+                    addLog(`[RALLY] ${t.displayName || t.id} ✓ Sent`, 'success');
+                } else {
+                    addLog(`[RALLY] ${t.displayName || t.id} ✗ Failed: ${invRes.error || 'Unknown'}`, 'error');
                 }
 
                 count++;
                 setProgress({ current: count, total: targets.length });
-                await new Promise(r => setTimeout(r, 250));
+                // Use configurable delay between invites
+                await new Promise(r => setTimeout(r, inviteDelay * 1000));
             }
 
             addLog(`[CMD] Rally complete. Sent ${count} invites.`, 'success');
@@ -437,24 +460,81 @@ export const LiveView: React.FC = () => {
             );
         }
 
+        // In roaming mode, disable if no group selected
+        const isDisabled = progress !== null || (isRoamingMode && !roamingSelectedGroup);
+
         return (
-            <NeonButton 
+            <NeonButton
                 onClick={handleRecruitAll}
-                disabled={progress !== null} 
+                disabled={isDisabled}
                 style={{ flex: 1, height: '60px', flexDirection: 'column', gap: '4px' }}
             >
                 <UserPlus size={20} />
-                <span style={{ fontSize: '0.75rem' }}>INVITE INSTANCE TO GROUP</span>
+                <span style={{ fontSize: '0.75rem' }}>
+                    {isRoamingMode && roamingSelectedGroup
+                        ? `INVITE ALL TO ${roamingSelectedGroup.name.substring(0, 15).toUpperCase()}${roamingSelectedGroup.name.length > 15 ? '...' : ''}`
+                        : 'INVITE INSTANCE TO GROUP'
+                    }
+                </span>
             </NeonButton>
         );
     };
 
     const renderRallyButton = () => {
+        // In roaming mode, show a group selector dropdown instead of "GROUP OFF-LINE"
+        if (isRoamingMode) {
+            return (
+                <div style={{
+                    flex: 1,
+                    height: '60px',
+                    position: 'relative'
+                }}>
+                    <select
+                        value={roamingSelectedGroupId || ''}
+                        onChange={(e) => setRoamingSelectedGroupId(e.target.value || null)}
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            padding: '8px 12px',
+                            paddingRight: '32px',
+                            background: 'var(--color-surface-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '12px',
+                            color: 'var(--color-text-main)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            appearance: 'none',
+                            textAlign: 'center',
+                        }}
+                    >
+                        <option value="">SELECT GROUP FOR INVITES</option>
+                        {myGroups.map(group => (
+                            <option key={group.id} value={group.id}>
+                                {group.name}
+                            </option>
+                        ))}
+                    </select>
+                    <ChevronDown
+                        size={16}
+                        style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            pointerEvents: 'none',
+                            color: 'var(--color-text-dim)'
+                        }}
+                    />
+                </div>
+            );
+        }
+
         if (!selectedGroup) {
             return (
-                <NeonButton 
+                <NeonButton
                     disabled
-                    variant="secondary" 
+                    variant="secondary"
                     style={{ flex: 1, height: '60px', flexDirection: 'column', gap: '4px', opacity: 0.5 }}
                 >
                     <AppShieldIcon size={20} />
@@ -466,7 +546,7 @@ export const LiveView: React.FC = () => {
         if (progress && progressMode === 'rally') {
             const pct = Math.round((progress.current / progress.total) * 100);
             return (
-                <NeonButton 
+                <NeonButton
                     disabled
                     variant="secondary"
                     style={{ flex: 1, height: '60px', flexDirection: 'column', gap: '4px', position: 'relative', overflow: 'hidden' }}
@@ -474,7 +554,7 @@ export const LiveView: React.FC = () => {
                     <div style={{
                         position: 'absolute', left: 0, top: 0, bottom: 0,
                         width: `${pct}%`,
-                        background: 'rgba(255, 255, 255, 0.2)', 
+                        background: 'rgba(255, 255, 255, 0.2)',
                         transition: 'width 0.2s linear'
                     }} />
                     <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -486,10 +566,10 @@ export const LiveView: React.FC = () => {
         }
 
         return (
-            <NeonButton 
+            <NeonButton
                 onClick={handleRally}
                 disabled={isLoading || progress !== null}
-                variant="secondary" 
+                variant="secondary"
                 style={{ flex: 1, height: '60px', flexDirection: 'column', gap: '4px' }}
             >
                 <AppShieldIcon size={20} />
@@ -679,13 +759,13 @@ export const LiveView: React.FC = () => {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, scale: 0.9 }}
                                                 >
-                                                    <EntityCard 
-                                                        entity={entity} 
+                                                    <EntityCard
+                                                        entity={entity}
                                                         onInvite={handleRecruit}
                                                         onKick={handleKick}
                                                         onBan={handleBanClick}
                                                         onReport={handleReportClick}
-                                                        readOnly={isRoamingMode}
+                                                        readOnly={isRoamingMode && !roamingSelectedGroup}
                                                     />
                                                 </motion.div>
                                             ))
@@ -732,40 +812,34 @@ export const LiveView: React.FC = () => {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: '280px' }}>
                         
                         {/* Actions Panel */}
-                        <GlassPanel style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <GlassPanel style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <h3 className={styles.actionsHeader}>
                                 <Crosshair size={16} />
                                 {isRoamingMode ? 'ROAMING CONTROLS' : 'INSTANCE ACTIONS'}
                             </h3>
 
-                            <div style={{ marginBottom: '0.5rem' }}>
-                                <OscAnnouncementWidget />
-                            </div>
+                            <OscAnnouncementWidget />
 
-                            {/* Alerts & AutoBan Toggle */}
-                            <div className={styles.toggleRow}>
+                            {/* Alerts Toggle */}
+                            <div className={styles.toggleRow} style={{ marginBottom: 0 }}>
                                 <div className={styles.toggleItem}>
                                     <div className={styles.toggleLabel}>
                                         <ShieldAlert size={16} color={useAutoModAlertStore(s => s.isEnabled) ? '#f87171' : 'gray'} />
                                         <span>Alerts</span>
                                     </div>
-                                    <ToggleButton 
-                                        enabled={useAutoModAlertStore(s => s.isEnabled)} 
-                                        onToggle={useAutoModAlertStore(s => s.toggleEnabled)} 
+                                    <ToggleButton
+                                        enabled={useAutoModAlertStore(s => s.isEnabled)}
+                                        onToggle={useAutoModAlertStore(s => s.toggleEnabled)}
                                     />
                                 </div>
-                                
-                                <div className={styles.toggleDivider} />
-                                
-
                             </div>
 
                             {/* Custom Invite Message */}
                             {!isRoamingMode && (
-                                <div style={{ marginBottom: '0.5rem' }}>
-                                    <input 
-                                        type="text" 
-                                        placeholder="Custom Invite Message (Optional)..." 
+                                <div>
+                                    <input
+                                        type="text"
+                                        placeholder="Custom Invite Message (Optional)..."
                                         value={customMessage}
                                         onChange={(e) => setCustomMessage(e.target.value)}
                                         className={styles.messageInput}
@@ -777,6 +851,66 @@ export const LiveView: React.FC = () => {
                                     )}
                                 </div>
                             )}
+
+                            {/* Invite Rate Limit Slider */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                padding: '8px 10px',
+                                background: 'var(--color-surface-card)',
+                                borderRadius: '8px'
+                            }}>
+                                <span style={{
+                                    fontSize: '0.7rem',
+                                    color: 'var(--color-text-dim)',
+                                    whiteSpace: 'nowrap',
+                                    fontWeight: 600
+                                }}>
+                                    DELAY
+                                </span>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="45"
+                                    value={inviteDelay}
+                                    onChange={(e) => setInviteDelay(Number(e.target.value))}
+                                    style={{
+                                        flex: 1,
+                                        height: '4px',
+                                        cursor: 'pointer',
+                                        accentColor: 'var(--color-primary)'
+                                    }}
+                                />
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    minWidth: '55px'
+                                }}>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="45"
+                                        value={inviteDelay}
+                                        onChange={(e) => {
+                                            const val = Math.min(45, Math.max(1, Number(e.target.value) || 1));
+                                            setInviteDelay(val);
+                                        }}
+                                        style={{
+                                            width: '36px',
+                                            padding: '4px',
+                                            background: 'var(--color-surface-elevated)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '4px',
+                                            color: 'var(--color-text-main)',
+                                            fontSize: '0.75rem',
+                                            textAlign: 'center'
+                                        }}
+                                    />
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>sec</span>
+                                </div>
+                            </div>
 
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 {renderRecruitButton()}

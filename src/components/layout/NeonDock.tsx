@@ -64,10 +64,12 @@ export const NeonDock: React.FC<NeonDockProps> = memo(({
   return (
     <>
       {/* Visual indicator pill when dock is hidden */}
-      <motion.div 
+      <motion.div
         className={styles.dockIndicator}
         onMouseEnter={handleShowDock}
-        animate={{ 
+        initial={{ x: "-50%" }}
+        animate={{
+          x: "-50%",
           opacity: isVisible ? 0 : 1,
           scale: isVisible ? 0.8 : 1
         }}
@@ -77,20 +79,21 @@ export const NeonDock: React.FC<NeonDockProps> = memo(({
       </motion.div>
       
       {/* Dock with auto-hide animation */}
-      <motion.div 
+      <motion.div
         className={styles.dockContainer}
-        initial={{ y: 150 }}
-        animate={{ 
+        initial={{ x: "-50%", y: 150 }}
+        animate={{
+          x: "-50%",
           y: isVisible ? 0 : 150
         }}
-        transition={{ 
-          type: "spring", 
-          stiffness: 400, 
-          damping: 30 
+        transition={{
+          type: "spring",
+          stiffness: 400,
+          damping: 30
         }}
         onMouseLeave={handleHideDock}
       >
-        <motion.div className={styles.dock} layout>
+        <motion.div className={styles.dock}>
           <DockItem 
             label={selectedGroup ? "Group" : "Home"}
             isActive={!selectedGroup}

@@ -1,10 +1,12 @@
-import React, { useEffect, memo, useState } from 'react';
+import React, { useEffect, memo, useState, useMemo, useCallback } from 'react';
 import { useGroupStore } from '../../stores/groupStore';
 import { useInstanceMonitorStore } from '../../stores/instanceMonitorStore';
+import { useGroupPreferencesStore } from '../../stores/groupPreferencesStore';
 import { NeonButton } from '../../components/ui/NeonButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMouseGlow } from '../../hooks/useMouseGlow';
 import { ParticleDissolveImage } from '../../components/ui/ParticleDissolveImage';
+import { Star, Users, Calendar, ArrowUpDown, ChevronUp, ChevronDown, Type, Activity } from 'lucide-react';
 import styles from './GroupSelectionView.module.css';
 
 // Memoized animation variants (stable references)
@@ -24,25 +26,29 @@ const itemVariants = {
 };
 
 // Subcomponent for individual cards to isolate hooks
-const GroupCard = memo(({ 
-    group, 
-    isLive, 
-    isLarge, 
-    onClick 
-}: { 
-    group: any, 
-    isLive: boolean, 
-    isLarge: boolean, 
-    onClick: () => void 
+const GroupCard = memo(({
+    group,
+    isLive,
+    isLarge,
+    isStarred,
+    onStarToggle,
+    onClick
+}: {
+    group: any,
+    isLive: boolean,
+    isLarge: boolean,
+    isStarred: boolean,
+    onStarToggle: (e: React.MouseEvent) => void,
+    onClick: () => void
 }) => {
     const glow = useMouseGlow();
-    
+
     return (
         <motion.div variants={itemVariants} layout>
               {/* eslint-disable react-compiler/react-compiler -- useMouseGlow uses refs for DOM event handling, not for render output */}
-              <div 
+              <div
                  ref={glow.setRef}
-                 className={`${styles.cardPanel} ${isLarge ? styles.cardLarge : styles.cardCompact} ${isLive ? styles.cardLive : ''}`}
+                 className={`${styles.cardPanel} ${isLarge ? styles.cardLarge : styles.cardCompact} ${isLive ? styles.cardLive : ''} ${isStarred ? styles.cardStarred : ''}`}
                  onClick={onClick}
                  onMouseMove={glow.onMouseMove}
                  onMouseLeave={glow.onMouseLeave}
@@ -56,19 +62,29 @@ const GroupCard = memo(({
                  role="button"
                  tabIndex={0}
               >
+                  {/* Star Button */}
+                  <button
+                      className={`${styles.starButton} ${isStarred ? styles.starButtonActive : ''}`}
+                      onClick={onStarToggle}
+                      aria-label={isStarred ? "Unpin group" : "Pin as main group"}
+                      title={isStarred ? "Unpin group" : "Pin as main group"}
+                  >
+                      <Star size={isLarge ? 18 : 14} fill={isStarred ? "currentColor" : "none"} />
+                  </button>
+
                   {/* Background Banner */}
                   <AnimatePresence>
                     {isLarge && group.bannerUrl && (
-                        <motion.div 
-                            className={styles.banner} 
+                        <motion.div
+                            className={styles.banner}
                             style={{ backgroundImage: `url(${group.bannerUrl})` }}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }} 
+                            exit={{ opacity: 0 }}
                         />
                     )}
                     {isLarge && !group.bannerUrl && (
-                        <motion.div 
+                        <motion.div
                             className={styles.bannerFallback}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 0.2 }}
@@ -101,14 +117,14 @@ const GroupCard = memo(({
 
                   {/* Icon */}
                   {group.iconUrl ? (
-                      <motion.img 
+                      <motion.img
                         layoutId={`icon-${group.id}`}
-                        src={group.iconUrl} 
-                        className={styles.groupIcon} 
-                        alt="" 
+                        src={group.iconUrl}
+                        className={styles.groupIcon}
+                        alt=""
                       />
                   ) : (
-                      <motion.div 
+                      <motion.div
                         layoutId={`icon-${group.id}`}
                         className={styles.groupIconPlaceholder}
                       >
@@ -117,19 +133,24 @@ const GroupCard = memo(({
                   )}
 
                   {/* Content */}
-                  <motion.div 
+                  <motion.div
                     className={isLarge ? styles.overlayContent : undefined}
                   >
                        <motion.div className={styles.groupName} layoutId={`name-${group.id}`} title={group.name}>
                           {group.name}
                        </motion.div>
-                       
+
                        {isLarge && (
                            <div className={styles.metaRow}>
                              <span className={styles.shortCode}>{group.shortCode}</span>
-                             <span className={styles.memberCount}>
-                               {group.memberCount} Members
-                             </span>
+                             <div className={styles.statsStack}>
+                               <span className={styles.instanceCount}>
+                                 {group.activeInstanceCount || 0} {(group.activeInstanceCount === 1) ? 'Instance' : 'Instances'}
+                               </span>
+                               <span className={styles.memberCount}>
+                                 {group.memberCount} {group.memberCount === 1 ? 'Member' : 'Members'}
+                               </span>
+                             </div>
                            </div>
                        )}
                   </motion.div>
@@ -249,6 +270,65 @@ export const GroupSelectionView: React.FC = memo(() => {
   const { currentWorldId, currentWorldName, instanceImageUrl, currentGroupId } = useInstanceMonitorStore();
   const [isLarge, setIsLarge] = useState(window.innerWidth > 1100);
 
+  // Persistent sorting & starred group from store
+  const {
+    sortBy,
+    sortOrder,
+    starredGroupId,
+    setSortBy,
+    toggleSortOrder,
+    setStarredGroupId
+  } = useGroupPreferencesStore();
+
+  // Handle starring a group
+  const handleStarToggle = useCallback((groupId: string) => (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    const newStarred = starredGroupId === groupId ? null : groupId;
+    setStarredGroupId(newStarred);
+  }, [starredGroupId, setStarredGroupId]);
+
+  // Sorted and pinned groups
+  const sortedGroups = useMemo(() => {
+    const groups = [...myGroups];
+
+    // Sort function
+    groups.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case 'members':
+          comparison = (a.memberCount || 0) - (b.memberCount || 0);
+          break;
+        case 'instances':
+          comparison = (a.activeInstanceCount || 0) - (b.activeInstanceCount || 0);
+          break;
+        case 'age':
+          // Use createdAt if available, otherwise fall back to id comparison
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          comparison = dateA - dateB;
+          break;
+        case 'alphabetical':
+        default:
+          comparison = a.name.localeCompare(b.name);
+          break;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    // Move starred group to front (ignores sorting)
+    if (starredGroupId) {
+      const starredIndex = groups.findIndex(g => g.id === starredGroupId);
+      if (starredIndex > 0) {
+        const [starredGroup] = groups.splice(starredIndex, 1);
+        groups.unshift(starredGroup);
+      }
+    }
+
+    return groups;
+  }, [myGroups, sortBy, sortOrder, starredGroupId]);
+
   // Derived Stats
   const totalGroups = myGroups.length;
   const activeInstances = myGroups.reduce((acc, g) => acc + (g.activeInstanceCount || 0), 0);
@@ -310,7 +390,7 @@ export const GroupSelectionView: React.FC = memo(() => {
           </div>
 
           <div className={styles.statsGrid}>
-              <StatTile 
+              <StatTile
                   label="TOTAL GROUPS"
                   value={totalGroups}
                   color="var(--color-primary)"
@@ -334,6 +414,52 @@ export const GroupSelectionView: React.FC = memo(() => {
           </div>
       </GlassPanel>
 
+      {/* Sorting Controls */}
+      <div className={styles.sortControls}>
+          <div className={styles.sortLabel}>
+              <ArrowUpDown size={14} />
+              <span>Sort by</span>
+          </div>
+          <div className={styles.sortButtons}>
+              <button
+                  className={`${styles.sortButton} ${sortBy === 'alphabetical' ? styles.sortButtonActive : ''}`}
+                  onClick={() => setSortBy('alphabetical')}
+              >
+                  <Type size={14} />
+                  <span>Name</span>
+              </button>
+              <button
+                  className={`${styles.sortButton} ${sortBy === 'members' ? styles.sortButtonActive : ''}`}
+                  onClick={() => setSortBy('members')}
+              >
+                  <Users size={14} />
+                  <span>Members</span>
+              </button>
+              <button
+                  className={`${styles.sortButton} ${sortBy === 'instances' ? styles.sortButtonActive : ''}`}
+                  onClick={() => setSortBy('instances')}
+              >
+                  <Activity size={14} />
+                  <span>Active</span>
+              </button>
+              <button
+                  className={`${styles.sortButton} ${sortBy === 'age' ? styles.sortButtonActive : ''}`}
+                  onClick={() => setSortBy('age')}
+              >
+                  <Calendar size={14} />
+                  <span>Age</span>
+              </button>
+          </div>
+          <button
+              className={styles.sortOrderButton}
+              onClick={toggleSortOrder}
+              title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+          >
+              {sortOrder === 'asc' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              <span>{sortOrder === 'asc' ? 'ASC' : 'DESC'}</span>
+          </button>
+      </div>
+
       {/* Scrollable Content Area */}
       <div className={styles.scrollArea}>
           <motion.div 
@@ -355,15 +481,18 @@ export const GroupSelectionView: React.FC = memo(() => {
                 />
             )}
 
-            {myGroups.map((group) => {
+            {sortedGroups.map((group) => {
               const isLive = currentGroupId ? group.id.toLowerCase() === currentGroupId.toLowerCase() : false;
-              
+              const isStarred = starredGroupId === group.id;
+
               return (
                 <GroupCard
                     key={group.id}
                     group={group}
                     isLive={isLive}
                     isLarge={isLarge}
+                    isStarred={isStarred}
+                    onStarToggle={handleStarToggle(group.id)}
                     onClick={() => selectGroup(group)}
                 />
               );

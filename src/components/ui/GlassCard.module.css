@@ -1,26 +1,29 @@
 .glassCard {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  /* 3D Borders */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-bg-panel);
+  border-radius: var(--border-radius);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  /* 3D Borders - using CSS variables for theme support */
+  border: 1px solid var(--border-color);
   border-top: 1px solid var(--border-highlight);
   border-bottom: 1px solid var(--border-shadow);
-  
+
   /* Initial State: Floating but grounded */
   box-shadow: var(--shadow-floating);
-  
+
   padding: 1rem;
   overflow: hidden;
   position: relative;
-  
+
   /* Smooth Physics-based Transition */
-  transition: 
+  transition:
     transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
-    border-color 0.3s ease;
-    
+    border-color 0.3s ease,
+    background 0.3s ease,
+    backdrop-filter 0.3s ease,
+    border-radius 0.3s ease;
+
   /* Initialize glow variables */
   --glow-x: 50%;
   --glow-y: 50%;
@@ -47,7 +50,7 @@
 .glassCard:hover {
   transform: translateY(-4px) scale(1.005);
   box-shadow: var(--shadow-floating-hover);
-  border-top-color: rgba(255, 255, 255, 0.4); /* Catch more light */
+  border-top-color: var(--border-highlight); /* Catch more light */
   z-index: 10; /* Ensure it floats above neighbors */
 }
 

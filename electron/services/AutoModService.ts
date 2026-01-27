@@ -1250,18 +1250,33 @@ export const processInstanceGuard = async (): Promise<{
 
   for (const groupId of authorizedGroups) {
     try {
-      // Check if INSTANCE_18_GUARD rule is enabled for this group
+      // Check if any instance-related rules are enabled for this group
       const config = getGroupConfig(groupId);
       const instanceGuardRule = config.rules.find(r => r.type === 'INSTANCE_18_GUARD' && r.enabled);
+      const closeAllRule = config.rules.find(r => r.type === 'CLOSE_ALL_INSTANCES' && r.enabled);
 
-      if (!instanceGuardRule) {
-        continue; // Skip groups without the rule enabled
+      if (!instanceGuardRule && !closeAllRule) {
+        continue; // Skip groups without any rule enabled
       }
 
       groupsChecked++;
-      const ruleConfig = JSON.parse(instanceGuardRule.config || '{}');
-      const whitelistedWorlds: string[] = ruleConfig.whitelistedWorlds || [];
-      const blacklistedWorlds: string[] = ruleConfig.blacklistedWorlds || [];
+      
+      // Get configuration from whichever rule is enabled
+      let whitelistedWorlds: string[] = [];
+      let blacklistedWorlds: string[] = [];
+      let useAgeGateLogic = false;
+      
+      if (instanceGuardRule) {
+        const ruleConfig = JSON.parse(instanceGuardRule.config || '{}');
+        whitelistedWorlds = ruleConfig.whitelistedWorlds || [];
+        blacklistedWorlds = ruleConfig.blacklistedWorlds || [];
+        useAgeGateLogic = true;
+      } else if (closeAllRule) {
+        const ruleConfig = JSON.parse(closeAllRule.config || '{}');
+        whitelistedWorlds = ruleConfig.whitelistedWorlds || [];
+        blacklistedWorlds = ruleConfig.blacklistedWorlds || [];
+        useAgeGateLogic = false;
+      }
 
       // Fetch all instances for this group
       const result = await vrchatApiService.getGroupInstances(groupId);
@@ -1311,7 +1326,7 @@ export const processInstanceGuard = async (): Promise<{
           }
 
           // Log the OPENED event
-          const hasAgeGate = instance.ageGate === true;
+          const hasAgeGate = instance.world?.ageGate === true;
           const openEvent: InstanceGuardEvent = {
             id: `ig_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             timestamp: Date.now(),
@@ -1349,27 +1364,93 @@ export const processInstanceGuard = async (): Promise<{
 
         // Check blacklist first (always close blacklisted worlds)
         const isBlacklisted = blacklistedWorlds.includes(worldId);
-
+        
         // Check whitelist (allow whitelisted worlds even if not 18+)
         const isWhitelisted = whitelistedWorlds.includes(worldId);
 
-        // Check if instance has 18+ age gate
-        const hasAgeGate = instance.ageGate === true;
+        // Important: Skip ALL processing for whitelisted worlds - they should never be closed
+        if (isWhitelisted) {
+          logger.info(`[InstanceGuard] SKIPPING whitelisted world: ${worldName} (${worldId}) - will never be closed`);
+          continue; // Skip to next instance
+        }
+
+        // Log blacklisted worlds for clarity
+        if (isBlacklisted) {
+          logger.info(`[InstanceGuard] Found blacklisted world: ${worldName} (${worldId}) - will be closed`);
+        }
+
+        // ALWAYS fetch complete instance data when using 18+ Guard logic
+        // The getGroupInstances API doesn't reliably include ageGate field
+        // We must fetch via getInstance to get accurate age gate status
+        if (useAgeGateLogic && !isBlacklisted) {
+          try {
+            logger.debug(`[InstanceGuard] Fetching complete instance data for age gate check: ${worldName}`);
+            const instId = instance.instanceId || instance.name || name;
+            if (!instId) {
+              logger.warn(`[InstanceGuard] Missing instance ID for ${worldName} - cannot fetch complete data`);
+            } else {
+              const instanceResult = await vrchatApiService.getInstance(instance.worldId || worldId, instId);
+
+              if (instanceResult.success && instanceResult.data) {
+                // Update instance with complete data including ageGate
+                instance.ageGate = instanceResult.data.ageGate;
+                if (instanceResult.data.world?.ageGate !== undefined) {
+                  if (instance.world) {
+                    instance.world.ageGate = instanceResult.data.world.ageGate;
+                  } else {
+                    instance.world = {
+                      id: instanceResult.data.world.id || '',
+                      name: instanceResult.data.world.name || worldName,
+                      ageGate: instanceResult.data.world.ageGate
+                    };
+                  }
+                }
+                logger.info(`[InstanceGuard] Fetched age gate for ${worldName}: instance.ageGate=${instance.ageGate}, world.ageGate=${instance.world?.ageGate}`);
+              } else {
+                logger.warn(`[InstanceGuard] Failed to fetch complete instance data for ${worldName}: ${instanceResult.error}`);
+              }
+            }
+          } catch (fetchError) {
+            logger.warn(`[InstanceGuard] Error fetching complete instance data for ${worldName}:`, fetchError);
+          }
+        }
 
         // Determine if we should close this instance
         let shouldClose = false;
         let closeReason = '';
 
+        // Log key information for monitoring
+        logger.info(`[InstanceGuard] Checking ${worldName} (${instanceKey}): whitelisted=${isWhitelisted}, blacklisted=${isBlacklisted}, ruleType=${useAgeGateLogic ? '18+ Guard' : 'Close All'}`);
+
         if (isBlacklisted) {
           shouldClose = true;
           closeReason = `World "${worldName}" is blacklisted`;
-        } else if (!hasAgeGate && !isWhitelisted) {
-          shouldClose = true;
-          closeReason = `Instance is not 18+ age-gated`;
+        } else if (!isWhitelisted) {
+          if (useAgeGateLogic) {
+            // 18+ Guard logic - check age gate status (after fetching complete data above)
+            // Check both instance and world level age gate - either being true means it's 18+
+            const hasAgeGate = instance.ageGate === true || instance.world?.ageGate === true;
+
+            logger.info(`[InstanceGuard] Age gate check for ${worldName}: hasAgeGate=${hasAgeGate} (instance.ageGate=${instance.ageGate}, world.ageGate=${instance.world?.ageGate})`);
+
+            if (!hasAgeGate) {
+              shouldClose = true;
+              closeReason = `Instance is not 18+ age-gated`;
+            } else {
+              logger.info(`[InstanceGuard] Instance ${worldName} is 18+ verified - will NOT be closed`);
+            }
+          } else {
+            // Close All Instances logic - close regardless of age gate
+            shouldClose = true;
+            closeReason = `Close all instances rule enabled`;
+          }
         }
 
         if (shouldClose) {
-          logger.info(`[InstanceGuard] Closing instance: ${worldName} (${worldId}:${instanceId}) - Reason: ${closeReason}`);
+          logger.warn(`[InstanceGuard] Closing instance: ${worldName} (${worldId}:${instanceId}) - Reason: ${closeReason}`);
+        }
+
+        if (shouldClose) {
 
           try {
             const closeResult = await vrchatApiService.closeInstance(worldId, instanceId);
@@ -1394,7 +1475,7 @@ export const processInstanceGuard = async (): Promise<{
                   worldId,
                   instanceId,
                   worldName,
-                  wasAgeGated: hasAgeGate,
+                  wasAgeGated: instance.ageGate === true || instance.world?.ageGate === true,
                   wasBlacklisted: isBlacklisted,
                   ruleName: '18+ Instance Guard'
                 },
@@ -1425,7 +1506,7 @@ export const processInstanceGuard = async (): Promise<{
                 groupId,
                 reason: closeReason,
                 closedBy: 'System',
-                wasAgeGated: hasAgeGate,
+                wasAgeGated: instance.ageGate === true || instance.world?.ageGate === true,
                 userCount: instance.n_users || instance.userCount,
                 ownerId,
                 ownerName,

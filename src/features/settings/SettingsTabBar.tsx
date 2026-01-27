@@ -1,10 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Plug, Info } from 'lucide-react';
+import { Palette, Volume2, Bell, Shield, Radio, Webhook, MessageSquare, Info, Bug } from 'lucide-react';
 
-import { Bug } from 'lucide-react';
-
-export type SettingsTab = 'general' | 'integrations' | 'about' | 'debug';
+export type SettingsTab = 'appearance' | 'audio' | 'notifications' | 'security' | 'osc' | 'discord' | 'about' | 'debug';
 
 interface SettingsTabBarProps {
     activeTab: SettingsTab;
@@ -14,8 +12,12 @@ interface SettingsTabBarProps {
 }
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'general', label: 'General', icon: <Settings size={16} /> },
-    { id: 'integrations', label: 'Integrations', icon: <Plug size={16} /> },
+    { id: 'appearance', label: 'Appearance', icon: <Palette size={16} /> },
+    { id: 'audio', label: 'Audio', icon: <Volume2 size={16} /> },
+    { id: 'notifications', label: 'Alerts', icon: <Bell size={16} /> },
+    { id: 'security', label: 'Security', icon: <Shield size={16} /> },
+    { id: 'osc', label: 'OSC', icon: <Radio size={16} /> },
+    { id: 'discord', label: 'Discord', icon: <MessageSquare size={16} /> },
     { id: 'about', label: 'About', icon: <Info size={16} /> },
     { id: 'debug', label: 'Debug', icon: <Bug size={16} /> },
 ];
@@ -31,15 +33,18 @@ export const SettingsTabBar: React.FC<SettingsTabBarProps> = ({
     return (
         <div style={{
             display: 'flex',
-            gap: '0.5rem',
+            gap: '0.25rem',
             marginBottom: '1.5rem',
             borderBottom: '1px solid var(--border-color)',
             paddingBottom: '0',
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
         }}>
             {visibleTabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const count = tabCounts?.[tab.id];
-                
+
                 return (
                     <button
                         key={tab.id}
@@ -48,16 +53,18 @@ export const SettingsTabBar: React.FC<SettingsTabBarProps> = ({
                             position: 'relative',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.75rem 1.25rem',
+                            gap: '0.35rem',
+                            padding: '0.6rem 0.8rem',
                             background: 'transparent',
                             border: 'none',
                             color: isActive ? 'var(--color-primary)' : 'var(--color-text-dim)',
-                            fontSize: '0.95rem',
+                            fontSize: '0.85rem',
                             fontWeight: isActive ? 600 : 400,
                             cursor: 'pointer',
                             transition: 'color 0.2s ease',
                             marginBottom: '-1px',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
                         }}
                     >
                         <span style={{ 
@@ -71,8 +78,8 @@ export const SettingsTabBar: React.FC<SettingsTabBarProps> = ({
                         {/* Show count badge during search */}
                         {count !== undefined && count > 0 && (
                             <span style={{
-                                background: isActive ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
-                                color: isActive ? 'black' : 'var(--color-text-dim)',
+                                background: isActive ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                                color: isActive ? 'white' : 'var(--color-text-dim)',
                                 fontSize: '0.7rem',
                                 fontWeight: 600,
                                 padding: '0.1rem 0.4rem',

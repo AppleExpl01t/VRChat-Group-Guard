@@ -80,7 +80,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick, onLogoutCli
           {/* Profile Dropdown Trigger */}
           <div style={{ position: 'relative' }}>
               <motion.button
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  onClick={() => {
+                    setIsProfileOpen(!isProfileOpen);
+                    setIsNotificationsOpen(false); // Close notifications when opening profile
+                  }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className={styles.profileButton}
@@ -143,13 +146,16 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick, onLogoutCli
 
           {/* Notification Trigger */}
           <div style={{ position: 'relative', marginLeft: '12px' }} ref={notifRef}>
-              <motion.button 
+              <motion.button
                 className={styles.iconButton} // We might need to define this class or use inline
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                onClick={() => {
+                  setIsNotificationsOpen(!isNotificationsOpen);
+                  setIsProfileOpen(false); // Close profile when opening notifications
+                }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                style={{ 
-                    background: 'none', border: 'none', color: 'var(--color-text-dim)', 
+                style={{
+                    background: 'none', border: 'none', color: 'var(--color-text-dim)',
                     cursor: 'pointer', position: 'relative',
                     padding: '8px', display: 'flex', alignItems: 'center', opacity: 0.8
                 }}

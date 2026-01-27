@@ -4,11 +4,11 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 40px;
-  padding: 0 2rem;
+  height: 72px;
+  padding: 0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   z-index: var(--z-header);
   pointer-events: none;
   -webkit-app-region: drag;
@@ -23,18 +23,19 @@
   align-items: center;
   gap: 0.5rem;
   -webkit-app-region: no-drag;
+  padding: 26px 0 16px 26px; /* Added 10px to top and left */
 }
 
 .profileButton {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-overlay);
+  border: 1px solid var(--border-color);
   border-radius: 30px;
   padding: 4px 12px 4px 4px;
   display: flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  color: white;
+  color: var(--color-text-main);
   backdrop-filter: blur(10px);
   outline: none;
 }
@@ -49,6 +50,7 @@
 .displayName {
   font-size: 0.9rem;
   font-weight: 600;
+  color: var(--color-text-main);
 }
 
 .dropdown {
@@ -58,13 +60,13 @@
   width: 300px;
   z-index: var(--z-dropdown);
   /* Pre-apply blur to prevent pop-in during animation */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  background: var(--color-surface-elevated);
   border-radius: 20px;
   padding: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-floating);
   /* GPU acceleration hint for smoother animation */
   will-change: transform, opacity;
   transform: translateZ(0);
@@ -73,8 +75,8 @@
 .settingsButton {
   width: 100%;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--color-surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   color: var(--color-text-main);
   display: flex;
@@ -85,12 +87,12 @@
   font-size: 0.9rem;
   font-weight: 500;
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-floating);
 }
 
 .logoutButton {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 50%;
   width: 36px;
   height: 36px;
@@ -107,8 +109,8 @@
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-right: 8px;
+  gap: 4px;
+  padding: 12px 12px 0 0;
   -webkit-app-region: no-drag;
   z-index: var(--z-window-controls);
   position: relative;
@@ -118,20 +120,32 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.0);
-  border: 1px solid rgba(255, 255, 255, 0.0);
+  background: transparent;
+  border: 1px solid transparent;
   cursor: pointer;
   display: grid;
   place-items: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-text-dim);
   transition: all 0.2s;
   -webkit-app-region: no-drag;
 }
 
 .controlButton:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-card);
+  color: var(--color-text-main);
+  border-color: var(--border-color);
+}
+
+.minimizeButton:hover {
+  background: #10b981;
   color: white;
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: #10b981;
+}
+
+.maximizeButton:hover {
+  background: #eab308;
+  color: white;
+  border-color: #eab308;
 }
 
 .closeButton:hover {

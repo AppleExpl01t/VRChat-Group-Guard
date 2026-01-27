@@ -87,28 +87,28 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                         style={{
                             position: 'absolute',
                             top: '100%',
-                            left: '0', 
+                            left: '0',
                             marginTop: '10px',
                             width: '380px',
                             zIndex: 50,
                             // Merged GlassPanel styles to fix stacking context/blur issue
-                            padding: '0', 
-                            height: '500px', 
-                            display: 'flex', 
+                            padding: '0',
+                            height: '500px',
+                            display: 'flex',
                             flexDirection: 'column',
                             overflow: 'hidden',
-                            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-                            border: '1px solid rgba(255,255,255,0.1)'
+                            boxShadow: 'var(--shadow-floating)',
+                            border: '1px solid var(--border-color)'
                         }}
                     >
                         {/* Header */}
-                        <div style={{ 
-                            padding: '16px', 
-                            borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        <div style={{
+                            padding: '16px',
+                            borderBottom: '1px solid var(--border-color)',
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            background: 'rgba(0,0,0,0.2)'
+                            background: 'var(--color-surface-card)'
                         }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-main)' }}>
                                 <Clock size={16} color="var(--color-primary)" />
                                 Notification History
                             </div>
@@ -144,23 +144,23 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                                     {history.map(item => {
                                         const isExpanded = expandedId === item.id;
                                         return (
-                                            <div 
-                                                key={item.id} 
+                                            <div
+                                                key={item.id}
                                                 onClick={() => toggleExpand(item.id)}
-                                                style={{ 
-                                                    padding: '12px', 
-                                                    borderRadius: '8px', 
-                                                    background: isExpanded ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.03)',
-                                                    border: '1px solid rgba(255,255,255,0.05)',
+                                                style={{
+                                                    padding: '12px',
+                                                    borderRadius: '8px',
+                                                    background: isExpanded ? 'var(--color-surface-elevated)' : 'var(--color-surface-card)',
+                                                    border: '1px solid var(--border-color)',
                                                     cursor: 'pointer',
                                                     transition: 'background 0.2s',
                                                 }}
                                             >
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'white' }}>
+                                                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--color-text-main)' }}>
                                                         {item.displayName}
                                                      </div>
-                                                     <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                     <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                         {formatDistanceToNow(item.timestamp, { addSuffix: true })}
                                                         <ChevronDown size={12} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
                                                      </div>
@@ -174,7 +174,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                                                     {item.action === 'REJECT' ? 'Blocked' : 'Generic'} • {item.reason}
                                                 </div>
 
-                                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', fontFamily: 'monospace' }}>
                                                     {item.userId}
                                                 </div>
 
@@ -188,10 +188,10 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                                                             exit={{ height: 0, opacity: 0 }}
                                                             style={{ overflow: 'hidden' }}
                                                         >
-                                                            <div style={{ 
-                                                                marginTop: '12px', 
-                                                                paddingTop: '12px', 
-                                                                borderTop: '1px solid rgba(255,255,255,0.1)',
+                                                            <div style={{
+                                                                marginTop: '12px',
+                                                                paddingTop: '12px',
+                                                                borderTop: '1px solid var(--border-color)',
                                                                 display: 'flex',
                                                                 gap: '8px'
                                                             }}>
@@ -240,14 +240,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                                                                     </button>
                                                                 )}
                                                                  
-                                                                 <button 
+                                                                 <button
                                                                     onClick={(e) => handleDismiss(e, item.id)}
                                                                     style={{
                                                                         padding: '6px 10px',
                                                                         borderRadius: '4px',
-                                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                                        border: '1px solid var(--border-color)',
                                                                         background: 'transparent',
-                                                                        color: 'rgba(255,255,255,0.6)',
+                                                                        color: 'var(--color-text-dim)',
                                                                         cursor: 'pointer',
                                                                         fontSize: '0.75rem',
                                                                         display: 'flex', alignItems: 'center', justifyContent: 'center'

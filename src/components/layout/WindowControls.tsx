@@ -18,26 +18,26 @@ export const WindowControls: React.FC = () => {
   return (
       <div className={styles.windowControls}>
            <button
-              onClick={handleMinimize}
-              className={styles.controlButton}
-              aria-label="Minimize"
-           >
-              <Minus size={12} />
-           </button>
-           <button
-              onClick={handleMaximize}
-              className={styles.controlButton}
-              aria-label="Maximize"
-           >
-              <Square size={12} />
-           </button>
-           <button
-              onClick={handleClose}
-              className={`${styles.controlButton} ${styles.closeButton}`}
-              aria-label="Close"
-           >
-              <X size={14} />
-           </button>
+               onClick={handleMinimize}
+               className={`${styles.controlButton} ${styles.minimizeButton}`}
+               aria-label="Minimize"
+            >
+               <Minus size={12} />
+            </button>
+            <button
+               onClick={handleMaximize}
+               className={`${styles.controlButton} ${styles.maximizeButton}`}
+               aria-label="Maximize"
+            >
+               <Square size={12} />
+            </button>
+            <button
+               onClick={handleClose}
+               className={`${styles.controlButton} ${styles.closeButton}`}
+               aria-label="Close"
+            >
+               <X size={14} />
+            </button>
       </div>
   );
 };

@@ -158,6 +158,14 @@
 
   --border-highlight: rgba(255, 255, 255, 0.25);
   --border-shadow: rgba(0, 0, 0, 0.3);
+
+  /* --- SURFACE COLORS (for light mode adaptation) --- */
+  --color-surface-dark: hsla(var(--bg-hue), var(--bg-sat), 3%, 1);
+  --color-surface-overlay: hsla(var(--bg-hue), var(--bg-sat), 5%, 0.45);
+  --color-surface-card: hsla(var(--bg-hue), var(--bg-sat), 8%, 0.6);
+  --color-surface-elevated: hsla(var(--bg-hue), var(--bg-sat), 10%, 0.8);
+  --color-surface-terminal: hsla(var(--bg-hue), var(--bg-sat), 2%, 1);
+  --color-terminal-border: hsla(var(--bg-hue), var(--bg-sat), 12%, 1);
 }
 
 /* Pulse Animation for Real-Time Data */
@@ -185,9 +193,26 @@
   }
 }
 
-/* Dark Mode Defaults (Hardcoded for now, can be swapped via class) */
+/* Global body styling - fully reactive to theme variables */
 body {
-  background-color: var(--color-bg-app);
+  background: var(--color-bg-app);
   color: var(--color-text-main);
   font-family: "Inter", system-ui, sans-serif;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Selection styling matches theme */
+::selection {
+  background: hsla(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.4);
+  color: var(--color-text-main);
+}
+
+/* Links inherit theme colors */
+a {
+  color: var(--color-accent);
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-primary);
 }

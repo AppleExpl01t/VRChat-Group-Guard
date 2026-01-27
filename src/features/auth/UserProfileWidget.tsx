@@ -29,14 +29,14 @@ export const UserProfileWidget: React.FC = () => {
   const statusColor = getStatusColor(user.status);
 
   return (
-    <GlassPanel style={{ 
-      padding: '1.5rem', 
-      display: 'flex', 
+    <GlassPanel style={{
+      padding: '1.5rem',
+      display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center', 
+      alignItems: 'center',
       gap: '1rem',
-      background: 'rgba(255,255,255,0.03)',
-      border: '1px solid rgba(255,255,255,0.05)',
+      background: 'var(--color-surface-card)',
+      border: '1px solid var(--border-color)',
       textAlign: 'center'
     }}>
       {/* Avatar with Status Activity Ring */}
@@ -61,19 +61,19 @@ export const UserProfileWidget: React.FC = () => {
           height: '20px',
           borderRadius: '50%',
           background: statusColor,
-          border: '3px solid #000'
+          border: '3px solid var(--color-surface-card)'
         }} />
       </div>
 
       <div style={{ width: '100%', overflow: 'hidden' }}>
-        <h3 style={{ 
-          margin: '0 0 0.5rem 0', 
-          fontSize: '1.1rem', 
+        <h3 style={{
+          margin: '0 0 0.5rem 0',
+          fontSize: '1.1rem',
           fontWeight: 700,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          color: 'white'
+          color: 'var(--color-text-main)'
         }}>
           {user.displayName}
         </h3>
@@ -90,12 +90,12 @@ export const UserProfileWidget: React.FC = () => {
           }}>
             {trustRank.label}
           </span>
-          <span style={{ 
-            fontSize: '0.7rem', 
+          <span style={{
+            fontSize: '0.7rem',
             color: statusColor,
             fontWeight: 600,
-            background: 'rgba(0,0,0,0.3)',
-            padding: '2px 8px', 
+            background: 'var(--color-surface-overlay)',
+            padding: '2px 8px',
             borderRadius: '4px',
             textTransform: 'capitalize'
           }}>
@@ -105,10 +105,10 @@ export const UserProfileWidget: React.FC = () => {
 
         {/* Full Status Description */}
         {user.statusDescription && (
-           <div style={{ 
-             fontSize: '0.85rem', 
-             color: 'var(--color-primary)', 
-             background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)',
+           <div style={{
+             fontSize: '0.85rem',
+             color: 'var(--color-primary)',
+             background: 'var(--color-surface-elevated)',
              padding: '0.5rem',
              borderRadius: '8px',
              lineHeight: '1.4',
@@ -121,10 +121,10 @@ export const UserProfileWidget: React.FC = () => {
         )}
 
         {user.bio && (
-           <div style={{ 
-             marginTop: '0.5rem', 
-             fontSize: '0.75rem', 
-             color: 'rgba(255,255,255,0.4)', 
+           <div style={{
+             marginTop: '0.5rem',
+             fontSize: '0.75rem',
+             color: 'var(--color-text-dim)',
              lineHeight: '1.3',
              display: '-webkit-box',
              WebkitLineClamp: 3,

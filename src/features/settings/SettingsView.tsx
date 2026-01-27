@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, type ThemeMode } from '../../context/ThemeContext';
 import { OscSettings } from './OscSettings';
 import { DiscordRpcSettings } from './DiscordRpcSettings';
 import { DiscordWebhookSettings } from './DiscordWebhookSettings';
@@ -17,31 +17,22 @@ import { useUIStore } from '../../stores/uiStore';
 
 // Inner card style for settings sections (used inside main GlassPanel)
 const innerCardStyle: React.CSSProperties = {
-    background: 'rgba(0,0,0,0.2)',
-    borderRadius: '12px',
+    background: 'var(--color-surface-card)',
+    borderRadius: 'var(--border-radius)',
     padding: '1.25rem',
-    border: '1px solid rgba(255,255,255,0.05)',
+    border: '1px solid var(--border-color)',
 };
 
-// Searchable text for each section
-const SECTION_SEARCH_DATA = {
-    appearance: ['Appearance', 'Theme', 'Primary Neon', 'Accent Neon', 'Color', 'Hue'],
+// Searchable text for each tab
+const TAB_SEARCH_DATA: Record<SettingsTab, string[]> = {
+    appearance: ['Appearance', 'Theme', 'Primary Neon', 'Accent Neon', 'Color', 'Hue', 'Background', 'Dark', 'Light', 'Particles', 'Glass', 'Blur', 'Opacity', 'Border', 'Radius', 'Orbs', 'Effects'],
     audio: ['Audio', 'Notification Sound', 'Volume', 'Alert', 'Music'],
     notifications: ['Notifications', 'Test', 'Alert', 'Visual'],
     security: ['Security', 'Data', 'Auto-Login', 'Credentials', 'Sign in', 'Remember', 'Forget Device'],
     osc: ['OSC', 'Integration', 'VRChat', 'Open Sound Control', 'Port', 'IP', 'Chatbox'],
-    discordWebhook: ['Discord', 'Webhook', 'Logs', 'Channel', 'Events'],
-    discordRpc: ['Discord', 'RPC', 'Rich Presence', 'Status', 'Activity'],
+    discord: ['Discord', 'Webhook', 'RPC', 'Rich Presence', 'Status', 'Activity', 'Logs', 'Channel'],
     about: ['About', 'System', 'Version', 'Group Guard'],
     debug: ['Debug', 'Crash', 'Test', 'Internal'],
-};
-
-// Map sections to tabs
-const TAB_SECTIONS: Record<SettingsTab, (keyof typeof SECTION_SEARCH_DATA)[]> = {
-    general: ['appearance', 'audio', 'notifications', 'security'],
-    integrations: ['osc', 'discordWebhook', 'discordRpc'],
-    about: ['about'],
-    debug: ['debug'],
 };
 
 const HueSpectrumPicker: React.FC<{ 
@@ -112,12 +103,24 @@ const tabContentVariants = {
 
 export const SettingsView: React.FC = () => {
   const { rememberMe, setRememberMe } = useAuthStore();
-  const { primaryHue, setPrimaryHue, accentHue, setAccentHue, resetTheme } = useTheme();
+  const {
+    primaryHue, setPrimaryHue,
+    accentHue, setAccentHue,
+    backgroundHue, setBackgroundHue,
+    backgroundSaturation, setBackgroundSaturation,
+    backgroundLightness, setBackgroundLightness,
+    themeMode, setThemeMode,
+    glassBlur, setGlassBlur,
+    glassOpacity, setGlassOpacity,
+    particleSettings, setParticleSettings,
+    borderRadius, setBorderRadius,
+    resetTheme
+  } = useTheme();
   const { confirm } = useConfirm();
   const { addNotification } = useNotificationStore();
   const { debugModeEnabled, setDebugMode } = useUIStore();
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
   const [searchQuery, setSearchQuery] = useState('');
   const [shouldCrash, setShouldCrash] = useState(false);
   const [versionClickCount, setVersionClickCount] = useState(0);
@@ -128,10 +131,10 @@ export const SettingsView: React.FC = () => {
 
   const handleVersionClick = () => {
     if (debugModeEnabled) return;
-    
+
     const newCount = versionClickCount + 1;
     setVersionClickCount(newCount);
-    
+
     if (newCount === 5) {
         setDebugMode(true);
         addNotification({ type: 'success', title: 'Developer Mode', message: 'Debug settings unlocked!' });
@@ -153,63 +156,61 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  // Determine which sections are visible based on search
-  const visibleSections = useMemo(() => {
-    const result: Record<keyof typeof SECTION_SEARCH_DATA, boolean> = {
+  // Determine which tabs match the search
+  const visibleTabs = useMemo(() => {
+    const result: Record<SettingsTab, boolean> = {
         appearance: false,
         audio: false,
         notifications: false,
         security: false,
         osc: false,
-        discordWebhook: false,
-        discordRpc: false,
+        discord: false,
         about: false,
         debug: false,
     };
-    
-    for (const [section, keywords] of Object.entries(SECTION_SEARCH_DATA)) {
-        result[section as keyof typeof SECTION_SEARCH_DATA] = matchesSearch(searchQuery, ...keywords);
+
+    for (const [tab, keywords] of Object.entries(TAB_SEARCH_DATA)) {
+        result[tab as SettingsTab] = matchesSearch(searchQuery, ...keywords);
     }
-    
+
     return result;
   }, [searchQuery]);
 
-  // Count visible sections per tab (for search badges)
+  // Count for search badges (1 if tab matches, 0 otherwise)
   const tabCounts = useMemo(() => {
     if (!searchQuery.trim()) return undefined;
-    
-    const counts: Record<SettingsTab, number> = { general: 0, integrations: 0, about: 0, debug: 0 };
-    
-    for (const [tab, sections] of Object.entries(TAB_SECTIONS)) {
-        counts[tab as SettingsTab] = sections.filter(s => visibleSections[s]).length;
-    }
-    
-    return counts;
-  }, [searchQuery, visibleSections]);
 
-  // Get sections to render for current tab
-  const currentTabSections = TAB_SECTIONS[activeTab];
-  const visibleInCurrentTab = currentTabSections.filter(s => visibleSections[s]);
-  const hasNoResults = searchQuery.trim() && visibleInCurrentTab.length === 0;
+    const counts: Record<SettingsTab, number> = {
+        appearance: 0, audio: 0, notifications: 0, security: 0,
+        osc: 0, discord: 0, about: 0, debug: 0
+    };
+
+    for (const tab of Object.keys(counts) as SettingsTab[]) {
+        counts[tab] = visibleTabs[tab] ? 1 : 0;
+    }
+
+    return counts;
+  }, [searchQuery, visibleTabs]);
+
+  // Check if current tab has no results
+  const hasNoResults = searchQuery.trim() && !visibleTabs[activeTab];
 
   // Auto-switch to a tab with results when current tab has none
   React.useEffect(() => {
     if (!searchQuery.trim()) return;
-    
+
     // If current tab has results, stay here
-    if (visibleInCurrentTab.length > 0) return;
-    
+    if (visibleTabs[activeTab]) return;
+
     // Find the first tab that has results
-    const tabOrder: SettingsTab[] = ['general', 'integrations', 'about', 'debug'];
+    const tabOrder: SettingsTab[] = ['appearance', 'audio', 'notifications', 'security', 'osc', 'discord', 'about', 'debug'];
     for (const tab of tabOrder) {
-      const sections = TAB_SECTIONS[tab];
-      const hasResults = sections.some(s => visibleSections[s]);
-      if (hasResults) {
+      if (visibleTabs[tab]) {
         setActiveTab(tab);
         return;
       }
     }
-  }, [searchQuery, visibleSections, visibleInCurrentTab.length]);
+  }, [searchQuery, visibleTabs, activeTab]);
 
   const handleTabChange = (tab: SettingsTab) => {
     setActiveTab(tab);
@@ -295,132 +296,394 @@ export const SettingsView: React.FC = () => {
             </div>
           )}
 
-          {/* === GENERAL TAB === */}
-          {activeTab === 'general' && (
+          {/* === APPEARANCE TAB === */}
+          {activeTab === 'appearance' && (
             <>
-              {/* Appearance Section */}
-              {visibleSections.appearance && (
-                <section>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-                     <h2 style={{ color: 'white', margin: 0 }}>Appearance</h2>
-                     <NeonButton variant="ghost" onClick={resetTheme} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}>Reset Theme</NeonButton>
-                  </div>
-                  
-                  <div style={innerCardStyle}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                        <HueSpectrumPicker 
-                            label="Primary Neon" 
-                            hue={primaryHue} 
-                            onChange={setPrimaryHue} 
-                        />
-                        <HueSpectrumPicker 
-                            label="Accent Neon" 
-                            hue={accentHue} 
-                            onChange={setAccentHue} 
-                        />
-                    </div>
-                    
-                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', fontStyle: 'italic', textAlign: 'center', marginTop: '1rem' }}>
-                      Theme settings are automatically saved.
-                    </p>
-                  </div>
-                </section>
-              )}
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                 <h2 style={{ color: 'var(--color-text-main)', margin: 0 }}>Appearance</h2>
+                 <NeonButton variant="ghost" onClick={resetTheme} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}>Reset All</NeonButton>
+              </div>
 
-              {/* Audio Settings */}
-              {visibleSections.audio && <AudioSettings />}
-
-              {/* Notifications Section */}
-              {visibleSections.notifications && (
-                <section>
-                  <h2 style={{ color: 'white', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Notifications</h2>
-                  <div style={innerCardStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                       <div>
-                          <div style={{ color: 'white', fontWeight: 600 }}>Test Notifications</div>
-                          <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Send a test notification to verify audio and visual alerts.</div>
-                       </div>
-                       <NeonButton 
-                          variant="primary"
-                          onClick={() => window.electron.automod.testNotification('TEST_GROUP')}
-                       >
-                          Test Notification
-                       </NeonButton>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {/* Security Section */}
-              {visibleSections.security && (
-                <section>
-                  <h2 style={{ color: 'white', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Security & Data</h2>
-                  <div style={innerCardStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <div>
-                        <div style={{ color: 'white', fontWeight: 600 }}>Auto-Login</div>
-                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Automatically sign in when application starts</div>
-                      </div>
-                      <div 
-                        onClick={() => setRememberMe(!rememberMe)}
+              {/* Theme Mode Presets */}
+              <div style={innerCardStyle}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block' }}>Theme Preset</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {(['dark', 'light', 'midnight', 'sunset'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setThemeMode(mode)}
                         style={{
-                          width: '50px',
-                          height: '26px',
-                          background: rememberMe ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
-                          borderRadius: '13px',
-                          position: 'relative',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '8px',
+                          border: themeMode === mode ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
+                          background: themeMode === mode ? 'var(--color-surface-elevated)' : 'var(--color-surface-card)',
+                          color: themeMode === mode ? 'var(--color-primary)' : 'var(--color-text-dim)',
                           cursor: 'pointer',
-                          transition: 'background 0.3s ease',
-                          border: '1px solid rgba(255,255,255,0.1)'
+                          textTransform: 'capitalize',
+                          fontWeight: themeMode === mode ? 600 : 400,
+                          transition: 'all 0.2s ease',
                         }}
                       >
-                        <div style={{
-                          width: '20px',
-                          height: '20px',
-                          background: 'white',
-                          borderRadius: '50%',
-                          position: 'absolute',
-                          top: '2px',
-                          left: rememberMe ? '26px' : '2px',
-                          transition: 'left 0.3s ease',
-                          boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                        }} />
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Neon Colors */}
+              <div style={innerCardStyle}>
+                <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Neon Colors</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    <HueSpectrumPicker
+                        label="Primary Neon"
+                        hue={primaryHue}
+                        onChange={setPrimaryHue}
+                    />
+                    <HueSpectrumPicker
+                        label="Accent Neon"
+                        hue={accentHue}
+                        onChange={setAccentHue}
+                    />
+                </div>
+              </div>
+
+              {/* Background Colors */}
+              <div style={innerCardStyle}>
+                <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Background</h3>
+                <HueSpectrumPicker
+                    label="Background Hue"
+                    hue={backgroundHue}
+                    onChange={setBackgroundHue}
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Saturation</label>
+                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{backgroundSaturation}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={backgroundSaturation}
+                      onChange={(e) => setBackgroundSaturation(Number(e.target.value))}
+                      style={{ width: '100%', cursor: 'pointer' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Lightness</label>
+                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{backgroundLightness}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={backgroundLightness}
+                      onChange={(e) => setBackgroundLightness(Number(e.target.value))}
+                      style={{ width: '100%', cursor: 'pointer' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Glass & UI Effects */}
+              <div style={innerCardStyle}>
+                <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Glass & UI Effects</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Glass Blur</label>
+                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{glassBlur}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="50"
+                      value={glassBlur}
+                      onChange={(e) => setGlassBlur(Number(e.target.value))}
+                      style={{ width: '100%', cursor: 'pointer' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Glass Opacity</label>
+                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{glassOpacity}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={glassOpacity}
+                      onChange={(e) => setGlassOpacity(Number(e.target.value))}
+                      style={{ width: '100%', cursor: 'pointer' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Border Radius</label>
+                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{borderRadius}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="30"
+                      value={borderRadius}
+                      onChange={(e) => setBorderRadius(Number(e.target.value))}
+                      style={{ width: '100%', cursor: 'pointer' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Particles */}
+              <div style={innerCardStyle}>
+                <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Particles & Effects</h3>
+
+                {/* Enable Particles Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <div>
+                    <div style={{ color: 'var(--color-text-main)', fontWeight: 500 }}>Enable Particles</div>
+                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Floating background particles</div>
+                  </div>
+                  <div
+                    onClick={() => setParticleSettings({ enabled: !particleSettings.enabled })}
+                    style={{
+                      width: '50px',
+                      height: '26px',
+                      background: particleSettings.enabled ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                      borderRadius: '13px',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'background 0.3s ease',
+                      border: '1px solid var(--border-color)'
+                    }}
+                  >
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      background: 'white',
+                      borderRadius: '50%',
+                      position: 'absolute',
+                      top: '2px',
+                      left: particleSettings.enabled ? '26px' : '2px',
+                      transition: 'left 0.3s ease',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
+
+                {particleSettings.enabled && (
+                  <>
+                    {/* Particle Count */}
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Particle Count</label>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{particleSettings.count}</span>
                       </div>
+                      <input
+                        type="range"
+                        min="5"
+                        max="50"
+                        value={particleSettings.count}
+                        onChange={(e) => setParticleSettings({ count: Number(e.target.value) })}
+                        style={{ width: '100%', cursor: 'pointer' }}
+                      />
                     </div>
 
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
-                       <NeonButton variant="secondary" onClick={handleClearCredentials} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
-                         Forget This Device
-                       </NeonButton>
-                       <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
-                         Completely removes your saved login data from this device. You will need to enter credentials and 2FA again.
-                       </p>
+                    {/* Particle Options */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      {/* Show Orbs */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Ambient Orbs</span>
+                        <div
+                          onClick={() => setParticleSettings({ showOrbs: !particleSettings.showOrbs })}
+                          style={{
+                            width: '44px',
+                            height: '24px',
+                            background: particleSettings.showOrbs ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                            borderRadius: '12px',
+                            position: 'relative',
+                            cursor: 'pointer',
+                            transition: 'background 0.3s ease',
+                          }}
+                        >
+                          <div style={{
+                            width: '18px',
+                            height: '18px',
+                            background: 'white',
+                            borderRadius: '50%',
+                            position: 'absolute',
+                            top: '3px',
+                            left: particleSettings.showOrbs ? '22px' : '3px',
+                            transition: 'left 0.3s ease',
+                          }} />
+                        </div>
+                      </div>
+
+                      {/* Color Shift */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Color Shift</span>
+                        <div
+                          onClick={() => setParticleSettings({ colorShift: !particleSettings.colorShift })}
+                          style={{
+                            width: '44px',
+                            height: '24px',
+                            background: particleSettings.colorShift ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                            borderRadius: '12px',
+                            position: 'relative',
+                            cursor: 'pointer',
+                            transition: 'background 0.3s ease',
+                          }}
+                        >
+                          <div style={{
+                            width: '18px',
+                            height: '18px',
+                            background: 'white',
+                            borderRadius: '50%',
+                            position: 'absolute',
+                            top: '3px',
+                            left: particleSettings.colorShift ? '22px' : '3px',
+                            transition: 'left 0.3s ease',
+                          }} />
+                        </div>
+                      </div>
+
+                      {/* Mouse Reactive */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Mouse Reactive</span>
+                        <div
+                          onClick={() => setParticleSettings({ mouseReactive: !particleSettings.mouseReactive })}
+                          style={{
+                            width: '44px',
+                            height: '24px',
+                            background: particleSettings.mouseReactive ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                            borderRadius: '12px',
+                            position: 'relative',
+                            cursor: 'pointer',
+                            transition: 'background 0.3s ease',
+                          }}
+                        >
+                          <div style={{
+                            width: '18px',
+                            height: '18px',
+                            background: 'white',
+                            borderRadius: '50%',
+                            position: 'absolute',
+                            top: '3px',
+                            left: particleSettings.mouseReactive ? '22px' : '3px',
+                            transition: 'left 0.3s ease',
+                          }} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </section>
-              )}
+                  </>
+                )}
+              </div>
+
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', fontStyle: 'italic', textAlign: 'center', marginTop: '0.5rem' }}>
+                All theme settings are automatically saved.
+              </p>
             </>
           )}
 
-          {/* === INTEGRATIONS TAB === */}
-          {activeTab === 'integrations' && (
+          {/* === AUDIO TAB === */}
+          {activeTab === 'audio' && <AudioSettings />}
+
+          {/* === NOTIFICATIONS TAB === */}
+          {activeTab === 'notifications' && (
+            <section>
+              <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Notifications & Alerts</h2>
+              <div style={innerCardStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                   <div>
+                      <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Test Notifications</div>
+                      <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Send a test notification to verify audio and visual alerts.</div>
+                   </div>
+                   <NeonButton
+                      variant="primary"
+                      onClick={() => window.electron.automod.testNotification('TEST_GROUP')}
+                   >
+                      Test Notification
+                   </NeonButton>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* === SECURITY TAB === */}
+          {activeTab === 'security' && (
+            <section>
+              <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Security & Data</h2>
+              <div style={innerCardStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                  <div>
+                    <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Auto-Login</div>
+                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Automatically sign in when application starts</div>
+                  </div>
+                  <div
+                    onClick={() => setRememberMe(!rememberMe)}
+                    style={{
+                      width: '50px',
+                      height: '26px',
+                      background: rememberMe ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                      borderRadius: '13px',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'background 0.3s ease',
+                      border: '1px solid var(--border-color)'
+                    }}
+                  >
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      background: 'white',
+                      borderRadius: '50%',
+                      position: 'absolute',
+                      top: '2px',
+                      left: rememberMe ? '26px' : '2px',
+                      transition: 'left 0.3s ease',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                   <NeonButton variant="secondary" onClick={handleClearCredentials} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
+                     Forget This Device
+                   </NeonButton>
+                   <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
+                     Completely removes your saved login data from this device. You will need to enter credentials and 2FA again.
+                   </p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* === OSC TAB === */}
+          {activeTab === 'osc' && <OscSettings />}
+
+          {/* === DISCORD TAB === */}
+          {activeTab === 'discord' && (
             <>
-              {visibleSections.osc && <OscSettings />}
-              {visibleSections.discordWebhook && <DiscordWebhookSettings />}
-              {visibleSections.discordRpc && <DiscordRpcSettings />}
+              <DiscordWebhookSettings />
+              <DiscordRpcSettings />
             </>
           )}
 
           {/* === ABOUT TAB === */}
-          {activeTab === 'about' && visibleSections.about && (
+          {activeTab === 'about' && (
             <section>
-               <h2 style={{ color: 'white', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>About System</h2>
+               <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>About System</h2>
                <div style={innerCardStyle}>
                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                    <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 0 10px var(--color-primary))' }}>🛡️</div>
                    <div>
                      <h3 style={{ margin: 0, fontSize: '1.2rem' }}>VRChat Group Guard</h3>
-                     <p 
+                     <p
                         style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0', cursor: 'pointer', userSelect: 'none' }}
                         onClick={handleVersionClick}
                         title="Click 5 times to unlock debug mode"
@@ -435,22 +698,22 @@ export const SettingsView: React.FC = () => {
                </div>
             </section>
           )}
-          
+
           {/* === DEBUG TAB === */}
-          {activeTab === 'debug' && visibleSections.debug && debugModeEnabled && (
+          {activeTab === 'debug' && debugModeEnabled && (
             <section>
                <h2 style={{ color: '#f87171', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Debug & Testing</h2>
                <div style={innerCardStyle}>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    
+
                     {/* Crash Test */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
                        <div>
-                          <div style={{ color: 'white', fontWeight: 600 }}>Crash Application</div>
+                          <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Crash Application</div>
                           <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Force a renderer crash to test the error boundary.</div>
                        </div>
-                       <NeonButton 
-                          variant="danger" 
+                       <NeonButton
+                          variant="danger"
                           onClick={() => setShouldCrash(true)}
                        >
                           Crash App
@@ -460,10 +723,10 @@ export const SettingsView: React.FC = () => {
                     {/* Test Notification (Copied here for convenience) */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0' }}>
                        <div>
-                          <div style={{ color: 'white', fontWeight: 600 }}>Test Notification</div>
+                          <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Test Notification</div>
                           <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Trigger a test notification.</div>
                        </div>
-                       <NeonButton 
+                       <NeonButton
                           variant="secondary"
                           onClick={() => window.electron.automod.testNotification('TEST_GROUP')}
                        >
@@ -474,10 +737,10 @@ export const SettingsView: React.FC = () => {
                     {/* Show Setup Screen */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0' }}>
                        <div>
-                          <div style={{ color: 'white', fontWeight: 600 }}>Show Setup</div>
+                          <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Show Setup</div>
                           <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Go back to the initial setup screen.</div>
                        </div>
-                       <NeonButton 
+                       <NeonButton
                           variant="secondary"
                           onClick={async () => {
                              if (await confirm('Show setup screen? Your current storage will be preserved.')) {

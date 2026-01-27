@@ -225,7 +225,7 @@ export interface AutoModRule {
     id: number;
     name: string;
     enabled: boolean;
-    type: 'AGE_CHECK' | 'TRUST_CHECK' | 'KEYWORD_BLOCK' | 'WHITELIST_CHECK' | 'BAN_EVASION_CHECK' | 'AGE_VERIFICATION' | 'BLACKLISTED_GROUPS' | 'INSTANCE_18_GUARD';
+    type: 'AGE_CHECK' | 'TRUST_CHECK' | 'KEYWORD_BLOCK' | 'WHITELIST_CHECK' | 'BAN_EVASION_CHECK' | 'AGE_VERIFICATION' | 'BLACKLISTED_GROUPS' | 'INSTANCE_18_GUARD' | 'CLOSE_ALL_INSTANCES';
     config: string;
     actionType: 'REJECT' | 'AUTO_BLOCK' | 'NOTIFY_ONLY';
     createdAt?: string;

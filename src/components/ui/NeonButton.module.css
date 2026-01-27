@@ -17,7 +17,7 @@
 }
 
 .primary {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-card);
   color: var(--color-primary);
   border: 1px solid var(--color-primary);
   box-shadow: 0 0 10px var(--color-primary-glow),
@@ -26,12 +26,12 @@
 }
 
 .primary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-elevated);
   box-shadow: 0 0 20px var(--color-primary-glow),
               inset 0 0 30px rgba(255, 255, 255, 0.05),
               var(--shadow-floating-hover);
   transform: translateY(-1px);
-  color: white;
+  color: var(--color-text-main);
 }
 
 .secondary {
@@ -42,7 +42,7 @@
 
 .secondary:hover {
   border-color: var(--color-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-card);
 }
 
 .danger {
@@ -89,6 +89,6 @@
   box-shadow: none;
 }
 .ghost:hover {
-  color: white;
-  background: rgba(255,255,255,0.05);
+  color: var(--color-text-main);
+  background: var(--color-surface-card);
 }

@@ -1,8 +1,8 @@
 
 .tile {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-card);
   padding: 0.8rem;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   min-width: 130px;
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast);
@@ -39,9 +39,9 @@
 }
 
 .tile:hover, .tile:focus-visible {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-elevated);
   outline: none;
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-color);
 }
 
 /* Gradient focus border */
@@ -51,7 +51,7 @@
 }
 
 .tile:active {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface-overlay);
 }
 
 /* Ensure content is above glow */
