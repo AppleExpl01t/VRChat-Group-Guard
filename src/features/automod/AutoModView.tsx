@@ -33,7 +33,7 @@ const containerVariants = {
 };
 
 export const AutoModView: React.FC = () => {
-    const [status, setStatus] = useState({ autoReject: false, autoBan: false });
+    const [status, setStatus] = useState({ autoProcess: false, autoBan: false });
     const [rules, setRules] = useState<AutoModRule[]>([]);
     
     // Dialog State
@@ -86,7 +86,7 @@ export const AutoModView: React.FC = () => {
 
     const loadStatus = React.useCallback(async () => {
         if (!selectedGroup) {
-             setStatus({ autoReject: false, autoBan: false });
+             setStatus({ autoProcess: false, autoBan: false });
              return;
         }
         try {
@@ -121,10 +121,10 @@ export const AutoModView: React.FC = () => {
         return () => removeListener();
     }, [selectedGroup]);
 
-    const toggleAutoReject = async () => {
+    const toggleAutoProcess = async () => {
         if (!selectedGroup) return;
-        const newState = !status.autoReject;
-        await window.electron.automod.setAutoReject(newState, selectedGroup.id);
+        const newState = !status.autoProcess;
+        await window.electron.automod.setAutoProcess(newState, selectedGroup.id);
         loadStatus();
     };
 
@@ -232,9 +232,9 @@ export const AutoModView: React.FC = () => {
                         />
                          <StatTile 
                             label="STATUS"
-                            value={status.autoReject || status.autoBan ? "ACTIVE" : "STANDBY"}
-                            color={status.autoReject || status.autoBan ? "var(--color-success)" : "var(--color-text-dim)"}
-                            headerRight={(status.autoReject || status.autoBan) && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#4ade80]"></span>}
+                            value={status.autoProcess || status.autoBan ? "ACTIVE" : "STANDBY"}
+                            color={status.autoProcess || status.autoBan ? "var(--color-success)" : "var(--color-text-dim)"}
+                            headerRight={(status.autoProcess || status.autoBan) && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#4ade80]"></span>}
                         />
                     </div>
                 </GlassPanel>
@@ -262,12 +262,13 @@ export const AutoModView: React.FC = () => {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <RuleCard
                                     title="Auto Process Join Requests"
-                                    statusLabel={status.autoReject ? 'ON' : 'OFF'}
-                                    isEnabled={status.autoReject}
-                                    onToggle={toggleAutoReject}
+                                    statusLabel={status.autoProcess ? 'ON' : 'OFF'}
+                                    isEnabled={status.autoProcess}
+                                    onToggle={toggleAutoProcess}
                                     color="var(--color-primary)"
                                     icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="23" y1="11" x2="17" y2="11"></line></svg>}
                                 />
+
                                 <RuleCard
                                     title="Auto-Ban Non-Compliant Users"
                                     statusLabel={status.autoBan ? 'ON' : 'OFF'}

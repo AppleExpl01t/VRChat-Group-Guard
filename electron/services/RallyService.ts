@@ -13,7 +13,7 @@ import { instanceLoggerService } from './InstanceLoggerService';
 import { windowService } from './WindowService';
 import { logWatcherService } from './LogWatcherService';
 import { groupAuthorizationService } from './GroupAuthorizationService';
-import { evaluateUser } from './AutoModService';
+import { autoModRuleService } from './AutoModRuleService';
 import { networkService } from './NetworkService';
 import {
     isUserInvitedThisInstance,
@@ -357,7 +357,7 @@ export function setupRallyHandlers() {
             if (options.filterAutoMod) {
                 logger.info(`[RallyService] Applying AutoMod filters...`);
                 for (const friend of targets) {
-                    const evaluation = await evaluateUser({
+                    const evaluation = await autoModRuleService.evaluateUser({
                         id: friend.id,
                         displayName: friend.displayName,
                         bio: friend.bio,
