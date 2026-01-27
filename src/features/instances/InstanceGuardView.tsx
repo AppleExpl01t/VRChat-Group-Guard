@@ -221,8 +221,9 @@ const InstanceGuardLog: React.FC<{
 export const InstanceGuardView: React.FC = () => {
     const { selectedGroup } = useGroupStore();
 
-    // Modal State
+// Modal State
     const [showBlacklistModal, setShowBlacklistModal] = useState(false);
+    const [showWhitelistModal, setShowWhitelistModal] = useState(false);
     const [selectedLogEntry, setSelectedLogEntry] = useState<InstanceLogEntry | null>(null);
 
     // Rules State
@@ -350,18 +351,21 @@ export const InstanceGuardView: React.FC = () => {
     }, [selectedGroup]);
 
 
-    // Derived State
+// Derived State
     const permissionGuardRule = rules.find(r => r.type === 'INSTANCE_PERMISSION_GUARD');
     const instanceGuardRule = rules.find(r => r.type === 'INSTANCE_18_GUARD');
     const closeAllRule = rules.find(r => r.type === 'CLOSE_ALL_INSTANCES');
+    const whitelistRule = rules.find(r => r.type === 'WHITELIST_CHECK');
 
     const isInstanceGuardEnabled = instanceGuardRule?.enabled;
     const isCloseAllEnabled = closeAllRule?.enabled;
+    const isWhitelistEnabled = whitelistRule?.enabled;
 
-    const instanceGuardConfig = instanceGuardRule ? JSON.parse(instanceGuardRule.config || '{}') : { whitelistedWorlds: [], blacklistedWorlds: [] };
+const instanceGuardConfig = instanceGuardRule ? JSON.parse(instanceGuardRule.config || '{}') : { whitelistedWorlds: [], blacklistedWorlds: [] };
     const closeAllConfig = closeAllRule ? JSON.parse(closeAllRule.config || '{}') : { whitelistedWorlds: [], blacklistedWorlds: [] };
 
     const blacklistedWorlds = instanceGuardConfig.blacklistedWorlds || closeAllConfig.blacklistedWorlds || [];
+    const whitelistedWorlds = instanceGuardConfig.whitelistedWorlds || closeAllConfig.whitelistedWorlds || [];
 
     const activeRulesCount = [isInstanceGuardEnabled, isCloseAllEnabled].filter(Boolean).length;
     const isActive = isInstanceGuardEnabled || isCloseAllEnabled;
@@ -466,6 +470,19 @@ export const InstanceGuardView: React.FC = () => {
                                     description="Auto-close instances created by users without permission."
                                 />
 
+{/* World Whitelisting */}
+                                <RuleCard
+                                    title="World Whitelisting"
+                                    statusLabel={isWhitelistEnabled ? 'ON' : 'OFF'}
+                                    isEnabled={!!isWhitelistEnabled}
+                                    onToggle={() => toggleRule('WHITELIST_CHECK')}
+                                    color="#10b981"
+                                    icon={<span style={{ fontSize: '20px' }}>✅</span>}
+                                    description="Instances in whitelisted worlds will never be auto-closed."
+                                    actionLabel={whitelistedWorlds.length > 0 ? 'Configure' : 'Setup'}
+                                    onAction={() => setShowWhitelistModal(true)}
+                                />
+
                                 {/* World Blacklisting */}
                                 <RuleCard
                                     title="World Blacklisting"
@@ -506,10 +523,15 @@ export const InstanceGuardView: React.FC = () => {
                                     )}
                                 </div>
                             </div>
-                        </GlassPanel>
+</GlassPanel>
 
-                        {/* Coming Soon */}
                         <GlassPanel style={{ 
+                            flex: 1,
+                            display: 'flex', 
+                            flexDirection: 'column'
+                        }}>
+                            {/* Coming Soon */}
+                        <div style={{ 
                             flex: 1, 
                             display: 'flex', 
                             flexDirection: 'column', 
@@ -536,6 +558,7 @@ export const InstanceGuardView: React.FC = () => {
                             }}>
                                 More instance management features are on the way!
                             </p>
+                        </div>
                         </GlassPanel>
                     </div>
                 </div>
@@ -544,7 +567,7 @@ export const InstanceGuardView: React.FC = () => {
             {/* Modals */}
 
 
-            <WorldListModal
+<WorldListModal
                 isOpen={showBlacklistModal}
                 onClose={() => setShowBlacklistModal(false)}
                 onSave={(worldIds) => saveWorldList('blacklistedWorlds', worldIds)}
@@ -552,6 +575,16 @@ export const InstanceGuardView: React.FC = () => {
                 description="Blacklisted worlds will be auto-closed immediately, regardless of their 18+ status. Add worlds by their World ID (e.g., wrld_xxx)."
                 initialWorldIds={blacklistedWorlds}
                 type="blacklist"
+            />
+
+            <WorldListModal
+                isOpen={showWhitelistModal}
+                onClose={() => setShowWhitelistModal(false)}
+                onSave={(worldIds) => saveWorldList('whitelistedWorlds', worldIds)}
+                title="Whitelisted Worlds"
+                description="Whitelisted worlds will never be auto-closed, providing safe access. Add worlds by their World ID (e.g., wrld_xxx)."
+                initialWorldIds={whitelistedWorlds}
+                type="whitelist"
             />
 
             <InstanceEventModal
