@@ -19,8 +19,28 @@ Unlike simple mods or discord bots, Group Guard is a **standalone external tool*
 
 Automate your instance security to keep trolls and bad actors out.
 
-- **Rule Engine**: Create custom rules based on Trust Rank, Account Age, Keywords (in Bio/Status), and more.
-- **Actions**: Automatically Notify when a rule is triggered.
+- **Rule Engine**: Create custom rules based on Trust Rank, Account Age, Keywords based on bio/status, and more.
+- **Actions**: Automatically Notify, Warn, or Kick when a rule is triggered.
+- **Staff Whitelist**: **New!** Exempt trusted friends and moderators from strict rules.
+    - **User Whitelist**: Allow specific users by name.
+    - **Group Whitelist**: Allow entire ranks (e.g., "Moderator") from your group to bypass checks.
+
+### ⚡ Performance & Stability (New)
+
+We've completely overhauled the backend to be faster, smarter, and safer.
+
+- **2-Stage "Lightning" Loading**:
+    - **Stage 1 (Instant)**: Loads cached groups immediately on startup so you can interact instantly.
+    - **Stage 2 (Background)**: Verifies permissions silently in the background.
+- **Tortoise Mode (Rate Limit Protection)**:
+    - Smart serial queue that processes group updates one-by-one to respect VRChat's strict API limits.
+    - No more 429 Too Many Requests errors during large scans.
+- **Predictive Caching**:
+    - Quietly fetches and caches moderation permissions for your groups while the app is idle.
+    - Result: Clicking a group feels instant because the data is already there.
+- **Strict Cache Isolation**:
+    - **Security:** Ensures cached data from one account is *never* shown to another.
+    - Automatically wipes local cache on logout or forced account switch.
 
 ### 🔞 Instance Guard
 
@@ -28,9 +48,7 @@ Enforce 18+ age-gating on your group instances automatically.
 
 - **Auto-Close**: Automatically closes group instances that are not marked as 18+ age-gated.
 - **Activity Log**: Track all instance open/close events with detailed information.
-- **Owner Tracking**: See who started each instance and view their profile.
-- **Event Details**: Click any log entry to view world info, user count, and instance starter details.
-- **Smart Caching**: Prevents duplicate close attempts with intelligent deduplication.
+- **Roaming Mode**: Fixes "invisible card" issues by properly detecting when you are traveling between worlds.
 
 ### 📡 Live Ops Command Center
 
@@ -38,8 +56,8 @@ Monitor and control your active instance in real-time.
 
 - **Instance Monitor**: See exactly who is in your instance, their extensive details, and when they joined.
 - **Scan Sector**: One-click scan to refresh player lists from logs.
-- **Mass Invite**: Invite all your online friends to the current instance with smart filtering (AutoMod checks, already present checks).
-- **Rally Forces**: Invite users from a previous session file—perfect for re-hosting crashed instances.
+- **Mass Invite**: Invite all your online friends to the current instance with smart filtering.
+- **Rally Forces**: Recover from crashes by re-inviting users from a previous session file.
 
 ### 👥 Group Management
 
@@ -53,17 +71,15 @@ Direct integration with your VRChat Groups.
 
 Enhance in-game communication without typing.
 
-- **Announcer**: Automatically send welcome messages to new joins or periodic announcements (e.g., "Join our Discord!").
+- **Announcer**: Automatically send welcome messages or periodic announcements.
 
 ### 🎨 Advanced Theming System
 
 Personalize your experience with comprehensive visual customization.
 
-- **Theme Presets**: Choose from Dark, Light, Midnight, or Sunset themes with distinct aesthetics.
-- **Color Control**: Full HSL spectrum control for primary/accent colors and backgrounds.
-- **Glass Effects**: Adjustable blur, opacity, and border radius for modern glass-morphism.
-- **Particle Effects**: Floating background particles with mouse interaction and color shifting.
-- **Real-time Updates**: Instant preview with persistent settings.
+- **Theme Presets**: Dark, Light, Midnight, or Sunset.
+- **Neon Polish**: **New!** Updated button styles and consistent UI elements across the app.
+- **Glass Effects**: Adjustable blur and opacity for modern aesthetics.
 
 ## 🚀 Getting Started
 
@@ -75,7 +91,7 @@ Personalize your experience with comprehensive visual customization.
 
 ### Running from Source
 
-> **Note**: Running from source is recommended to get the absolute latest features and bug fixes that may not yet be in the public release.
+> **Note**: Running from source is recommended to get the absolute latest features and bug fixes.
 
 1.  **Clone the repo**:
 
@@ -102,85 +118,24 @@ Personalize your experience with comprehensive visual customization.
 2.  **Select Group**: Choose the group you want to manage from the sidebar.
 3.  **Join World**: Enter a VRChat instance. Group Guard uses your VRChat log files to detect where you are.
 4.  **Configure**:
-    - Go to **Settings** to point the app to your VRChat install folder (usually automatic).
-    - Go to **AutoMod** to set up your protection rules.
-    - Visit **Settings → Appearance** to customize themes and visual effects.
-5.  **Monitor**: Switch to the **Dashboard** to see the live feed of events and players.
+    - **Settings**: Point the app to your VRChat install folder (usually automatic).
+    - **AutoMod**: Set up your protection rules and **Whitelists**.
+    - **Appearance**: Customize themes and visual effects.
+5.  **Monitor**: Switch to the **Dashboard** to see live events.
 
-## 🎨 Themes & Customization
+## 🛠️ Troubleshooting & Logs
 
-Group Guard features a comprehensive theming system with real-time customization. All settings are automatically saved and persist between sessions.
+If you encounter issues, we have a new **Persistent Logging System** to help debug.
 
-### Quick Access
+- **Log Location**: `%APPDATA%\vrchat-group-guard\logs`
+    - (Type `%APPDATA%` in Windows Run dialog or File Explorer address bar).
+- **Log Files**:
+    - `latest.log`: The log for the *current* active session.
+    - `log_YYYY-MM-DD_...txt`: Archived logs from previous sessions (automatically rotated on startup).
+- **What to do**:
+    - Check `latest.log` for lines starting with `[ERROR]` or `[WARN]`.
+    - Provide these logs if you open a GitHub Issue.
 
-1. **Open Settings** → Click the gear icon in the sidebar
-2. **Appearance Tab** → First tab in the settings panel
-3. **Customize** → Changes apply instantly and auto-save
-
-### Theme Presets
-
-Choose from four carefully crafted presets, each with distinct characteristics:
-
-- **🌙 Dark** - Original neon cyberpunk aesthetic with purple/cyan accents
-- **☀️ Light** - Clean, professional theme with soft blue/gray tones  
-- **🌌 Midnight** - Ultra-dark space theme with electric blue and deep purple
-- **🌅 Sunset** - Warm, cozy vibes with orange and pink magenta accents
-
-### Color Customization
-
-Full HSL (Hue, Saturation, Lightness) control for precise color matching:
-
-- **Primary Neon** - Main accent color for buttons, highlights, and interactive elements
-- **Accent Neon** - Secondary accent for gradients and complementary highlights
-- **Background Hue** - Base color for the entire application background
-- **Background Saturation** - Color intensity (0% = grayscale, 100% = full color)
-- **Background Lightness** - Brightness control (0% = black, 100% = white)
-
-*All colors use spectrum pickers with real-time preview*
-
-### Glass & UI Effects
-
-Control the visual aesthetics and depth:
-
-- **Glass Blur** - Background blur intensity for glass panels (0-50px)
-- **Glass Opacity** - Transparency level for glass surfaces (0-100%)
-- **Border Radius** - Corner roundness for UI elements (0-30px)
-
-### Particles & Effects
-
-Ambient visual effects for enhanced immersion:
-
-- **Enable Particles** - Toggle floating background particles on/off
-- **Particle Count** - Number of particles (5-50)
-- **Ambient Orbs** - Glowing orb elements within particle field
-- **Color Shift** - Dynamic color transitions for particles
-- **Mouse Reactive** - Particles respond to mouse movement
-
-### Advanced Options
-
-Fine-tune the user experience:
-
-- **UI Scale** - Global interface scaling for accessibility
-- **Header Gradient** - Toggle gradient effects in header areas
-- **Reset All** - Restore default theme settings
-
-### Technical Notes
-
-- **CSS Custom Properties** - Theme uses CSS variables for instant updates
-- **HSL Color System** - Intuitive color control with predictable results
-- **localStorage Persistence** - Settings automatically save and restore
-- **Light/Dark Adaptation** - Interface automatically adjusts text colors based on background brightness
-- **Real-time Updates** - All changes apply instantly without restart
-
-## ⚠️ Safety & Compliance
-
-Group Guard is an **external tool**. It does **not** modify the game client, inject code, or read memory. It interacts with VRChat solely through:
-
-1.  **VRChat API**: Standard web requests (like the website).
-2.  **Log Files**: Reading text logs generated by VRChat (`output_log.txt`).
-3.  **OSC**: One-way communication for chatbox messages.
-
-_Use responsibly. Automated actions (like mass inviting) are rate-limited to avoid API spam, but you are responsible for your account's actions._
 
 ## 🛠️ Tech Stack
 
