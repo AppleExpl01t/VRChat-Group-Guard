@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense, startTransition } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense, startTransition, useRef } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
 import { ConfirmationProvider } from './context/ConfirmationContext';
 import { TitleBar } from './components/layout/TitleBar';
@@ -13,6 +13,8 @@ import { usePipelineInit } from './hooks/usePipelineInit';
 import { useInstanceMonitorInit } from './hooks/useInstanceMonitorInit';
 import { useAutoModNotifications } from './hooks/useAutoModNotifications';
 import { SetupView } from './features/setup/SetupView';
+import { useUpdateStore } from './stores/updateStore';
+import { useNotificationStore } from './stores/notificationStore';
 
 
 
@@ -51,39 +53,85 @@ function App() {
   // Initialize AutoMod Notifications
   useAutoModNotifications();
 
-  const [isUpdateReady, setIsUpdateReady] = useState(false);
-  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  // Update state management
+  const { 
+    updateDownloaded, 
+    updateInfo, 
+    setUpdateAvailable, 
+    setUpdateDownloaded, 
+    setDownloadProgress 
+  } = useUpdateStore();
+  
+  const addNotification = useNotificationStore(state => state.addNotification);
+  const notifications = useNotificationStore(state => state.notifications);
+  
+  // Track if we've already shown the update notification
+  const updateNotificationShownRef = useRef(false);
 
   // Listen for updates
   useEffect(() => {
-    // Return unsubscribe function
-    // Listen for updates if updater API is available
-    if (window.electron?.updater) {
-      // Check initial status (in case we missed the event)
-      window.electron.updater.checkStatus().then(downloaded => {
-          if (downloaded) {
-              setIsUpdateReady(true);
-          }
-      }).catch(err => {
-          console.error('Failed to check update status:', err);
-      });
+    if (!window.electron?.updater) return;
 
-        const unsubscribe = window.electron.updater.onUpdateDownloaded(() => {
-        setIsUpdateReady(true);
-        setUpdateProgress(null); // Clear progress when ready
-      });
+    // Check initial status (in case we missed the event)
+    window.electron.updater.checkStatus().then(downloaded => {
+      if (downloaded) {
+        setUpdateDownloaded();
+      }
+    }).catch(err => {
+      console.error('Failed to check update status:', err);
+    });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const unsubscribeProgress = window.electron.updater.onDownloadProgress((progressObj: any) => {
-        setUpdateProgress(progressObj.percent);
+    // Listen for update available event
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const unsubscribeAvailable = window.electron.updater.onUpdateAvailable((info: any) => {
+      setUpdateAvailable({
+        version: info.version || 'New Version',
+        releaseDate: info.releaseDate,
+        releaseNotes: info.releaseNotes
       });
-      
-      return () => {
-          unsubscribe();
-          unsubscribeProgress();
-      };
-    }
-  }, []);
+    });
+
+    // Listen for download progress
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const unsubscribeProgress = window.electron.updater.onDownloadProgress((progressObj: any) => {
+      setDownloadProgress(progressObj.percent);
+    });
+
+    // Listen for update downloaded event
+    const unsubscribeDownloaded = window.electron.updater.onUpdateDownloaded(() => {
+      setUpdateDownloaded();
+    });
+    
+    return () => {
+      unsubscribeAvailable();
+      unsubscribeProgress();
+      unsubscribeDownloaded();
+    };
+  }, [setUpdateAvailable, setDownloadProgress, setUpdateDownloaded]);
+
+  // Show persistent update notification when update is downloaded
+  useEffect(() => {
+    if (!updateDownloaded || updateNotificationShownRef.current) return;
+    
+    // Check if we already have an update notification
+    const hasUpdateNotification = notifications.some(n => n.type === 'update');
+    if (hasUpdateNotification) return;
+    
+    updateNotificationShownRef.current = true;
+    
+    addNotification({
+      type: 'update',
+      title: 'Update Ready',
+      message: updateInfo?.version 
+        ? `Version ${updateInfo.version} is ready to install.` 
+        : 'A new version is ready to install.',
+      persistent: true,
+      action: {
+        label: 'Restart & Update',
+        onClick: () => window.electron.updater.quitAndInstall()
+      }
+    });
+  }, [updateDownloaded, updateInfo, addNotification, notifications]);
 
   // Monitor Live Log state to toggle Live Mode UI
   // Note: This effect runs the live status check regardless of pipeline connection
@@ -303,8 +351,6 @@ function App() {
                   logout(false);
                   setIsLogoutConfirmOpen(false);
               }}
-              isUpdateReady={isUpdateReady}
-              updateProgress={updateProgress}
             />
           </AppLayout>
         </ConfirmationProvider>
