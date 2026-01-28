@@ -148,13 +148,13 @@ export interface VRChatInstance {
   displayName?: string; // Group display name
   location?: string; // Full location string: worldId:instanceId
   worldId?: string;
-  
+
   // User counts
   n_users?: number;
   userCount?: number;
   memberCount?: number;
   capacity?: number;
-  
+
   // Instance properties
   ownerId?: string;
   type?: string; // "group", "public", etc.
@@ -162,25 +162,25 @@ export interface VRChatInstance {
   ageGate?: boolean; // 18+ age verification required
   region?: string;
   shortName?: string;
-  
+
   // World data (nested from API)
   world?: {
-      id?: string;
-      name?: string;
-      authorId?: string;
-      authorName?: string;
-      description?: string;
-      capacity?: number;
-      imageUrl?: string;
-      thumbnailImageUrl?: string;
+    id?: string;
+    name?: string;
+    authorId?: string;
+    authorName?: string;
+    description?: string;
+    capacity?: number;
+    imageUrl?: string;
+    thumbnailImageUrl?: string;
   };
 
   // Group data (nested from API)
   group?: {
-      id?: string;
-      name?: string;
-      shortCode?: string;
-      discriminator?: string;
+    id?: string;
+    name?: string;
+    shortCode?: string;
+    discriminator?: string;
   };
 }
 
@@ -222,87 +222,87 @@ export interface PipelineEvent {
 }
 
 export interface AutoModRule {
-    id: number;
-    name: string;
-    enabled: boolean;
-    type: 'AGE_CHECK' | 'TRUST_CHECK' | 'KEYWORD_BLOCK' | 'WHITELIST_CHECK' | 'BAN_EVASION_CHECK' | 'AGE_VERIFICATION' | 'BLACKLISTED_GROUPS' | 'INSTANCE_18_GUARD' | 'INSTANCE_PERMISSION_GUARD' | 'CLOSE_ALL_INSTANCES';
-    config: string;
-    actionType: 'REJECT' | 'AUTO_BLOCK' | 'NOTIFY_ONLY';
-    createdAt?: string;
-    whitelistedUserIds?: string[];
-    whitelistedGroupIds?: string[];
+  id: number;
+  name: string;
+  enabled: boolean;
+  type: 'AGE_CHECK' | 'TRUST_CHECK' | 'KEYWORD_BLOCK' | 'WHITELIST_CHECK' | 'BAN_EVASION_CHECK' | 'AGE_VERIFICATION' | 'BLACKLISTED_GROUPS' | 'INSTANCE_18_GUARD' | 'INSTANCE_PERMISSION_GUARD' | 'CLOSE_ALL_INSTANCES';
+  config: string;
+  actionType: 'REJECT' | 'AUTO_BLOCK' | 'NOTIFY_ONLY';
+  createdAt?: string;
+  whitelistedUserIds?: string[];
+  whitelistedGroupIds?: string[];
 }
 
 // Instance Guard event type
 export interface InstanceGuardEvent {
-    id: string;
-    timestamp: number;
-    action: 'OPENED' | 'CLOSED' | 'AUTO_CLOSED' | 'INSTANCE_CLOSED';
-    worldId: string;
-    worldName: string;
-    instanceId: string;
-    groupId: string;
-    reason?: string;
-    closedBy?: string;
-    wasAgeGated?: boolean;
-    userCount?: number;
-    // Owner/starter info
-    ownerId?: string;
-    ownerName?: string;
-    // World info for modal display
-    worldThumbnailUrl?: string;
-    worldAuthorName?: string;
-    worldCapacity?: number;
+  id: string;
+  timestamp: number;
+  action: 'OPENED' | 'CLOSED' | 'AUTO_CLOSED' | 'INSTANCE_CLOSED';
+  worldId: string;
+  worldName: string;
+  instanceId: string;
+  groupId: string;
+  reason?: string;
+  closedBy?: string;
+  wasAgeGated?: boolean;
+  userCount?: number;
+  // Owner/starter info
+  ownerId?: string;
+  ownerName?: string;
+  // World info for modal display
+  worldThumbnailUrl?: string;
+  worldAuthorName?: string;
+  worldCapacity?: number;
 }
 
 // Type for Live Entity (used in instance monitoring)
 export interface LiveEntity {
-    id: string;
-    displayName: string;
-    rank: string;
-    isGroupMember: boolean;
-    status: 'active' | 'kicked' | 'joining';
-    avatarUrl?: string;
-    lastUpdated: number;
+  id: string;
+  displayName: string;
+  rank: string;
+  isGroupMember: boolean;
+  status: 'active' | 'kicked' | 'joining';
+  avatarUrl?: string;
+  lastUpdated: number;
 }
 
 // Type for Rally Target
 export interface RallyTarget {
-    id?: string;
-    displayName?: string;
-    thumbnailUrl?: string;
+  id?: string;
+  displayName?: string;
+  thumbnailUrl?: string;
 }
 
 // Type for Scanned User (users encountered during instance scans)
 export interface ScannedUser {
-    id: string;
-    displayName: string;
-    rank: string | null;
-    thumbnailUrl: string | null;
-    groupId: string | null;
-    lastSeenAt: string;
-    timesEncountered: number;
+  id: string;
+  displayName: string;
+  rank: string | null;
+  thumbnailUrl: string | null;
+  groupId: string | null;
+  lastSeenAt: string;
+  timesEncountered: number;
 }
 
 // Type for AutoMod user check input
 export interface AutoModUserInput {
-    id: string;
-    displayName: string;
-    tags?: string[];
-    dateJoined?: string;
-    trustLevel?: string;
-    bio?: string;
-    status?: string;
-    statusDescription?: string;
-    pronouns?: string;
+  id: string;
+  displayName: string;
+  tags?: string[];
+  dateJoined?: string;
+  trustLevel?: string;
+  bio?: string;
+  status?: string;
+  statusDescription?: string;
+  pronouns?: string;
 }
 
 export interface OscConfig {
-    enabled: boolean;
-    senderIp: string;
-    senderPort: number;
-    receiverPort: number;
-    suppressChatboxSounds: boolean;
+  enabled: boolean;
+  senderIp: string;
+  senderPort: number;
+  receiverPort: number;
+  suppressChatboxSounds: boolean;
 }
 
 export interface WatchedEntity {
@@ -326,27 +326,27 @@ export interface ModerationTag {
 }
 
 export interface GroupAnnouncementConfig {
-    greetingEnabled: boolean;
-    greetingMessage: string;
-    greetingMessageMembers?: string;
-    greetingMessageRep?: string;
-    periodicEnabled: boolean;
-    periodicMessage: string;
-    periodicIntervalMinutes: number;
-    displayDurationSeconds?: number;
+  greetingEnabled: boolean;
+  greetingMessage: string;
+  greetingMessageMembers?: string;
+  greetingMessageRep?: string;
+  periodicEnabled: boolean;
+  periodicMessage: string;
+  periodicIntervalMinutes: number;
+  displayDurationSeconds?: number;
 }
 
 export interface AppSettings {
-    audio: {
-        notificationSoundPath: string | null;
-        volume: number;
-    };
+  audio: {
+    notificationSoundPath: string | null;
+    volume: number;
+  };
 }
 
 export interface ElectronAPI {
   log: (level: 'info' | 'warn' | 'error', message: string) => void;
   getVersion: () => string;
-  
+
   // Auth API
   login: (credentials: LoginCredentials) => Promise<LoginResult>;
   verify2fa: (data: { code: string }) => Promise<LoginResult>;
@@ -356,7 +356,7 @@ export interface ElectronAPI {
   loadSavedCredentials: () => Promise<{ username: string; password: string; authCookie?: string } | null>;
   logout: (options?: LogoutOptions) => Promise<{ success: boolean }>;
   clearCredentials: () => Promise<{ success: boolean }>;
-  
+
   // Groups API
   getMyGroups: () => Promise<GroupsResult>;
   getGroupDetails: (groupId: string) => Promise<{ success: boolean; group?: VRChatGroup; error?: string }>;
@@ -366,6 +366,8 @@ export interface ElectronAPI {
   respondToGroupRequest: (groupId: string, userId: string, action: 'accept' | 'deny') => Promise<{ success: boolean; error?: string }>;
   getGroupBans: (groupId: string) => Promise<{ success: boolean; bans?: GroupBan[]; error?: string }>;
   getGroupInstances: (groupId: string) => Promise<{ success: boolean; instances?: VRChatInstance[]; error?: string }>;
+  onGroupsUpdated: (callback: (data: { groups: any[] }) => void) => () => void;
+  onGroupsCacheReady: (callback: (data: { groupIds: string[] }) => void) => () => void;
   banUser: (groupId: string, userId: string) => Promise<{ success: boolean; error?: string }>;
   unbanUser: (groupId: string, userId: string) => Promise<{ success: boolean; error?: string }>;
 
@@ -373,7 +375,7 @@ export interface ElectronAPI {
   getGroupRoles: (groupId: string) => Promise<{ success: boolean; roles?: unknown[]; error?: string }>;
   addMemberRole: (groupId: string, userId: string, roleId: string) => Promise<{ success: boolean; error?: string }>;
   removeMemberRole: (groupId: string, userId: string, roleId: string) => Promise<{ success: boolean; error?: string }>;
-  
+
   // Audit API
   getGroupAuditLogs: (groupId: string) => Promise<AuditLogsResult>;
 
@@ -390,7 +392,7 @@ export interface ElectronAPI {
     disconnect: () => Promise<{ success: boolean }>;
     status: () => Promise<{ connected: boolean; connecting: boolean; reconnectAttempts: number }>;
     reconnect: () => Promise<{ success: boolean }>;
-    
+
     // Event listeners - return unsubscribe function
     onEvent: (callback: (event: PipelineEvent) => void) => () => void;
     onConnected: (callback: (data: { connected: boolean }) => void) => () => void;
@@ -413,27 +415,27 @@ export interface ElectronAPI {
 
   // Database API for local logging
   database: {
-      getSessions: (groupId?: string) => Promise<unknown[]>;
-      getSessionEvents: (filename: string) => Promise<unknown[]>;
-      clearSessions: () => Promise<boolean>;
-      updateSessionWorldName: (sessionId: string, worldName: string) => Promise<boolean>;
-      rallyFromSession: (filename: string) => Promise<{
-          success: boolean;
-          invited?: number;
-          failed?: number;
-          total?: number;
-          error?: string;
-          errors?: string[];
-      }>;
-      onRallyProgress: (callback: (data: { sent: number; failed: number; total: number; done?: boolean }) => void) => () => void;
+    getSessions: (groupId?: string) => Promise<unknown[]>;
+    getSessionEvents: (filename: string) => Promise<unknown[]>;
+    clearSessions: () => Promise<boolean>;
+    updateSessionWorldName: (sessionId: string, worldName: string) => Promise<boolean>;
+    rallyFromSession: (filename: string) => Promise<{
+      success: boolean;
+      invited?: number;
+      failed?: number;
+      total?: number;
+      error?: string;
+      errors?: string[];
+    }>;
+    onRallyProgress: (callback: (data: { sent: number; failed: number; total: number; done?: boolean }) => void) => () => void;
   };
 
   // Storage API
   storage: {
-      getStatus: () => Promise<{ configured: boolean; path: string; defaultPath: string; lastPath?: string | null }>;
-      selectFolder: () => Promise<string | null>;
-      setPath: (path: string) => Promise<boolean>;
-      reconfigure: () => Promise<boolean>;
+    getStatus: () => Promise<{ configured: boolean; path: string; defaultPath: string; lastPath?: string | null }>;
+    selectFolder: () => Promise<string | null>;
+    setPath: (path: string) => Promise<boolean>;
+    reconfigure: () => Promise<boolean>;
   };
 
   // Instance Presence API
@@ -448,27 +450,27 @@ export interface ElectronAPI {
     rallyFromSession: (filename: string, message?: string) => Promise<{ success: boolean; invited?: number; failed?: number; total?: number; error?: string; errors?: string[] }>;
     massInviteFriends: (options: { filterAutoMod?: boolean; delayMs?: number; message?: string }) => Promise<{ success: boolean; invited?: number; skipped?: number; failed?: number; total?: number; error?: string; errors?: string[] }>;
     getInviteSlotsState: () => Promise<{ success: boolean; slots?: { index: number; message: string | null; lastUpdate: number; cooldownRemaining: number }[]; error?: string }>;
-      closeInstance: (worldId?: string, instanceId?: string) => Promise<{ success: boolean; error?: string }>;
-      inviteSelf: (worldId: string, instanceId: string) => Promise<{ success: boolean; error?: string }>;
-      getInstanceInfo: () => Promise<{ success: boolean; worldId?: string; instanceId?: string; name?: string; imageUrl?: string; error?: string }>;
-      onEntityUpdate: (callback: (entity: LiveEntity) => void) => () => void;
-      onMassInviteProgress: (callback: (data: { sent: number; skipped: number; failed: number; total: number; current?: string; done?: boolean }) => void) => () => void;
-      
-      getCurrentGroup: () => Promise<string | null>;
-      onGroupChanged: (callback: (groupId: string | null) => void) => () => void;
+    closeInstance: (worldId?: string, instanceId?: string) => Promise<{ success: boolean; error?: string }>;
+    inviteSelf: (worldId: string, instanceId: string) => Promise<{ success: boolean; error?: string }>;
+    getInstanceInfo: () => Promise<{ success: boolean; worldId?: string; instanceId?: string; name?: string; imageUrl?: string; error?: string }>;
+    onEntityUpdate: (callback: (entity: LiveEntity) => void) => () => void;
+    onMassInviteProgress: (callback: (data: { sent: number; skipped: number; failed: number; total: number; current?: string; done?: boolean }) => void) => () => void;
+
+    getCurrentGroup: () => Promise<string | null>;
+    onGroupChanged: (callback: (groupId: string | null) => void) => () => void;
   };
 
 
 
   // Updater API
   updater: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onUpdateAvailable: (callback: (info: any) => void) => () => void;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onDownloadProgress: (callback: (progressObj: any) => void) => () => void;
-      onUpdateDownloaded: (callback: () => void) => () => void;
-      quitAndInstall: () => void;
-      checkStatus: () => Promise<boolean>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onUpdateAvailable: (callback: (info: any) => void) => () => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onDownloadProgress: (callback: (progressObj: any) => void) => () => void;
+    onUpdateDownloaded: (callback: () => void) => () => void;
+    quitAndInstall: () => void;
+    checkStatus: () => Promise<boolean>;
   };
 
   // Window Controls
@@ -478,40 +480,40 @@ export interface ElectronAPI {
 
   // AutoMod API
   automod: {
-      getRules: (groupId: string) => Promise<AutoModRule[]>;
-      saveRule: (rule: AutoModRule, groupId: string) => Promise<AutoModRule>;
-      deleteRule: (ruleId: number, groupId: string) => Promise<boolean>;
-      checkUser: (user: AutoModUserInput, groupId: string) => Promise<{ action: 'ALLOW' | 'REJECT' | 'AUTO_BLOCK' | 'NOTIFY_ONLY'; reason?: string; ruleName?: string }>;
-      onViolation: (callback: (data: { displayName: string; userId: string; action: string; reason: string; ruleId?: number; detectedGroupId?: string }) => void) => () => void;
-      testNotification: (groupId: string) => Promise<boolean>;
-      addToWhitelist: (groupId: string, ruleId: number, target: { userId?: string; groupId?: string }) => Promise<boolean>;
-      getWhitelistedEntities: (groupId: string) => Promise<{ users: { id: string; name: string; rules: string[] }[]; groups: { id: string; name: string; rules: string[] }[] }>;
-      removeFromWhitelist: (groupId: string, id: string, type: 'user' | 'group') => Promise<boolean>;
-      getStatus: (groupId: string) => Promise<{ autoProcess: boolean; autoBan: boolean }>;
-      setAutoProcess: (enabled: boolean, groupId: string) => Promise<boolean>;
-      setAutoBan: (enabled: boolean, groupId: string) => Promise<boolean>;
-      getHistory: (groupId?: string) => Promise<unknown[]>;
-      clearHistory: () => Promise<boolean>;
-      searchGroups: (query: string) => Promise<{ success: boolean; groups?: VRChatGroup[]; error?: string }>;
-      scanGroupMembers: (groupId: string) => Promise<{ success: boolean; results?: ScanResult[]; error?: string }>;
-      fetchMembers: (groupId: string) => Promise<{ success: boolean; members: { user: VRChatUser }[]; error?: string }>;
-      evaluateMember: (args: { groupId: string; member: { user: VRChatUser } }) => Promise<ScanResult>;
+    getRules: (groupId: string) => Promise<AutoModRule[]>;
+    saveRule: (rule: AutoModRule, groupId: string) => Promise<AutoModRule>;
+    deleteRule: (ruleId: number, groupId: string) => Promise<boolean>;
+    checkUser: (user: AutoModUserInput, groupId: string) => Promise<{ action: 'ALLOW' | 'REJECT' | 'AUTO_BLOCK' | 'NOTIFY_ONLY'; reason?: string; ruleName?: string }>;
+    onViolation: (callback: (data: { displayName: string; userId: string; action: string; reason: string; ruleId?: number; detectedGroupId?: string }) => void) => () => void;
+    testNotification: (groupId: string) => Promise<boolean>;
+    addToWhitelist: (groupId: string, ruleId: number, target: { userId?: string; groupId?: string }) => Promise<boolean>;
+    getWhitelistedEntities: (groupId: string) => Promise<{ users: { id: string; name: string; rules: string[] }[]; groups: { id: string; name: string; rules: string[] }[] }>;
+    removeFromWhitelist: (groupId: string, id: string, type: 'user' | 'group') => Promise<boolean>;
+    getStatus: (groupId: string) => Promise<{ autoProcess: boolean; autoBan: boolean }>;
+    setAutoProcess: (enabled: boolean, groupId: string) => Promise<boolean>;
+    setAutoBan: (enabled: boolean, groupId: string) => Promise<boolean>;
+    getHistory: (groupId?: string) => Promise<unknown[]>;
+    clearHistory: () => Promise<boolean>;
+    searchGroups: (query: string) => Promise<{ success: boolean; groups?: VRChatGroup[]; error?: string }>;
+    scanGroupMembers: (groupId: string) => Promise<{ success: boolean; results?: ScanResult[]; error?: string }>;
+    fetchMembers: (groupId: string) => Promise<{ success: boolean; members: { user: VRChatUser }[]; error?: string }>;
+    evaluateMember: (args: { groupId: string; member: { user: VRChatUser } }) => Promise<ScanResult>;
   };
 
   // Instance Guard API
   instanceGuard?: {
-      getHistory: (groupId: string) => Promise<InstanceGuardEvent[]>;
-      clearHistory: () => Promise<boolean>;
-      onEvent: (callback: (data: InstanceGuardEvent) => void) => () => void;
+    getHistory: (groupId: string) => Promise<InstanceGuardEvent[]>;
+    clearHistory: () => Promise<boolean>;
+    onEvent: (callback: (data: InstanceGuardEvent) => void) => () => void;
   };
 
   // OSC API
   osc: {
-      getConfig: () => Promise<OscConfig>;
-      setConfig: (config: Partial<OscConfig>) => Promise<OscConfig>;
-      send: (address: string, args: unknown[]) => Promise<boolean>;
-      getAnnouncementConfig: (groupId: string) => Promise<GroupAnnouncementConfig>;
-      setAnnouncementConfig: (groupId: string, config: Partial<GroupAnnouncementConfig>) => Promise<GroupAnnouncementConfig>;
+    getConfig: () => Promise<OscConfig>;
+    setConfig: (config: Partial<OscConfig>) => Promise<OscConfig>;
+    send: (address: string, args: unknown[]) => Promise<boolean>;
+    getAnnouncementConfig: (groupId: string) => Promise<GroupAnnouncementConfig>;
+    setAnnouncementConfig: (groupId: string, config: Partial<GroupAnnouncementConfig>) => Promise<GroupAnnouncementConfig>;
   };
 
   // Report API
@@ -523,59 +525,59 @@ export interface ElectronAPI {
 
   // Discord RPC API
   discordRpc: {
-      getConfig: () => Promise<DiscordRpcConfig>;
-      setConfig: (config: DiscordRpcConfig) => Promise<{ success: boolean }>;
-      getStatus: () => Promise<{ connected: boolean; enabled: boolean }>;
-      reconnect: () => Promise<{ success: boolean; error?: string }>;
-      disconnect: () => Promise<{ success: boolean }>;
+    getConfig: () => Promise<DiscordRpcConfig>;
+    setConfig: (config: DiscordRpcConfig) => Promise<{ success: boolean }>;
+    getStatus: () => Promise<{ connected: boolean; enabled: boolean }>;
+    reconnect: () => Promise<{ success: boolean; error?: string }>;
+    disconnect: () => Promise<{ success: boolean }>;
   };
 
   // Discord Webhook API
   webhook: {
-      getUrl: (groupId: string) => Promise<string>;
-      setUrl: (groupId: string, url: string) => Promise<boolean>;
-      test: (groupId: string) => Promise<boolean>;
-      testMock: (groupId: string) => Promise<boolean>;
+    getUrl: (groupId: string) => Promise<string>;
+    setUrl: (groupId: string, url: string) => Promise<boolean>;
+    test: (groupId: string) => Promise<boolean>;
+    testMock: (groupId: string) => Promise<boolean>;
   };
 
   // Watchlist API
   watchlist: {
-      getEntities: () => Promise<WatchedEntity[]>;
-      getEntity: (id: string) => Promise<WatchedEntity | undefined>;
-      saveEntity: (entity: Partial<WatchedEntity>) => Promise<WatchedEntity>;
-      deleteEntity: (id: string) => Promise<boolean>;
-      getTags: () => Promise<ModerationTag[]>;
-      saveTag: (tag: ModerationTag) => Promise<void>;
-      deleteTag: (id: string) => Promise<void>;
-      import: (json: string) => Promise<boolean>;
-      export: () => Promise<string>;
-      searchScannedUsers: (query: string) => Promise<ScannedUser[]>;
-      onUpdate: (callback: (data: { entities: WatchedEntity[]; tags: ModerationTag[] }) => void) => () => void;
+    getEntities: () => Promise<WatchedEntity[]>;
+    getEntity: (id: string) => Promise<WatchedEntity | undefined>;
+    saveEntity: (entity: Partial<WatchedEntity>) => Promise<WatchedEntity>;
+    deleteEntity: (id: string) => Promise<boolean>;
+    getTags: () => Promise<ModerationTag[]>;
+    saveTag: (tag: ModerationTag) => Promise<void>;
+    deleteTag: (id: string) => Promise<void>;
+    import: (json: string) => Promise<boolean>;
+    export: () => Promise<string>;
+    searchScannedUsers: (query: string) => Promise<ScannedUser[]>;
+    onUpdate: (callback: (data: { entities: WatchedEntity[]; tags: ModerationTag[] }) => void) => () => void;
   };
 
   // Settings API
   settings: {
-      get: () => Promise<AppSettings>;
-      update: (settings: Partial<AppSettings>) => Promise<AppSettings>;
-      selectAudio: () => Promise<{ path: string; name: string; data: string } | null>;
-      getAudioData: (path: string) => Promise<string | null>;
+    get: () => Promise<AppSettings>;
+    update: (settings: Partial<AppSettings>) => Promise<AppSettings>;
+    selectAudio: () => Promise<{ path: string; name: string; data: string } | null>;
+    getAudioData: (path: string) => Promise<string | null>;
   };
 
   // User Profile API (comprehensive profile data)
   userProfile: {
-      getFullProfile: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
-      getCompleteData: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
-      getMutualCounts: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
-      getMutualFriends: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
-      getMutualGroups: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
-      getUserFeedback: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+    getFullProfile: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+    getCompleteData: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+    getMutualCounts: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+    getMutualFriends: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+    getMutualGroups: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+    getUserFeedback: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
   };
 
   // Debug API (developer tools)
   debug: {
-      selectFriendJson: () => Promise<{ success: boolean; path?: string; count?: number; preview?: string[]; error?: string }>;
-      bulkFriendFromJson: (jsonPath: string, delayMs?: number) => Promise<{ success: boolean; sent?: number; failed?: number; skipped?: number; total?: number; error?: string; errors?: string[] }>;
-      onBulkFriendProgress: (callback: (data: { sent: number; skipped: number; failed: number; total: number; current?: string; done?: boolean }) => void) => () => void;
+    selectFriendJson: () => Promise<{ success: boolean; path?: string; count?: number; preview?: string[]; error?: string }>;
+    bulkFriendFromJson: (jsonPath: string, delayMs?: number) => Promise<{ success: boolean; sent?: number; failed?: number; skipped?: number; total?: number; error?: string; errors?: string[] }>;
+    onBulkFriendProgress: (callback: (data: { sent: number; skipped: number; failed: number; total: number; current?: string; done?: boolean }) => void) => () => void;
   };
 }
 
@@ -586,11 +588,11 @@ declare global {
 }
 
 export interface ScanResult {
-    userId: string;
-    displayName: string;
-    userIcon?: string;
-    action: 'BANNED' | 'VIOLATION' | 'SAFE';
-    reason?: string;
-    ruleName?: string;
-    ruleId?: number;
+  userId: string;
+  displayName: string;
+  userIcon?: string;
+  action: 'BANNED' | 'VIOLATION' | 'SAFE';
+  reason?: string;
+  ruleName?: string;
+  ruleId?: number;
 }

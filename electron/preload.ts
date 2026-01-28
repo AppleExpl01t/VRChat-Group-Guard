@@ -5,10 +5,10 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('electron', {
     log: (level: string, message: string) => ipcRenderer.send('log', level, message),
     getVersion: () => process.versions.electron,
-    
+
     // Auth API
-    login: (credentials: { username: string; password: string; rememberMe?: boolean }) => 
-      ipcRenderer.invoke('auth:login', credentials),
+    login: (credentials: { username: string; password: string; rememberMe?: boolean }) =>
+        ipcRenderer.invoke('auth:login', credentials),
     verify2fa: (data: { code: string }) => ipcRenderer.invoke('auth:verify2fa', data),
     checkSession: () => ipcRenderer.invoke('auth:check-session'),
     autoLogin: () => ipcRenderer.invoke('auth:auto-login'),
@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('electron', {
     loadSavedCredentials: () => ipcRenderer.invoke('credentials:load'),
     logout: (options?: { clearSaved?: boolean }) => ipcRenderer.invoke('auth:logout', options || {}),
     clearCredentials: () => ipcRenderer.invoke('credentials:clear'),
-    
+
     // Groups API
     getMyGroups: () => ipcRenderer.invoke('groups:get-my-groups'),
     getGroupDetails: (groupId: string) => ipcRenderer.invoke('groups:get-details', { groupId }),
@@ -26,15 +26,25 @@ contextBridge.exposeInMainWorld('electron', {
     respondToGroupRequest: (groupId: string, userId: string, action: 'accept' | 'deny') => ipcRenderer.invoke('groups:respond-request', { groupId, userId, action }),
     getGroupBans: (groupId: string) => ipcRenderer.invoke('groups:get-bans', { groupId }),
     getGroupInstances: (groupId: string) => ipcRenderer.invoke('groups:get-instances', { groupId }),
+    onGroupsUpdated: (callback: (data: { groups: any[] }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { groups: any[] }) => callback(data);
+        ipcRenderer.on('groups:updated', handler);
+        return () => ipcRenderer.removeListener('groups:updated', handler);
+    },
+    onGroupsCacheReady: (callback: (data: { groupIds: string[] }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { groupIds: string[] }) => callback(data);
+        ipcRenderer.on('groups:cache-ready', handler);
+        return () => ipcRenderer.removeListener('groups:cache-ready', handler);
+    },
 
     banUser: (groupId: string, userId: string) => ipcRenderer.invoke('groups:ban-user', { groupId, userId }),
     unbanUser: (groupId: string, userId: string) => ipcRenderer.invoke('groups:unban-user', { groupId, userId }),
-    
+
     // Role Management
     getGroupRoles: (groupId: string) => ipcRenderer.invoke('groups:get-roles', { groupId }),
     addMemberRole: (groupId: string, userId: string, roleId: string) => ipcRenderer.invoke('groups:add-member-role', { groupId, userId, roleId }),
     removeMemberRole: (groupId: string, userId: string, roleId: string) => ipcRenderer.invoke('groups:remove-member-role', { groupId, userId, roleId }),
-    
+
     // Audit API
     getGroupAuditLogs: (groupId: string) => ipcRenderer.invoke('groups:get-audit-logs', { groupId }),
 
@@ -44,78 +54,78 @@ contextBridge.exposeInMainWorld('electron', {
     // Users API
     getUser: (userId: string) => ipcRenderer.invoke('users:get', { userId }),
     clearUserCache: (userId?: string) => ipcRenderer.invoke('users:clear-cache', { userId }),
-    
+
     // Pipeline (WebSocket) API
     pipeline: {
-      connect: () => ipcRenderer.invoke('pipeline:connect'),
-      disconnect: () => ipcRenderer.invoke('pipeline:disconnect'),
-      status: () => ipcRenderer.invoke('pipeline:status'),
-      reconnect: () => ipcRenderer.invoke('pipeline:reconnect'),
-      
-      // Event listeners for real-time updates
-      onEvent: (callback: (event: unknown) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
-        ipcRenderer.on('pipeline:event', handler);
-        return () => ipcRenderer.removeListener('pipeline:event', handler);
-      },
-      onConnected: (callback: (data: { connected: boolean }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { connected: boolean }) => callback(data);
-        ipcRenderer.on('pipeline:connected', handler);
-        return () => ipcRenderer.removeListener('pipeline:connected', handler);
-      },
-      onDisconnected: (callback: (data: { code: number; reason: string; willReconnect: boolean }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { code: number; reason: string; willReconnect: boolean }) => callback(data);
-        ipcRenderer.on('pipeline:disconnected', handler);
-        return () => ipcRenderer.removeListener('pipeline:disconnected', handler);
-      },
-      onError: (callback: (data: { message: string }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { message: string }) => callback(data);
-        ipcRenderer.on('pipeline:error', handler);
-        return () => ipcRenderer.removeListener('pipeline:error', handler);
-      },
+        connect: () => ipcRenderer.invoke('pipeline:connect'),
+        disconnect: () => ipcRenderer.invoke('pipeline:disconnect'),
+        status: () => ipcRenderer.invoke('pipeline:status'),
+        reconnect: () => ipcRenderer.invoke('pipeline:reconnect'),
+
+        // Event listeners for real-time updates
+        onEvent: (callback: (event: unknown) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+            ipcRenderer.on('pipeline:event', handler);
+            return () => ipcRenderer.removeListener('pipeline:event', handler);
+        },
+        onConnected: (callback: (data: { connected: boolean }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { connected: boolean }) => callback(data);
+            ipcRenderer.on('pipeline:connected', handler);
+            return () => ipcRenderer.removeListener('pipeline:connected', handler);
+        },
+        onDisconnected: (callback: (data: { code: number; reason: string; willReconnect: boolean }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { code: number; reason: string; willReconnect: boolean }) => callback(data);
+            ipcRenderer.on('pipeline:disconnected', handler);
+            return () => ipcRenderer.removeListener('pipeline:disconnected', handler);
+        },
+        onError: (callback: (data: { message: string }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { message: string }) => callback(data);
+            ipcRenderer.on('pipeline:error', handler);
+            return () => ipcRenderer.removeListener('pipeline:error', handler);
+        },
     },
 
     // Log Watcher API
     logWatcher: {
-      start: () => ipcRenderer.invoke('log-watcher:start'),
-      stop: () => ipcRenderer.invoke('log-watcher:stop'),
-      onPlayerJoined: (callback: (event: { displayName: string; userId?: string; timestamp: string }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { displayName: string; userId?: string; timestamp: string }) => callback(data);
-        ipcRenderer.on('log:player-joined', handler);
-        return () => ipcRenderer.removeListener('log:player-joined', handler);
-      },
-      onPlayerLeft: (callback: (event: { displayName: string; userId?: string; timestamp: string }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { displayName: string; userId?: string; timestamp: string }) => callback(data);
-        ipcRenderer.on('log:player-left', handler);
-        return () => ipcRenderer.removeListener('log:player-left', handler);
-      },
-      onLocation: (callback: (event: { worldId: string; timestamp: string }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { worldId: string; timestamp: string }) => callback(data);
-        ipcRenderer.on('log:location', handler);
-        return () => ipcRenderer.removeListener('log:location', handler);
-      },
-      onWorldName: (callback: (event: { name: string; timestamp: string }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { name: string; timestamp: string }) => callback(data);
-        ipcRenderer.on('log:world-name', handler);
-        return () => ipcRenderer.removeListener('log:world-name', handler);
-      },
-      onGameClosed: (callback: () => void) => {
-        const handler = () => callback();
-        ipcRenderer.on('log:game-closed', handler);
-        return () => ipcRenderer.removeListener('log:game-closed', handler);
-      },
-      onVoteKick: (callback: (event: { target: string; initiator: string; timestamp: string }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { target: string; initiator: string; timestamp: string }) => callback(data);
-        ipcRenderer.on('log:vote-kick', handler);
-        return () => ipcRenderer.removeListener('log:vote-kick', handler);
-      },
-      onVideoPlay: (callback: (event: { url: string; requestedBy: string; timestamp: string }) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, data: { url: string; requestedBy: string; timestamp: string }) => callback(data);
-        ipcRenderer.on('log:video-play', handler);
-        return () => ipcRenderer.removeListener('log:video-play', handler);
-      },
+        start: () => ipcRenderer.invoke('log-watcher:start'),
+        stop: () => ipcRenderer.invoke('log-watcher:stop'),
+        onPlayerJoined: (callback: (event: { displayName: string; userId?: string; timestamp: string }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { displayName: string; userId?: string; timestamp: string }) => callback(data);
+            ipcRenderer.on('log:player-joined', handler);
+            return () => ipcRenderer.removeListener('log:player-joined', handler);
+        },
+        onPlayerLeft: (callback: (event: { displayName: string; userId?: string; timestamp: string }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { displayName: string; userId?: string; timestamp: string }) => callback(data);
+            ipcRenderer.on('log:player-left', handler);
+            return () => ipcRenderer.removeListener('log:player-left', handler);
+        },
+        onLocation: (callback: (event: { worldId: string; timestamp: string }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { worldId: string; timestamp: string }) => callback(data);
+            ipcRenderer.on('log:location', handler);
+            return () => ipcRenderer.removeListener('log:location', handler);
+        },
+        onWorldName: (callback: (event: { name: string; timestamp: string }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { name: string; timestamp: string }) => callback(data);
+            ipcRenderer.on('log:world-name', handler);
+            return () => ipcRenderer.removeListener('log:world-name', handler);
+        },
+        onGameClosed: (callback: () => void) => {
+            const handler = () => callback();
+            ipcRenderer.on('log:game-closed', handler);
+            return () => ipcRenderer.removeListener('log:game-closed', handler);
+        },
+        onVoteKick: (callback: (event: { target: string; initiator: string; timestamp: string }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { target: string; initiator: string; timestamp: string }) => callback(data);
+            ipcRenderer.on('log:vote-kick', handler);
+            return () => ipcRenderer.removeListener('log:vote-kick', handler);
+        },
+        onVideoPlay: (callback: (event: { url: string; requestedBy: string; timestamp: string }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { url: string; requestedBy: string; timestamp: string }) => callback(data);
+            ipcRenderer.on('log:video-play', handler);
+            return () => ipcRenderer.removeListener('log:video-play', handler);
+        },
     },
-    
+
     database: {
         getSessions: (groupId?: string) => ipcRenderer.invoke('database:get-sessions', groupId),
         getSessionEvents: (filename: string) => ipcRenderer.invoke('database:get-session-events', filename),
@@ -128,7 +138,7 @@ contextBridge.exposeInMainWorld('electron', {
             return () => ipcRenderer.removeListener('rally:progress', handler);
         },
     },
-    
+
     // Window Controls
     minimize: () => ipcRenderer.invoke('window:minimize'),
     maximize: () => ipcRenderer.invoke('window:maximize'),
@@ -200,7 +210,7 @@ contextBridge.exposeInMainWorld('electron', {
         quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install'),
         checkStatus: () => ipcRenderer.invoke('updater:check-status')
     },
-    
+
     // AutoMod API
     automod: {
         getRules: (groupId: string) => ipcRenderer.invoke('automod:get-rules', groupId),
@@ -243,7 +253,7 @@ contextBridge.exposeInMainWorld('electron', {
         getConfig: () => ipcRenderer.invoke('osc:get-config'),
         setConfig: (config: { enabled?: boolean; senderIp?: string; senderPort?: number; receiverPort?: number }) => ipcRenderer.invoke('osc:set-config', config),
         send: (address: string, args: unknown[]) => ipcRenderer.invoke('osc:send', { address, args }),
-        
+
         getAnnouncementConfig: (groupId: string) => ipcRenderer.invoke('osc:get-announcement-config', groupId),
         setAnnouncementConfig: (groupId: string, config: unknown) => ipcRenderer.invoke('osc:set-announcement-config', { groupId, config })
     },
@@ -251,7 +261,7 @@ contextBridge.exposeInMainWorld('electron', {
     // Discord RPC API
     discordRpc: {
         getConfig: () => ipcRenderer.invoke('discord-rpc:get-config'),
-        setConfig: (config: { enabled: boolean; showGroupName: boolean; showMemberCount: boolean; showElapsedTime: boolean; customDetails: string; customState: string }) => 
+        setConfig: (config: { enabled: boolean; showGroupName: boolean; showMemberCount: boolean; showElapsedTime: boolean; customDetails: string; customState: string }) =>
             ipcRenderer.invoke('discord-rpc:set-config', config),
         getStatus: () => ipcRenderer.invoke('discord-rpc:get-status'),
         reconnect: () => ipcRenderer.invoke('discord-rpc:reconnect'),

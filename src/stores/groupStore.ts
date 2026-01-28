@@ -40,6 +40,7 @@ interface GroupState {
   myGroups: Group[];
   selectedGroup: Group | null;
   isLoading: boolean;
+  isPartialLoading: boolean;
   error: string | null;
   isRoamingMode: boolean;
 
@@ -48,7 +49,7 @@ interface GroupState {
   bans: GroupBan[];
   members: GroupMember[];
   instances: VRChatInstance[];
-  
+
   // Loading states
   isRequestsLoading: boolean;
   isBansLoading: boolean;
@@ -69,24 +70,25 @@ interface GroupState {
 
   fetchMyGroups: () => Promise<void>;
   selectGroup: (group: Group | null) => void;
-  
+
   fetchGroupRequests: (groupId: string) => Promise<void>;
   fetchGroupBans: (groupId: string) => Promise<void>;
   fetchGroupMembers: (groupId: string, offset?: number) => Promise<void>;
   fetchGroupInstances: (groupId: string) => Promise<void>;
   respondToRequest: (groupId: string, userId: string, action: 'accept' | 'deny') => Promise<{ success: boolean; error?: string }>;
-  
+
   // Get timestamp helper
   getLastFetchedAt: (type: keyof typeof REFRESH_INTERVALS) => number;
-  
+
   // Pipeline event handlers
   handlePipelineEvent: (event: PipelineEvent) => void;
   clearRealtimeUpdate: () => void;
-  
+
   enterRoamingMode: () => void;
   exitRoamingMode: () => void;
-  
+
   loadMoreMembers: (groupId: string) => Promise<void>;
+  setGroups: (groups: Group[]) => void;
 }
 
 export const useGroupStore = create<GroupState>((set, get) => ({
@@ -94,13 +96,14 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   selectedGroup: null,
   isRoamingMode: false,
   isLoading: false,
+  isPartialLoading: false,
   error: null,
-  
+
   requests: [],
   bans: [],
   members: [],
   instances: [],
-  
+
   isRequestsLoading: false,
   isBansLoading: false,
   isMembersLoading: false,
@@ -121,9 +124,15 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   fetchMyGroups: async () => {
     set({ isLoading: true, error: null });
     try {
-      const result = await window.electron.getMyGroups();
+      const result = await window.electron.getMyGroups() as any;
       if (result.success && result.groups) {
-        set({ myGroups: result.groups as Group[], isLoading: false });
+        // If it's a partial result (Stage 1), we mark as partial loading
+        // so the UI can show a refresh indicator
+        set({
+          myGroups: result.groups as Group[],
+          isLoading: result.isPartial ? false : false, // We unlock UI immediately
+          isPartialLoading: !!result.isPartial
+        });
       } else {
         set({ error: result.error || 'Failed to fetch groups', isLoading: false });
       }
@@ -132,21 +141,25 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     }
   },
 
+  setGroups: (groups) => {
+    set({ myGroups: groups, isPartialLoading: false, isLoading: false });
+  },
+
   selectGroup: (group) => {
     // Keep cached data when switching back to same group
     const currentGroup = get().selectedGroup;
     set({ isRoamingMode: false }); // Always exit roaming mode when selecting a group (or null)
-    
+
     if (currentGroup?.id === group?.id) {
-         return;
+      return;
     }
-    
+
     // Clear data only when switching to a different group
-    set({ 
-      selectedGroup: group, 
-      requests: [], 
-      bans: [], 
-      members: [], 
+    set({
+      selectedGroup: group,
+      requests: [],
+      bans: [],
+      members: [],
       instances: [],
       lastFetchedAt: { requests: 0, bans: 0, members: 0, instances: 0 },
       hasRealtimeUpdate: false,
@@ -163,15 +176,15 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     try {
       const result = await window.electron.getGroupRequests(groupId);
       if (result.success && result.requests) {
-        set({ 
+        set({
           requests: result.requests,
           lastFetchedAt: { ...get().lastFetchedAt, requests: Date.now() }
         });
       }
     } catch (error) {
-       console.error('Failed to fetch requests', error);
+      console.error('Failed to fetch requests', error);
     } finally {
-        set({ isRequestsLoading: false });
+      set({ isRequestsLoading: false });
     }
   },
 
@@ -180,15 +193,15 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     try {
       const result = await window.electron.getGroupBans(groupId);
       if (result.success && result.bans) {
-        set({ 
+        set({
           bans: result.bans,
           lastFetchedAt: { ...get().lastFetchedAt, bans: Date.now() }
         });
       }
     } catch (error) {
-       console.error('Failed to fetch bans', error);
+      console.error('Failed to fetch bans', error);
     } finally {
-        set({ isBansLoading: false });
+      set({ isBansLoading: false });
     }
   },
 
@@ -197,15 +210,15 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     try {
       const result = await window.electron.getGroupMembers(groupId, offset, 100);
       if (result.success && result.members) {
-        set((state) => ({ 
-            members: offset === 0 ? result.members! : [...state.members, ...result.members!],
-            lastFetchedAt: { ...state.lastFetchedAt, members: Date.now() }
+        set((state) => ({
+          members: offset === 0 ? result.members! : [...state.members, ...result.members!],
+          lastFetchedAt: { ...state.lastFetchedAt, members: Date.now() }
         }));
       }
     } catch (error) {
-       console.error('Failed to fetch members', error);
+      console.error('Failed to fetch members', error);
     } finally {
-        set({ isMembersLoading: false });
+      set({ isMembersLoading: false });
     }
   },
 
@@ -214,37 +227,37 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     try {
       const result = await window.electron.getGroupInstances(groupId);
       if (result.success && result.instances) {
-        set({ 
+        set({
           instances: result.instances,
           lastFetchedAt: { ...get().lastFetchedAt, instances: Date.now() }
         });
       }
     } catch (error) {
-       console.error('Failed to fetch instances', error);
+      console.error('Failed to fetch instances', error);
     } finally {
-        set({ isInstancesLoading: false });
+      set({ isInstancesLoading: false });
     }
   },
 
   respondToRequest: async (groupId: string, userId: string, action: 'accept' | 'deny') => {
-      try {
-          const result = await window.electron.respondToGroupRequest(groupId, userId, action);
-          if (result.success) {
-              set(state => ({
-                  requests: state.requests.filter(req => req.user.id !== userId)
-              }));
-              // Optionally fetch members if accepted, but pipeline usually handles it
-              if (action === 'accept') {
-                   // Optimistic update or waiting for pipeline
-              }
-          } else {
-              console.error(`Failed to ${action} request:`, result.error);
-          }
-          return result;
-      } catch (error) {
-          console.error(`Failed to ${action} request:`, error);
-          return { success: false, error: getErrorMessage(error) };
+    try {
+      const result = await window.electron.respondToGroupRequest(groupId, userId, action);
+      if (result.success) {
+        set(state => ({
+          requests: state.requests.filter(req => req.user.id !== userId)
+        }));
+        // Optionally fetch members if accepted, but pipeline usually handles it
+        if (action === 'accept') {
+          // Optimistic update or waiting for pipeline
+        }
+      } else {
+        console.error(`Failed to ${action} request:`, result.error);
       }
+      return result;
+    } catch (error) {
+      console.error(`Failed to ${action} request:`, error);
+      return { success: false, error: getErrorMessage(error) };
+    }
   },
 
   // ========================================
@@ -254,7 +267,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   handlePipelineEvent: (event: PipelineEvent) => {
     const state = get();
     const selectedGroupId = state.selectedGroup?.id;
-    
+
     // Initialize debounced functions lazily (need access to store methods)
     if (!debouncedFetchMembers) {
       debouncedFetchMembers = debounce((groupId: string) => {
@@ -266,10 +279,10 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         get().fetchMyGroups();
       }, 1000); // 1 second debounce
     }
-    
+
     // Extract groupId from event content if present
     const eventGroupId = (event.content as { groupId?: string; member?: { groupId?: string }; role?: { groupId?: string } })
-      .groupId || 
+      .groupId ||
       (event.content as { member?: { groupId?: string } }).member?.groupId ||
       (event.content as { role?: { groupId?: string } }).role?.groupId;
 
@@ -318,16 +331,16 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   },
 
   enterRoamingMode: () => {
-    set({ 
-        selectedGroup: null, 
-        isRoamingMode: true,
-        requests: [], 
-        bans: [], 
-        members: [], 
-        instances: [],
-        lastFetchedAt: { requests: 0, bans: 0, members: 0, instances: 0 },
-        hasRealtimeUpdate: false,
-        lastPipelineEvent: null
+    set({
+      selectedGroup: null,
+      isRoamingMode: true,
+      requests: [],
+      bans: [],
+      members: [],
+      instances: [],
+      lastFetchedAt: { requests: 0, bans: 0, members: 0, instances: 0 },
+      hasRealtimeUpdate: false,
+      lastPipelineEvent: null
     });
   },
 
@@ -336,31 +349,31 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   },
 
   loadMoreMembers: async (groupId: string) => {
-      const state = get();
-      if (state.isMembersLoading) return;
-      
-      const currentCount = state.members.length;
-      // Safety: Don't load more if we probably have all of them (sanity check)
-      // but VRChat member counts can be desync'd, so relying on return count is better.
-      
-      set({ isMembersLoading: true });
-      try {
-        const result = await window.electron.getGroupMembers(groupId, currentCount, 100);
-        if (result.success && result.members) {
-           if (result.members.length === 0) {
-               // End of list reached
-           } else {
-               set((prev) => ({
-                   members: [...prev.members, ...result.members!],
-                   lastFetchedAt: { ...prev.lastFetchedAt, members: Date.now() }
-               }));
-           }
+    const state = get();
+    if (state.isMembersLoading) return;
+
+    const currentCount = state.members.length;
+    // Safety: Don't load more if we probably have all of them (sanity check)
+    // but VRChat member counts can be desync'd, so relying on return count is better.
+
+    set({ isMembersLoading: true });
+    try {
+      const result = await window.electron.getGroupMembers(groupId, currentCount, 100);
+      if (result.success && result.members) {
+        if (result.members.length === 0) {
+          // End of list reached
+        } else {
+          set((prev) => ({
+            members: [...prev.members, ...result.members!],
+            lastFetchedAt: { ...prev.lastFetchedAt, members: Date.now() }
+          }));
         }
-      } catch (error) {
-         console.error('Failed to load more members', error);
-      } finally {
-          set({ isMembersLoading: false });
       }
+    } catch (error) {
+      console.error('Failed to load more members', error);
+    } finally {
+      set({ isMembersLoading: false });
+    }
   }
 }));
 
@@ -375,30 +388,37 @@ export const useGroupStore = create<GroupState>((set, get) => ({
  */
 export function initGroupStorePipelineSubscription(): () => void {
   const store = useGroupStore.getState();
-  
+
   // Subscribe to group-related events
   const unsubMember = subscribeToPipelineEvent('group-member-updated', store.handlePipelineEvent);
   const unsubRole = subscribeToPipelineEvent('group-role-updated', store.handlePipelineEvent);
   const unsubJoined = subscribeToPipelineEvent('group-joined', store.handlePipelineEvent);
   const unsubLeft = subscribeToPipelineEvent('group-left', store.handlePipelineEvent);
 
+  // Subscribe to streaming group updates (Stage 2 refresh)
+  const unsubGroupsUpdated = window.electron.onGroupsUpdated((data) => {
+    console.log(`[STORE] Streaming groups update: ${data.groups.length} groups`);
+    useGroupStore.getState().setGroups(data.groups as Group[]);
+  });
+
   return () => {
     unsubMember();
     unsubRole();
     unsubJoined();
     unsubLeft();
+    unsubGroupsUpdated();
   };
 }
 
 // Helper to subscribe to pipeline events (uses pipelineStore)
 function subscribeToPipelineEvent(
-  type: string, 
+  type: string,
   callback: (event: PipelineEvent) => void
 ): () => void {
   // Import dynamically to avoid circular deps
   // In practice, this should be handled by usePipelineStore.subscribe
   // For now, we'll use a simple event pattern
-  
+
   // This is a placeholder - the actual subscription will be done
   // in the app initialization using usePipelineStore
   void type;
