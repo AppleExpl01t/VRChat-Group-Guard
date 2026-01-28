@@ -15,6 +15,7 @@ import { SettingsSearch, matchesSearch } from './SettingsSearch';
 import { SearchX } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { BulkFriendImport } from './components/BulkFriendImport';
+import { APP_VERSION } from '../../constants/app';
 import paw from '../../assets/images/paw.png';
 
 import appIcon from '../../assets/icon.png';
@@ -729,7 +730,7 @@ export const SettingsView: React.FC = () => {
             onClick={handleVersionClick}
             title="Click 5 times to unlock debug mode"
           >
-            Version 1.0.7 (Beta)
+            Version {APP_VERSION} (Beta)
           </p>
           <div style={{ 
             color: 'var(--color-text-dim)', 

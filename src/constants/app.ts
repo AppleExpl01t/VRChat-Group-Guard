@@ -3,9 +3,12 @@
  * Centralized configuration for the VRChat Group Guard application
  */
 
+// Import version from package.json
+import packageJson from '../../package.json';
+
 // Application Metadata
 export const APP_NAME = 'VRChat Group Guard';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = packageJson.version;
 export const APP_AUTHOR = 'VRChat Group Guard Team';
 
 // API Configuration
