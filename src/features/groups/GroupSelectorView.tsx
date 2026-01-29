@@ -4,11 +4,12 @@ import { usePoller } from '../../hooks/usePoller';
 import { useInstanceMonitorStore } from '../../stores/instanceMonitorStore';
 import { useGroupPreferencesStore } from '../../stores/groupPreferencesStore';
 import { NeonButton } from '../../components/ui/NeonButton';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMouseGlow } from '../../hooks/useMouseGlow';
 import { ParticleDissolveImage } from '../../components/ui/ParticleDissolveImage';
 import { Star, Users, Calendar, ArrowUpDown, ChevronUp, ChevronDown, Type, Activity } from 'lucide-react';
-import styles from './GroupSelectionView.module.css';
+import styles from './GroupSelectorView.module.css';
 import { GlassPanel } from '../../components/ui/GlassPanel';
 import { StatTile } from '../dashboard/components/StatTile';
 
@@ -251,7 +252,7 @@ const RoamingCard = memo(({
   );
 });
 
-export const GroupSelectionView: React.FC = memo(() => {
+export const GroupSelectorView: React.FC = memo(() => {
   const {
     myGroups,
     // totalGroupsToLoad, // Removed: Property does not exist
@@ -263,6 +264,7 @@ export const GroupSelectionView: React.FC = memo(() => {
     error
   } = useGroupStore();
   const { currentWorldId, currentWorldName, instanceImageUrl, currentGroupId } = useInstanceMonitorStore();
+
   const [isLarge, setIsLarge] = useState(window.innerWidth > 1100);
 
   // Persistent sorting & starred group from store
@@ -502,14 +504,17 @@ export const GroupSelectionView: React.FC = memo(() => {
 
         {/* Always show Skip/Roaming Mode button */}
         <motion.div
+          id="action-footer" // Force DOM update
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           style={{
             display: 'flex',
-            justifyContent: 'center',
+            flexDirection: 'column', // Stack vertically
+            alignItems: 'center', // Center align
             padding: '2rem 1rem',
-            marginTop: '1rem'
+            marginTop: '1rem',
+            gap: '12px' // 10-12px padding as requested
           }}
         >
           <NeonButton
@@ -519,16 +524,20 @@ export const GroupSelectionView: React.FC = memo(() => {
               padding: '0.8rem 2rem',
               fontSize: '0.9rem',
               gap: '8px',
-              opacity: 0.8
+              opacity: 0.8,
+              width: '100%',
+              maxWidth: '320px' // Same length
             }}
           >
             <span style={{ fontSize: '1.1rem' }}>🔍</span>
-            Skip - Enter Roaming Mode
+            Skip / Enter Roaming Mode
           </NeonButton>
+
+
         </motion.div>
       </div>
     </div>
   );
 });
 
-GroupSelectionView.displayName = 'GroupSelectionView';
+GroupSelectorView.displayName = 'GroupSelectorView';

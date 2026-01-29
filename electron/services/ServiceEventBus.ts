@@ -8,7 +8,10 @@ export type ServiceEventType =
     | 'groups-raw'
     | 'groups-cache-ready'
     | 'auth-changed' // Add more as needed
-    | 'group-verified';
+    | 'group-verified'
+    | 'friend-update'
+    | 'friend-state-changed'
+    | 'social-feed-entry-added';
 
 export interface ServiceEventPayloads {
     'groups-updated': { groups: { id: string;[key: string]: unknown }[] };
@@ -16,6 +19,19 @@ export interface ServiceEventPayloads {
     'groups-cache-ready': { groupIds: string[] };
     'auth-changed': { userId: string | null };
     'group-verified': { group: { id: string;[key: string]: unknown } };
+    'friend-update': { type: string; content: Record<string, unknown>; timestamp: string };
+    'friend-state-changed': {
+        friend: any;
+        previous: any;
+        change: {
+            status: boolean;
+            location: boolean;
+            statusDescription: boolean;
+            representedGroup: boolean;
+            avatar: boolean;
+        };
+    };
+    'social-feed-entry-added': { entry: any };
 }
 
 class ServiceEventBus extends EventEmitter {

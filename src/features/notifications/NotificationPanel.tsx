@@ -87,7 +87,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                         style={{
                             position: 'absolute',
                             top: '100%',
-                            left: '0',
+                            right: '0',
                             marginTop: '10px',
                             width: '380px',
                             zIndex: 50,
@@ -114,11 +114,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 {history.length > 0 && (
-                                    <button 
+                                    <button
                                         onClick={clearHistory}
-                                        style={{ 
-                                            background: 'none', border: 'none', 
-                                            color: '#fca5a5', cursor: 'pointer', 
+                                        style={{
+                                            background: 'none', border: 'none',
+                                            color: '#fca5a5', cursor: 'pointer',
                                             fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px',
                                             opacity: 0.7
                                         }}
@@ -157,17 +157,17 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                                                 }}
                                             >
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--color-text-main)' }}>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--color-text-main)' }}>
                                                         {item.displayName}
-                                                     </div>
-                                                     <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                         {formatDistanceToNow(item.timestamp, { addSuffix: true })}
                                                         <ChevronDown size={12} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-                                                     </div>
+                                                    </div>
                                                 </div>
-                                                
-                                                <div style={{ 
-                                                    fontSize: '0.8rem', color: item.action === 'REJECT' ? '#fca5a5' : '#fde047', 
+
+                                                <div style={{
+                                                    fontSize: '0.8rem', color: item.action === 'REJECT' ? '#fca5a5' : '#fde047',
                                                     display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px'
                                                 }}>
                                                     <ShieldAlert size={12} />
@@ -195,9 +195,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                                                                 display: 'flex',
                                                                 gap: '8px'
                                                             }}>
-                                                                
+
                                                                 {item.ruleId && (
-                                                                    <button 
+                                                                    <button
                                                                         onClick={(e) => handleWhitelistClick(e, item)}
                                                                         className="action-btn"
                                                                         style={{
@@ -219,7 +219,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                                                                 )}
 
                                                                 {item.detectedGroupId && (
-                                                                    <button 
+                                                                    <button
                                                                         onClick={(e) => handleBanClick(e, item)}
                                                                         className="action-btn"
                                                                         style={{
@@ -239,8 +239,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                                                                         Ban
                                                                     </button>
                                                                 )}
-                                                                 
-                                                                 <button
+
+                                                                <button
                                                                     onClick={(e) => handleDismiss(e, item.id)}
                                                                     style={{
                                                                         padding: '6px 10px',
@@ -277,9 +277,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen }) 
                 onConfirm={executeConfirmation}
                 title={pendingAction?.type === 'WHITELIST' ? 'Confirm Whitelist' : 'Confirm Ban'}
                 message={
-                    pendingAction?.type === 'WHITELIST' 
-                    ? `This will add ${pendingAction.item.displayName} to the whitelist. They will bypass this AutoMod rule in the future.` 
-                    : `This will BAN ${pendingAction?.item.displayName} from the group. They will be removed immediately.`
+                    pendingAction?.type === 'WHITELIST'
+                        ? `This will add ${pendingAction.item.displayName} to the whitelist. They will bypass this AutoMod rule in the future.`
+                        : `This will BAN ${pendingAction?.item.displayName} from the group. They will be removed immediately.`
                 }
                 confirmLabel={pendingAction?.type === 'WHITELIST' ? 'Safelist User' : 'Ban User'}
                 variant={pendingAction?.type === 'BAN' ? 'danger' : 'default'}

@@ -220,9 +220,9 @@ const groupMembersCache = new LRUCache<string, { data: VRCGroupMember[]; timesta
 
 // We import the client accessor from AuthService which owns the VRChat SDK session
 // This maintains the existing authentication flow while centralizing API calls
-import { 
-    getVRChatClient, 
-    isAuthenticated as authIsAuthenticated, 
+import {
+    getVRChatClient,
+    isAuthenticated as authIsAuthenticated,
     getCurrentUserId as authGetCurrentUserId,
     getAuthCookieStringAsync,
     fetchCurrentLocationFromApi as authFetchCurrentLocation,
@@ -237,7 +237,7 @@ export const vrchatApiService = {
     // ========================================
     // CORE - Client and Auth State
     // ========================================
-    
+
     /**
      * Get the underlying VRChat SDK client (for advanced use cases)
      */
@@ -362,7 +362,7 @@ export const vrchatApiService = {
                     groupCache.set(g.id, { data: g, timestamp: now });
                 }
             });
-            
+
             return result;
         }, 'getMyGroups');
     },
@@ -417,9 +417,9 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            const response = await client.getGroupMembers({ 
-                path: { groupId }, 
-                query: { offset, n } 
+            const response = await client.getGroupMembers({
+                path: { groupId },
+                query: { offset, n }
             });
             const members = extractArray(response.data || response) as VRCGroupMember[];
 
@@ -437,9 +437,9 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            const response = await client.searchGroupMembers({ 
-                path: { groupId }, 
-                query: { query, n } 
+            const response = await client.searchGroupMembers({
+                path: { groupId },
+                query: { query, n }
             });
             const members = extractArray(response.data || response) as VRCGroupMember[];
 
@@ -508,7 +508,7 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            await client.banGroupMember({ 
+            await client.banGroupMember({
                 path: { groupId },
                 body: { userId }
             });
@@ -524,7 +524,7 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            await client.unbanGroupMember({ 
+            await client.unbanGroupMember({
                 path: { groupId, userId }
             });
             return undefined;
@@ -554,7 +554,7 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            await client.addGroupMemberRole({ 
+            await client.addGroupMemberRole({
                 path: { groupId, userId, groupRoleId: roleId }
             });
             return undefined;
@@ -569,7 +569,7 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            await client.removeGroupMemberRole({ 
+            await client.removeGroupMemberRole({
                 path: { groupId, userId, groupRoleId: roleId }
             });
             return undefined;
@@ -584,7 +584,7 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            const response = await client.getGroupAuditLogs({ 
+            const response = await client.getGroupAuditLogs({
                 path: { groupId },
                 query: { n }
             });
@@ -602,7 +602,7 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            await client.kickGroupMember({ 
+            await client.kickGroupMember({
                 path: { groupId, userId }
             });
             return undefined;
@@ -647,7 +647,7 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            const response = await client.getGroupInstances({ 
+            const response = await client.getGroupInstances({
                 path: { groupId }
             });
             const instances = extractArray(response.data || response) as VRCInstance[];
@@ -669,8 +669,8 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            const response = await client.getInstance({ 
-                path: { worldId, instanceId } 
+            const response = await client.getInstance({
+                path: { worldId, instanceId }
             });
             const instance = (response.data || response) as VRCInstance;
 
@@ -705,7 +705,7 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            await client.closeInstance({ 
+            await client.closeInstance({
                 path: { worldId, instanceId }
             });
             return undefined;
@@ -780,12 +780,36 @@ export const vrchatApiService = {
             const client = getVRChatClient();
             if (!client) throw new Error('Not authenticated');
 
-            const response = await client.getFriends({ 
-                query: { offline, n: 100 }
-            });
-            const friends = extractArray(response.data || response) as VRCFriend[];
+            let allFriends: VRCFriend[] = [];
+            let offset = 0;
+            const n = 100;
 
-            return friends;
+            while (true) {
+                logger.debug(`Fetching friends (offline=${offline}, offset=${offset})`);
+                const response = await client.getFriends({
+                    query: { offline, n, offset }
+                });
+
+                // Use the lower-level data or handle various SDK response formats
+                const chunk = (Array.isArray(response.data) ? response.data :
+                    (response.data && Array.isArray((response.data as any).data) ? (response.data as any).data : [])) as VRCFriend[];
+
+                if (chunk.length === 0) break;
+
+                allFriends = allFriends.concat(chunk);
+
+                // If we got fewer than requested, we're done
+                if (chunk.length < n) break;
+
+                offset += n;
+                if (offset > 1500) {
+                    logger.warn(`Friend list fetch reached sanity limit of ${offset}. Truncating.`);
+                    break;
+                }
+            }
+
+            logger.info(`Fetched ${allFriends.length} total ${offline ? 'offline' : 'online'} friends.`);
+            return allFriends;
         }, `getFriends:${offline ? 'offline' : 'online'}`);
     },
 
@@ -828,7 +852,7 @@ export const vrchatApiService = {
  */
 function extractArray(data: unknown): unknown[] {
     if (Array.isArray(data)) return data;
-    
+
     if (typeof data === 'object' && data !== null) {
         const obj = data as Record<string, unknown>;
         if (Array.isArray(obj.results)) return obj.results;
@@ -838,7 +862,7 @@ function extractArray(data: unknown): unknown[] {
         if (Array.isArray(obj.roles)) return obj.roles;
         if (Array.isArray(obj.requests)) return obj.requests;
     }
-    
+
     return [];
 }
 

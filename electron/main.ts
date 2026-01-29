@@ -195,6 +195,7 @@ import { setupDiscordWebhookHandlers } from './services/DiscordWebhookService';
 import { setupReportHandlers } from './services/ReportService';
 import { setupUserProfileHandlers } from './services/UserProfileService';
 import { setupBulkFriendHandlers } from './services/BulkFriendService';
+import { setupFriendshipHandlers } from './services/FriendshipIpc';
 
 // ...
 import { processService } from './services/ProcessService';
@@ -247,6 +248,14 @@ import { watchlistService } from './services/WatchlistService';
 watchlistService.initialize();
 
 // Setup handlers
+import { serviceEventBus } from './services/ServiceEventBus';
+
+// Forward Service Events to Renderer
+serviceEventBus.on('friend-update', (data) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('friendship:update', data);
+  }
+});
 setupAuthHandlers();
 setupGroupHandlers();
 setupUserHandlers();
@@ -266,6 +275,7 @@ setupDiscordWebhookHandlers();
 setupReportHandlers();
 setupUserProfileHandlers();
 setupBulkFriendHandlers();
+setupFriendshipHandlers();
 
 import { settingsService, AppSettings } from './services/SettingsService';
 settingsService.initialize();

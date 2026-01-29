@@ -1,4 +1,3 @@
-
 .titleBar {
   position: absolute;
   top: 0;
@@ -23,7 +22,16 @@
   align-items: center;
   gap: 0.5rem;
   -webkit-app-region: no-drag;
-  padding: 26px 0 16px 26px; /* Added 10px to top and left */
+  padding: 26px 0 16px 26px;
+  /* Added 10px to top and left */
+}
+
+.rightSection {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
 }
 
 .profileButton {
@@ -38,6 +46,34 @@
   color: var(--color-text-main);
   backdrop-filter: blur(10px);
   outline: none;
+}
+
+.friendshipButton {
+  background: var(--color-surface-overlay);
+  border: 1px solid var(--border-color);
+  border-radius: 30px;
+  padding: 4px 16px 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--color-text-main);
+  backdrop-filter: blur(10px);
+  outline: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  height: 34px;
+  /* Explicit height match */
+}
+
+.friendshipButton:hover {
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.2);
+  /* Purple glow match */
+  transform: translateY(-1px);
 }
 
 .avatar {

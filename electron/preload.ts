@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electron', {
     // Groups API
     getMyGroups: () => ipcRenderer.invoke('groups:get-my-groups'),
     getGroupDetails: (groupId: string) => ipcRenderer.invoke('groups:get-details', { groupId }),
+    getGroupPublicDetails: (groupId: string) => ipcRenderer.invoke('groups:get-public-details', { groupId }),
     getGroupMembers: (groupId: string, offset = 0, n = 100) => ipcRenderer.invoke('groups:get-members', { groupId, offset, n }),
     searchGroupMembers: (groupId: string, query: string, n = 20) => ipcRenderer.invoke('groups:search-members', { groupId, query, n }),
     getGroupRequests: (groupId: string) => ipcRenderer.invoke('groups:get-requests', { groupId }),
@@ -344,6 +345,26 @@ contextBridge.exposeInMainWorld('electron', {
             ipcRenderer.on('bulk-friend:progress', handler);
             return () => ipcRenderer.removeListener('bulk-friend:progress', handler);
         }
+    },
+
+    // Friendship Manager API (Phase 2)
+    friendship: {
+        getStatus: () => ipcRenderer.invoke('friendship:get-status'),
+        getGameLog: (limit?: number) => ipcRenderer.invoke('friendship:get-game-log', limit),
+        getPlayerLog: (options?: { limit?: number; search?: string; type?: 'join' | 'leave' | 'all' }) =>
+            ipcRenderer.invoke('friendship:get-player-log', options),
+        getFriendLocations: () => ipcRenderer.invoke('friendship:get-friend-locations'),
+        getSocialFeed: (limit?: number) => ipcRenderer.invoke('friendship:get-social-feed', limit),
+        getRelationshipEvents: (limit?: number) => ipcRenderer.invoke('friendship:get-relationship-events', limit),
+        refreshFriends: () => ipcRenderer.invoke('friendship:refresh-friends'),
+        refreshRelationships: () => ipcRenderer.invoke('friendship:refresh-relationships'),
+        onUpdate: (callback: (data: unknown) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+            ipcRenderer.on('friendship:update', handler);
+            return () => ipcRenderer.removeListener('friendship:update', handler);
+        },
+        getPlayerStats: (userId: string) => ipcRenderer.invoke('friendship:get-player-stats', userId),
+        getWorldStats: (worldId: string) => ipcRenderer.invoke('friendship:get-world-stats', worldId),
     },
 
     // Generic IPC Renderer for event listening

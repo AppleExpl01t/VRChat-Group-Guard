@@ -15,15 +15,14 @@ import { useAutoModNotifications } from './hooks/useAutoModNotifications';
 import { SetupView } from './features/setup/SetupView';
 import { useUpdateStore } from './stores/updateStore';
 import { useNotificationStore } from './stores/notificationStore';
-
-
-
+import { useAppViewStore } from './stores/appViewStore';
 import { PageTransition } from './components/layout/PageTransition';
+import { ViewLoader } from './components/ui/ViewLoader';
+import { AutoLoginLoadingScreen } from './features/auth/AutoLoginLoadingScreen';
 
 // Lazy load heavy views for better performance
 const DashboardView = lazy(() => import('./features/dashboard/DashboardView').then(m => ({ default: m.DashboardView })));
-
-const GroupSelectionView = lazy(() => import('./features/groups/GroupSelectionView').then(m => ({ default: m.GroupSelectionView })));
+const GroupSelectorView = lazy(() => import('./features/groups/GroupSelectorView').then(m => ({ default: m.GroupSelectorView })));
 const SettingsView = lazy(() => import('./features/settings/SettingsView').then(m => ({ default: m.SettingsView })));
 const DatabaseView = lazy(() => import('./features/database/DatabaseView').then(m => ({ default: m.DatabaseView })));
 const AutoModView = lazy(() => import('./features/automod/AutoModView').then(m => ({ default: m.AutoModView })));
@@ -31,22 +30,21 @@ const LiveView = lazy(() => import('./features/live/LiveView').then(m => ({ defa
 const AuditLogView = lazy(() => import('./features/audit/AuditLogView').then(m => ({ default: m.AuditLogView })));
 const WatchlistView = lazy(() => import('./features/watchlist/WatchlistView').then(m => ({ default: m.WatchlistView })));
 const InstanceGuardView = lazy(() => import('./features/instances/InstanceGuardView').then(m => ({ default: m.InstanceGuardView })));
-
-import { ViewLoader } from './components/ui/ViewLoader';
-import { AutoLoginLoadingScreen } from './features/auth/AutoLoginLoadingScreen';
+const FriendshipManagerView = lazy(() => import('./views/FriendshipManagerView').then(m => ({ default: m.FriendshipManagerView })));
 
 function App() {
   const { isAuthenticated, autoLogin, status, logout } = useAuthStore();
   const { selectedGroup, selectGroup, isRoamingMode } = useGroupStore();
+  const { currentView, setView: setCurrentView } = useAppViewStore();
+
   const [isCheckingAutoLogin, setIsCheckingAutoLogin] = useState(true);
   const [isStorageConfigured, setIsStorageConfigured] = useState<boolean | null>(null);
-  const [currentView, setCurrentView] = useState<DockView>('main');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false); // Track if VRC is running basically
 
   // Initialize Pipeline WebSocket connection and event subscriptions
   usePipelineInit();
-  
+
   // Initialize Live Log Watcher
   useInstanceMonitorInit(isAuthenticated);
 
@@ -54,17 +52,17 @@ function App() {
   useAutoModNotifications();
 
   // Update state management
-  const { 
-    updateDownloaded, 
-    updateInfo, 
-    setUpdateAvailable, 
-    setUpdateDownloaded, 
-    setDownloadProgress 
+  const {
+    updateDownloaded,
+    updateInfo,
+    setUpdateAvailable,
+    setUpdateDownloaded,
+    setDownloadProgress
   } = useUpdateStore();
-  
+
   const addNotification = useNotificationStore(state => state.addNotification);
   const notifications = useNotificationStore(state => state.notifications);
-  
+
   // Track if we've already shown the update notification
   const updateNotificationShownRef = useRef(false);
 
@@ -101,7 +99,7 @@ function App() {
     const unsubscribeDownloaded = window.electron.updater.onUpdateDownloaded(() => {
       setUpdateDownloaded();
     });
-    
+
     return () => {
       unsubscribeAvailable();
       unsubscribeProgress();
@@ -112,18 +110,18 @@ function App() {
   // Show persistent update notification when update is downloaded
   useEffect(() => {
     if (!updateDownloaded || updateNotificationShownRef.current) return;
-    
+
     // Check if we already have an update notification
     const hasUpdateNotification = notifications.some(n => n.type === 'update');
     if (hasUpdateNotification) return;
-    
+
     updateNotificationShownRef.current = true;
-    
+
     addNotification({
       type: 'update',
       title: 'Update Ready',
-      message: updateInfo?.version 
-        ? `Version ${updateInfo.version} is ready to install.` 
+      message: updateInfo?.version
+        ? `Version ${updateInfo.version} is ready to install.`
         : 'A new version is ready to install.',
       persistent: true,
       action: {
@@ -134,58 +132,53 @@ function App() {
   }, [updateDownloaded, updateInfo, addNotification, notifications]);
 
   // Monitor Live Log state to toggle Live Mode UI
-  // Note: This effect runs the live status check regardless of pipeline connection
-  // because the log watcher operates independently of the VRChat API pipeline.
-  // PERF FIX: Removed isLiveMode from deps to prevent re-subscription loops
   useEffect(() => {
     if (isRoamingMode) {
-      // In roaming mode, always enable live mode
-      // Deferred to avoid synchronous setState in effect body
       queueMicrotask(() => setIsLiveMode(true));
-      return; // Don't set up listeners in roaming mode
+      return;
     }
 
     // 1. Initial check
     const checkStatus = async () => {
-        if (!selectedGroup) {
-            setIsLiveMode(false);
-            return;
-        }
-        
-        try {
-            const currentInstanceGroupId = await window.electron.instance.getCurrentGroup();
-            setIsLiveMode(currentInstanceGroupId === selectedGroup.id);
-        } catch (e) {
-            console.error("Failed to check live status:", e);
-        }
+      if (!selectedGroup) {
+        setIsLiveMode(false);
+        return;
+      }
+
+      try {
+        const currentInstanceGroupId = await window.electron.instance.getCurrentGroup();
+        setIsLiveMode(currentInstanceGroupId === selectedGroup.id);
+      } catch (e) {
+        console.error("Failed to check live status:", e);
+      }
     };
     checkStatus();
 
     // 2. Listen for group changes
     let unsubscribeGroupChange: (() => void) | undefined;
     if (window.electron?.instance?.onGroupChanged) {
-        unsubscribeGroupChange = window.electron.instance.onGroupChanged((groupId) => {
-            if (!selectedGroup) {
-                setIsLiveMode(false);
-            } else {
-                setIsLiveMode(groupId === selectedGroup.id);
-            }
-        });
+      unsubscribeGroupChange = window.electron.instance.onGroupChanged((groupId) => {
+        if (!selectedGroup) {
+          setIsLiveMode(false);
+        } else {
+          setIsLiveMode(groupId === selectedGroup.id);
+        }
+      });
     }
 
     // 3. Listen for game closed event
     let unsubscribeGameClosed: (() => void) | undefined;
     if (window.electron?.logWatcher?.onGameClosed) {
-        unsubscribeGameClosed = window.electron.logWatcher.onGameClosed(() => {
-            setIsLiveMode(false);
-        });
+      unsubscribeGameClosed = window.electron.logWatcher.onGameClosed(() => {
+        setIsLiveMode(false);
+      });
     }
 
     return () => {
-        unsubscribeGroupChange?.();
-        unsubscribeGameClosed?.();
+      unsubscribeGroupChange?.();
+      unsubscribeGameClosed?.();
     };
-  }, [selectedGroup, isRoamingMode]); // Removed isLiveMode - it was causing re-subscription loops
+  }, [selectedGroup, isRoamingMode]);
 
   // Redirect from Live view when Live mode ends (smooth transition)
   useEffect(() => {
@@ -199,7 +192,7 @@ function App() {
       }, 100); // Small delay for smooth transition
       return () => clearTimeout(t);
     }
-  }, [isLiveMode, isRoamingMode, currentView, selectedGroup]);
+  }, [isLiveMode, isRoamingMode, currentView, selectedGroup, setCurrentView]);
 
   // Check storage configuration first
   useEffect(() => {
@@ -209,9 +202,7 @@ function App() {
         setIsStorageConfigured(status.configured);
       } catch (err) {
         console.error('Failed to check storage status:', err);
-        // Fallback to true to avoid blocking app if something weird happens, 
-        // though this ideally shouldn't happen with the new service.
-        setIsStorageConfigured(true); 
+        setIsStorageConfigured(true);
       }
     };
     checkStorage();
@@ -220,13 +211,12 @@ function App() {
   // Attempt auto-login only after storage is confirmed
   useEffect(() => {
     if (isStorageConfigured === false || isStorageConfigured === null) {
-        return;
+      return;
     }
 
     const attemptAutoLogin = async () => {
       setIsCheckingAutoLogin(true);
       try {
-        // Check if we have saved credentials and attempt auto-login
         const hasSaved = await window.electron.hasSavedCredentials();
         if (hasSaved) {
           await autoLogin();
@@ -236,7 +226,7 @@ function App() {
       }
       setIsCheckingAutoLogin(false);
     };
-    
+
     attemptAutoLogin();
   }, [autoLogin, isStorageConfigured]);
 
@@ -248,30 +238,25 @@ function App() {
         return () => clearTimeout(t);
       }
     } else if (currentView === 'live' && !selectedGroup) {
-        // If we exited roaming mode and have no group, go back to main
-        // Use setTimeout to avoid synchronous setState within effect
-        const t = setTimeout(() => setCurrentView('main'), 0);
-        return () => clearTimeout(t);
+      const t = setTimeout(() => setCurrentView('main'), 0);
+      return () => clearTimeout(t);
     }
-  }, [isRoamingMode, selectedGroup, currentView]);
+  }, [isRoamingMode, selectedGroup, currentView, setCurrentView]);
 
   // Handle View Switching - memoized to prevent re-renders
-  // PERF FIX: Wrap in startTransition to keep UI responsive during navigation
   const handleViewChange = useCallback((view: DockView) => {
-    // Exceptions for Live view in Roaming Mode
     if (view === 'live' && (isRoamingMode || selectedGroup)) {
-        startTransition(() => setCurrentView('live'));
-        return;
+      startTransition(() => setCurrentView('live'));
+      return;
     }
 
     if ((view === 'moderation' || view === 'instances' || view === 'audit' || view === 'database' || view === 'live' || view === 'watchlist') && !selectedGroup) {
-      // If trying to access group features without a group, go to group selection
       selectGroup(null);
       startTransition(() => setCurrentView('main'));
       return;
     }
     startTransition(() => setCurrentView(view));
-  }, [selectedGroup, selectGroup, isRoamingMode]);
+  }, [selectedGroup, selectGroup, isRoamingMode, setCurrentView]);
 
   // Memoize content to prevent re-renders during transitions
   const content = useMemo(() => {
@@ -290,10 +275,12 @@ function App() {
         return <WatchlistView />;
       case 'database':
         return <DatabaseView />;
+      case 'friendship':  // New Friendship Manager View
+        return <FriendshipManagerView />;
 
       case 'main':
       default:
-        return selectedGroup ? <DashboardView /> : <GroupSelectionView />;
+        return selectedGroup ? <DashboardView /> : <GroupSelectorView />;
     }
   }, [currentView, selectedGroup]);
 
@@ -302,70 +289,70 @@ function App() {
   let screenKey: string;
 
   if (isStorageConfigured === null) {
-      currentScreen = <AutoLoginLoadingScreen />;
-      screenKey = 'loading-storage';
+    currentScreen = <AutoLoginLoadingScreen />;
+    screenKey = 'loading-storage';
   } else if (isStorageConfigured === false) {
-      currentScreen = <SetupView onComplete={() => setIsStorageConfigured(true)} />;
-      screenKey = 'setup';
+    currentScreen = <SetupView onComplete={() => setIsStorageConfigured(true)} />;
+    screenKey = 'setup';
   } else if ((isCheckingAutoLogin && status === 'logging-in')) {
-      currentScreen = <AutoLoginLoadingScreen />;
-      screenKey = 'loading-autologin';
+    currentScreen = <AutoLoginLoadingScreen />;
+    screenKey = 'loading-autologin';
   } else if (!isAuthenticated) {
-      currentScreen = <LoginView />;
-      screenKey = 'login';
+    currentScreen = <LoginView />;
+    screenKey = 'login';
   } else {
-      // Main Authenticated App
-      currentScreen = (
-        <ConfirmationProvider>
-          <AppLayout>
-            <TitleBar 
-              onSettingsClick={() => setCurrentView('settings')}
-              onLogoutClick={() => setIsLogoutConfirmOpen(true)}
-            />
+    // Main Authenticated App
+    currentScreen = (
+      <ConfirmationProvider>
+        <AppLayout>
+          <TitleBar
+            onSettingsClick={() => setCurrentView('settings')}
+            onLogoutClick={() => setIsLogoutConfirmOpen(true)}
+          />
 
-            {/* Main Content Render - Epic Transition */}
-            <AnimatePresence mode="wait">
-              <PageTransition key={currentView + (selectedGroup ? selectedGroup.id : 'home')}>
-                <Suspense fallback={<ViewLoader />}>
-                  {content}
-                </Suspense>
-              </PageTransition>
-            </AnimatePresence>
+          {/* Main Content Render - Epic Transition */}
+          <AnimatePresence mode="wait">
+            <PageTransition key={currentView + (selectedGroup ? selectedGroup.id : 'home')}>
+              <Suspense fallback={<ViewLoader />}>
+                {content}
+              </Suspense>
+            </PageTransition>
+          </AnimatePresence>
 
-            {/* Neon Dock Navigation */}
-            <NeonDock 
-              currentView={currentView}
-              onViewChange={handleViewChange}
-              selectedGroup={selectedGroup}
-              onGroupClick={() => {
-                  selectGroup(null);
-                  setCurrentView('main');
-              }}
-              isLiveMode={isLiveMode}
-            />
-            
-            <GlobalModals 
-              isLogoutConfirmOpen={isLogoutConfirmOpen}
-              setIsLogoutConfirmOpen={setIsLogoutConfirmOpen}
-              onLogoutConfirm={() => {
-                  logout(false);
-                  setIsLogoutConfirmOpen(false);
-              }}
-            />
-          </AppLayout>
-        </ConfirmationProvider>
-      );
-      screenKey = 'app-layout';
+          {/* Neon Dock Navigation */}
+          <NeonDock
+            currentView={currentView}
+            onViewChange={handleViewChange}
+            selectedGroup={selectedGroup}
+            onGroupClick={() => {
+              selectGroup(null);
+              setCurrentView('main');
+            }}
+            isLiveMode={isLiveMode}
+          />
+
+          <GlobalModals
+            isLogoutConfirmOpen={isLogoutConfirmOpen}
+            setIsLogoutConfirmOpen={setIsLogoutConfirmOpen}
+            onLogoutConfirm={() => {
+              logout(false);
+              setIsLogoutConfirmOpen(false);
+            }}
+          />
+        </AppLayout>
+      </ConfirmationProvider>
+    );
+    screenKey = 'app-layout';
   }
 
   return (
     <>
-        <ToastContainer />
-        <AnimatePresence mode="wait">
-            <PageTransition key={screenKey}>
-                {currentScreen}
-            </PageTransition>
-        </AnimatePresence>
+      <ToastContainer />
+      <AnimatePresence mode="wait">
+        <PageTransition key={screenKey}>
+          {currentScreen}
+        </PageTransition>
+      </AnimatePresence>
     </>
   );
 }

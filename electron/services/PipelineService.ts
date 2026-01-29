@@ -18,6 +18,7 @@ import WebSocket from 'ws';
 import { vrchatApiService } from './VRChatApiService';
 import { processGroupJoinNotification } from './AutoModService';
 import { windowService } from './WindowService';
+import { serviceEventBus } from './ServiceEventBus';
 
 // ============================================
 // CONSTANTS
@@ -108,7 +109,7 @@ async function fetchAuthToken(): Promise<string | null> {
     // which returns { ok: true, token: "authcookie_..." }
 
     // Try using the SDK's internal methods
-    const clientAny = client as Record<string, unknown>;
+    const clientAny = client as unknown as Record<string, unknown>;
 
     // Strategy 1: Try getAuth if available
     if (typeof clientAny.getAuth === 'function') {
@@ -430,6 +431,13 @@ function handleMessage(data: string): void {
   // Emit to renderer
   emitToRenderer('pipeline:event', event);
 
+  // Emit to internal Service Bus for Backend Services (FriendshipManager)
+  // We map pipeline events to service bus events if needed, or generic 'pipeline-event'
+  // But for now let's just emit specific ones we care about
+  if (['friend-online', 'friend-offline', 'friend-location', 'friend-update'].includes(event.type)) {
+    serviceEventBus.emit('friend-update', event);
+  }
+
   // Handle specific event types that may need additional processing
   handleSpecificEvent(event);
 }
@@ -540,8 +548,23 @@ export function onUserLoggedIn(): void {
     await connectWebSocket();
     // AutoMod gatekeeper processing is now triggered by GroupService
     // when group authorization is initialized
+
+    // Initialize FriendshipService (VRCX-style tracking)
+    const currentUserId = getCurrentUserId();
+    if (currentUserId) {
+      // Dynamic import to avoid cycles if necessary, or using the imported instance
+      // Assuming we import it at the top level: import { friendshipService } from './FriendshipService';
+      await friendshipService.initialize(currentUserId);
+    } else {
+      log.warn('[Pipeline] User logged in but ID missing, skipping FriendshipService init');
+    }
   }, 1000);
 }
+
+import { friendshipService } from './FriendshipService';
+import { getCurrentUserId } from './AuthService';
+
+// ...
 
 /**
  * Call this when the user logs out to disconnect from the pipeline.
@@ -549,6 +572,7 @@ export function onUserLoggedIn(): void {
 export function onUserLoggedOut(): void {
   log.info('[Pipeline] User logged out, disconnecting from pipeline');
   disconnectWebSocket();
+  friendshipService.shutdown().catch(err => log.error('[Pipeline] FriendshipService shutdown failed:', err));
 }
 
 /**

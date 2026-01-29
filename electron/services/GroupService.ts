@@ -2,7 +2,7 @@ import { ipcMain } from 'electron';
 import log from 'electron-log';
 const logger = log.scope('GroupService');
 import { getVRChatClient, getCurrentUserId, getAuthCookieStringAsync } from './AuthService';
-// import { vrchatApiService } from './VRChatApiService';
+import { vrchatApiService } from './VRChatApiService';
 import { databaseService } from './DatabaseService';
 import { groupAuthorizationService } from './GroupAuthorizationService';
 import { networkService } from './NetworkService';
@@ -127,20 +127,18 @@ export function setupGroupHandlers() {
         });
     }
 
-    // Get specific group details
-    // Get specific group details
+    // Get specific group details (Strict Moderation Only)
     ipcMain.handle('groups:get-details', async (_event, { groupId }: { groupId: string }) => {
         groupAuthorizationService.validateAccess(groupId, 'groups:get-details');
+        const result = await vrchatApiService.getGroupDetails(groupId);
+        return { ...result, group: result.data };
+    });
 
-        return networkService.execute(async () => {
-            const client = getVRChatClient();
-            if (!client) throw new Error("Not authenticated");
-            const response = await client.getGroup({ path: { groupId } });
-            return { group: response.data };
-        }, `groups:get-details:${groupId}`).then(res => {
-            if (res.success) return { success: true, group: res.data?.group };
-            return { success: false, error: res.error };
-        });
+    // Get public group details (Bypasses moderation check, for profile viewing)
+    ipcMain.handle('groups:get-public-details', async (_event, { groupId }: { groupId: string }) => {
+        // No moderation check here - VRChat API handles public/private visibility
+        const result = await vrchatApiService.getGroupDetails(groupId);
+        return { ...result, group: result.data };
     });
 
     // Get world details
