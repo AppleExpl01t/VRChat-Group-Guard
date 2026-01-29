@@ -83,6 +83,18 @@ Direct integration with your VRChat Groups.
     - **Global Protection**: Staff exemptions apply across ALL AutoMod rules
     - **Instant Recognition**: Staff are checked first before any rule evaluation
 
+### 🤝 Friendship Manager
+
+Comprehensive social intelligence tools to track and manage your network.
+
+- **Friend Locations**: Real-time tracking of friend locations with rich profile overlays and unified "Active Locations" layout.
+- **Activity Feed**: A persistent, paginated timeline of every status change (online/offline/location) in your social circle.
+- **Player Log (Instance History)**: Comprehensive encounter log that tracks every player who enters your instance, featuring advanced filtering and name-sanitizing deduplication.
+- **Relationship Events**: Keep a historical record of friend additions, removals, and display name changes.
+- **Full Friends List**: Deep analytics of your entire network, including a "Friend Score" based on encounter frequency and total time spent together.
+- **Rich Profile Modals**: Deep-dive into detailed statistics for Users, Worlds, and Groups with LiveOps-style data.
+- **Trust Rank & Age Verification**: Visual indicators for player rank and account age integrated across all social views.
+
 ### 💬 OSC Chatbox Integration
 
 Enhance in-game communication without typing.
