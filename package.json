@@ -59,7 +59,7 @@
     "framer-motion": "^12.23.26",
     "keyv-file": "^5.3.3",
     "lru-cache": "^11.2.5",
-    "lucide-react": "^0.562.0",
+    "lucide-react": "^0.563.0",
     "node-osc": "^11.2.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
