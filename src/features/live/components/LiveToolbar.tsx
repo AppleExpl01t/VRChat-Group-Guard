@@ -52,7 +52,7 @@ export const LiveToolbar: React.FC<LiveToolbarProps> = ({
     if (selectedCount > 0) {
         // CONTEXTUAL MODE (Selection Active)
         return (
-            <div className={styles.toolbarContainer} style={{ background: 'var(--color-surface-card)', padding: '12px', borderRadius: '12px', display: 'flex', gap: '8px', alignItems: 'center', border: '1px solid var(--color-primary)' }}>
+            <div className={styles.toolbarContainer} style={{ background: 'var(--color-surface-card)', padding: '12px', borderRadius: '12px', alignItems: 'center', border: '1px solid var(--color-primary)', marginTop: '0' }}>
                 <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{
                         background: 'var(--color-primary)', color: 'black',
@@ -65,20 +65,22 @@ export const LiveToolbar: React.FC<LiveToolbarProps> = ({
                     </NeonButton>
                 </div>
 
-                <NeonButton onClick={onInviteSelected} size="sm">
-                    <UserPlus size={16} /> Invite
-                </NeonButton>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <NeonButton onClick={onInviteSelected} size="sm">
+                        <UserPlus size={16} /> Invite
+                    </NeonButton>
 
-                <NeonButton onClick={onKickSelected} variant="danger" size="sm">
-                    <Gavel size={16} /> Kick / Ban
-                </NeonButton>
+                    <NeonButton onClick={onKickSelected} variant="danger" size="sm">
+                        <Gavel size={16} /> Kick / Ban
+                    </NeonButton>
+                </div>
             </div>
         );
     }
 
     // GLOBAL MODE (No Selection)
     return (
-        <div className={styles.toolbarContainer} style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+        <div className={styles.toolbarContainer}>
             {/* Unified Action Bar */}
 
             {/* Recruit / Invite All */}

@@ -239,7 +239,7 @@ export const LiveView: React.FC = () => {
         } finally {
             setIsInitialLoad(false);
         }
-    }, [selectedGroup, isRoamingMode, currentWorldName, currentWorldId, instanceImageUrl, updateLiveScan]);
+    }, [selectedGroup?.id, isRoamingMode, updateLiveScan]);
 
     // Actions
     const handlePlayerJoined = useInstanceMonitorStore(state => state.handlePlayerJoined);
@@ -691,9 +691,16 @@ export const LiveView: React.FC = () => {
         const active = entities.filter(e => e.status === 'active' || e.status === 'joining');
 
         // Use persistent list for 'left' if available and we are in an instance
-        const left = persistentLeftEntities.length > 0
+        // Sort by time: newest to leave first
+        const left = (persistentLeftEntities.length > 0
             ? persistentLeftEntities
-            : entities.filter(e => e.status === 'left' || e.status === 'kicked');
+            : entities.filter(e => e.status === 'left' || e.status === 'kicked'))
+            .slice()
+            .sort((a, b) => {
+                const timeA = (a as any).leftAt ? new Date((a as any).leftAt).getTime() : (a.lastUpdated || 0);
+                const timeB = (b as any).leftAt ? new Date((b as any).leftAt).getTime() : (b.lastUpdated || 0);
+                return (timeB || 0) - (timeA || 0);
+            });
 
         return {
             activeCount: active.length,
@@ -1010,30 +1017,28 @@ export const LiveView: React.FC = () => {
                                     </div>
                                 )}
 
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <LiveToolbar
-                                        selectedCount={selectedEntityIds.size}
-                                        onClearSelection={clearSelection}
-                                        onKickSelected={handleKickSelected}
-                                        onInviteSelected={handleInviteSelected}
-                                        onRally={handleRally}
-                                        onRecruitAll={handleRecruitAll}
-                                        onLockdown={handleLockdown}
-                                        isRoaming={isRoamingMode}
-                                        hasGroupSelected={!!effectiveGroup}
-                                        isRallying={progressMode === 'rally'}
-                                        isRecruiting={progressMode === 'recruit'}
-                                        progress={progress ? Math.round((progress.current / progress.total) * 100) : null}
-                                        statusText={currentProcessingUser
-                                            ? `${currentProcessingUser.phase === 'inviting' ? '📨' : currentProcessingUser.phase === 'skipped' ? '⛔' : '🔍'} ${currentProcessingUser.name}`
-                                            : undefined
-                                        }
-                                        roamingGroups={myGroups}
-                                        selectedRoamingGroupId={roamingSelectedGroupId}
-                                        onSelectRoamingGroup={setRoamingSelectedGroupId}
-                                        isLoading={isLoading}
-                                    />
-                                </div>
+                                <LiveToolbar
+                                    selectedCount={selectedEntityIds.size}
+                                    onClearSelection={clearSelection}
+                                    onKickSelected={handleKickSelected}
+                                    onInviteSelected={handleInviteSelected}
+                                    onRally={handleRally}
+                                    onRecruitAll={handleRecruitAll}
+                                    onLockdown={handleLockdown}
+                                    isRoaming={isRoamingMode}
+                                    hasGroupSelected={!!effectiveGroup}
+                                    isRallying={progressMode === 'rally'}
+                                    isRecruiting={progressMode === 'recruit'}
+                                    progress={progress ? Math.round((progress.current / progress.total) * 100) : null}
+                                    statusText={currentProcessingUser
+                                        ? `${currentProcessingUser.phase === 'inviting' ? '📨' : currentProcessingUser.phase === 'skipped' ? '⛔' : '🔍'} ${currentProcessingUser.name}`
+                                        : undefined
+                                    }
+                                    roamingGroups={myGroups}
+                                    selectedRoamingGroupId={roamingSelectedGroupId}
+                                    onSelectRoamingGroup={setRoamingSelectedGroupId}
+                                    isLoading={isLoading}
+                                />
                             </GlassPanel>
 
                             {/* Instance Health Card */}

@@ -503,6 +503,7 @@ export interface ElectronAPI {
     selectFolder: () => Promise<string | null>;
     setPath: (path: string) => Promise<boolean>;
     reconfigure: () => Promise<boolean>;
+    openFolder: () => Promise<boolean>;
   };
 
   // Instance Presence API
@@ -659,6 +660,13 @@ export interface ElectronAPI {
     getMutualGroups: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
     getUserFeedback: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
     setUserNote: (userId: string, note: string) => Promise<{ success: boolean; error?: string }>;
+  };
+
+  // Player Flags API
+  playerFlags: {
+    getFlags: (userId: string) => Promise<string[]>;
+    setFlags: (userId: string, flagIds: string[]) => Promise<boolean>;
+    getDefinitions: () => Promise<{ id: string; label: string; description: string; type: 'negative' | 'positive'; color: string }[]>;
   };
 
   // Debug API (developer tools)

@@ -33,6 +33,14 @@ const EntityCardComponent: React.FC<EntityCardProps> = ({
     const { openProfile } = useUserProfileStore();
 
     const [imgError, setImgError] = React.useState(false);
+    const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+
+    // Auto-refresh relative time every 30s
+    React.useEffect(() => {
+        if (!readOnly) return;
+        const interval = setInterval(() => forceUpdate(), 30000);
+        return () => clearInterval(interval);
+    }, [readOnly]);
 
     const handleCardClick = (e: React.MouseEvent) => {
         // If clicking action buttons, don't toggle select
@@ -41,6 +49,29 @@ const EntityCardComponent: React.FC<EntityCardProps> = ({
         if (onToggleSelect) {
             onToggleSelect(entity.id);
         }
+    };
+
+    const formatRelativeTime = (timeValue: string | number) => {
+        const ms = typeof timeValue === 'string' ? new Date(timeValue).getTime() : timeValue;
+        const seconds = Math.floor((Date.now() - ms) / 1000);
+
+        if (seconds < 5) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        return `${Math.floor(hours / 24)}d ago`;
+    };
+
+    const getRankColor = (rank: string) => {
+        const r = rank.toLowerCase();
+        // VRChat standard colors
+        if (r.includes('trusted') || r.includes('veteran') || r.includes('purple')) return { bg: 'rgba(168, 85, 247, 0.2)', text: '#d8b4fe', border: 'rgba(168, 85, 247, 0.3)' };
+        if (r.includes('known') || r.includes('orange')) return { bg: 'rgba(249, 115, 22, 0.2)', text: '#ffedd5', border: 'rgba(249, 115, 22, 0.3)' };
+        if (r.includes('user') || r.includes('green')) return { bg: 'rgba(34, 197, 94, 0.2)', text: '#dcfce7', border: 'rgba(34, 197, 94, 0.3)' };
+        if (r.includes('new') || r.includes('blue')) return { bg: 'rgba(59, 130, 246, 0.2)', text: '#dbeafe', border: 'rgba(59, 130, 246, 0.3)' };
+        if (r.includes('visitor') || r.includes('gray')) return { bg: 'rgba(156, 163, 175, 0.2)', text: '#f3f4f6', border: 'rgba(156, 163, 175, 0.3)' };
+        return { bg: 'rgba(255, 255, 255, 0.1)', text: '#94a3b8', border: 'rgba(255, 255, 255, 0.15)' };
     };
 
     return (
@@ -88,8 +119,13 @@ const EntityCardComponent: React.FC<EntityCardProps> = ({
                                 }}>
                                     {entity.isGroupMember ? 'MEMBER' : 'NON-MEMBER'}
                                 </span>
-                                <span>•</span>
-                                <span>{entity.rank}</span>
+                                <span className={styles.rankBadge} style={{
+                                    backgroundColor: getRankColor(entity.rank).bg,
+                                    color: getRankColor(entity.rank).text,
+                                    border: `1px solid ${getRankColor(entity.rank).border}`
+                                }}>
+                                    {entity.rank}
+                                </span>
                                 {entity.friendStatus === 'friend' && (
                                     <>
                                         <span>•</span>
@@ -103,7 +139,11 @@ const EntityCardComponent: React.FC<EntityCardProps> = ({
                                 )}
                             </>
                         ) : (
-                            <span>Detected User</span>
+                            <span style={{ color: 'var(--color-text-dim)' }}>
+                                {((entity as any).leftAt || entity.status === 'left' || entity.status === 'kicked')
+                                    ? `Left ${formatRelativeTime((entity as any).leftAt || entity.lastUpdated)}`
+                                    : 'Recently Detected'}
+                            </span>
                         )}
                     </div>
                 </div>

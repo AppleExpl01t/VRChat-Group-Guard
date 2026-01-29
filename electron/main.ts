@@ -196,6 +196,7 @@ import { setupReportHandlers } from './services/ReportService';
 import { setupUserProfileHandlers } from './services/UserProfileService';
 import { setupBulkFriendHandlers } from './services/BulkFriendService';
 import { setupFriendshipHandlers } from './services/FriendshipIpc';
+import { playerFlagService } from './services/PlayerFlagService';
 
 // ...
 import { processService } from './services/ProcessService';
@@ -236,6 +237,7 @@ ipcMain.handle('storage:reconfigure', () => {
 
 // Initialize storage service
 storageService.initialize();
+storageService.setupHandlers();
 
 import { settingsService, AppSettings } from './services/SettingsService';
 settingsService.initialize();
@@ -278,6 +280,7 @@ setupReportHandlers();
 setupUserProfileHandlers();
 setupBulkFriendHandlers();
 setupFriendshipHandlers();
+playerFlagService.setupHandlers();
 
 // Start Background Workers
 logWatcherService.start(); // Start robust watching immediately

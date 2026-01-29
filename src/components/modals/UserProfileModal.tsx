@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
-import { User, Shield, Globe, Users, Clock, BadgeCheck, Crown, Copy, Check, Loader2, History, MapPin, Edit3 } from 'lucide-react';
+import { User, Shield, Globe, Users, Clock, BadgeCheck, Crown, Copy, Check, Loader2, History, MapPin, Edit3, Tag } from 'lucide-react';
 import styles from '../../features/dashboard/dialogs/UserProfileDialog.module.css';
+import { PlayerFlags } from '../ui/PlayerFlags';
 
 interface UserProfileModalProps {
     userId: string;
@@ -125,16 +126,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     };
 
     const getTrustColor = (trustLevel: string) => {
-        const colors: Record<string, string> = {
-            'Visitor': '#cccccc',
-            'User': '#1778ff',
-            'Known': '#2bcf5c',
-            'Trusted': '#ff7b42',
-            'Veteran': '#8b2cdb',
-            'Legend': '#ffd700',
-            'Unknown': '#666666'
-        };
-        return colors[trustLevel] || '#666666';
+        const r = (trustLevel || '').toLowerCase();
+        if (r.includes('trusted') || r.includes('veteran')) return '#8b2cdb'; // Purple
+        if (r.includes('known')) return '#ff7b42';   // Orange
+        if (r.includes('user')) return '#2bcf5c';    // Green
+        if (r.includes('new')) return '#1778ff';     // Blue
+        if (r.includes('visitor')) return '#cccccc'; // Gray
+        if (r.includes('legend')) return '#ffd700';  // Gold
+        return '#666666';
     };
 
     const formatDate = (dateString: string) => {
@@ -214,6 +213,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                                         <p className={styles.bio}>{profile.bio}</p>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+
+                        {/* Player Flags Card */}
+                        <div className={styles.card}>
+                            <div className={styles.cardHeader}>
+                                <Tag size={16} />
+                                Flag Selection
+                            </div>
+                            <div className={styles.cardContent}>
+                                <PlayerFlags userId={userId} />
                             </div>
                         </div>
 
@@ -374,12 +384,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                                 <div className={styles.cardContent}>
                                     <div className={styles.mutualStats}>
                                         <div className={styles.mutualStat}>
-                                            <span className={styles.mutualCount}>{profileData.mutualCounts.friends}</span>
-                                            <span className={styles.mutualLabel}>Friends</span>
+                                            <div className={styles.mutualIconWrapper} style={{ color: 'var(--color-primary)' }}>
+                                                <User size={20} />
+                                            </div>
+                                            <div className={styles.mutualData}>
+                                                <span className={styles.mutualCount}>{profileData.mutualCounts.friends}</span>
+                                                <span className={styles.mutualLabel}>Mutual Friends</span>
+                                            </div>
                                         </div>
                                         <div className={styles.mutualStat}>
-                                            <span className={styles.mutualCount}>{profileData.mutualCounts.groups}</span>
-                                            <span className={styles.mutualLabel}>Groups</span>
+                                            <div className={styles.mutualIconWrapper} style={{ color: 'var(--color-accent)' }}>
+                                                <Users size={20} />
+                                            </div>
+                                            <div className={styles.mutualData}>
+                                                <span className={styles.mutualCount}>{profileData.mutualCounts.groups}</span>
+                                                <span className={styles.mutualLabel}>Mutual Groups</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -214,7 +214,7 @@ class DatabaseService {
         try {
             const searchPattern = `%${query}%`;
             const results = await this.getClient().$queryRaw`
-              SELECT id, displayName, rank, thumbnailUrl, groupId, lastSeenAt, timesEncountered
+              SELECT id, displayName, rank, thumbnailUrl, groupId, lastSeenAt, timesEncountered, flags
               FROM ScannedUser
               WHERE displayName LIKE ${searchPattern} OR id LIKE ${searchPattern}
               ORDER BY timesEncountered DESC, lastSeenAt DESC
@@ -227,6 +227,7 @@ class DatabaseService {
                 groupId: string | null;
                 lastSeenAt: string;
                 timesEncountered: number;
+                flags: string | null;
             }[];
             return results;
         } catch (error) {
@@ -238,7 +239,7 @@ class DatabaseService {
     public async getScannedUser(userId: string) {
         try {
             const results = await this.getClient().$queryRaw`
-              SELECT id, displayName, rank, thumbnailUrl, groupId, firstSeenAt, lastSeenAt, timesEncountered
+              SELECT id, displayName, rank, thumbnailUrl, groupId, firstSeenAt, lastSeenAt, timesEncountered, flags
               FROM ScannedUser
               WHERE id = ${userId}
           ` as {
@@ -250,6 +251,7 @@ class DatabaseService {
                 firstSeenAt: string;
                 lastSeenAt: string;
                 timesEncountered: number;
+                flags: string | null;
             }[];
             return results[0] || null;
         } catch (error) {
@@ -261,7 +263,7 @@ class DatabaseService {
     public async getRecentScannedUsers(limit: number = 50) {
         try {
             const results = await this.getClient().$queryRaw`
-              SELECT id, displayName, rank, thumbnailUrl, groupId, lastSeenAt, timesEncountered
+              SELECT id, displayName, rank, thumbnailUrl, groupId, lastSeenAt, timesEncountered, flags
               FROM ScannedUser
               ORDER BY lastSeenAt DESC
               LIMIT ${limit}
@@ -273,6 +275,7 @@ class DatabaseService {
                 groupId: string | null;
                 lastSeenAt: string;
                 timesEncountered: number;
+                flags: string | null;
             }[];
             return results;
         } catch (error) {

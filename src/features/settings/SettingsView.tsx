@@ -12,7 +12,7 @@ import { DiscordWebhookSettings } from './DiscordWebhookSettings';
 import { AudioSettings } from './AudioSettings';
 import { SettingsTabBar, type SettingsTab } from './SettingsTabBar';
 import { SettingsSearch, matchesSearch } from './SettingsSearch';
-import { SearchX } from 'lucide-react';
+import { SearchX, Folder } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { BulkFriendImport } from './components/BulkFriendImport';
 import { APP_VERSION } from '../../constants/app';
@@ -22,89 +22,89 @@ import appIcon from '../../assets/icon.png';
 
 // Inner card style for settings sections (used inside main GlassPanel)
 const innerCardStyle: React.CSSProperties = {
-    background: 'var(--color-surface-card)',
-    borderRadius: 'var(--border-radius)',
-    padding: '1.25rem',
-    border: '1px solid var(--border-color)',
+  background: 'var(--color-surface-card)',
+  borderRadius: 'var(--border-radius)',
+  padding: '1.25rem',
+  border: '1px solid var(--border-color)',
 };
 
 // Searchable text for each tab
 const TAB_SEARCH_DATA: Record<SettingsTab, string[]> = {
-    appearance: ['Appearance', 'Theme', 'Primary Neon', 'Accent Neon', 'Color', 'Hue', 'Background', 'Dark', 'Light', 'Particles', 'Glass', 'Blur', 'Opacity', 'Border', 'Radius', 'Orbs', 'Effects'],
-    audio: ['Audio', 'Notification Sound', 'Volume', 'Alert', 'Music'],
-    notifications: ['Notifications', 'Test', 'Alert', 'Visual'],
-    security: ['Security', 'Data', 'Auto-Login', 'Credentials', 'Sign in', 'Remember', 'Forget Device'],
-    osc: ['OSC', 'Integration', 'VRChat', 'Open Sound Control', 'Port', 'IP', 'Chatbox'],
-    discord: ['Discord', 'Webhook', 'RPC', 'Rich Presence', 'Status', 'Activity', 'Logs', 'Channel'],
-    about: ['About', 'System', 'Version', 'Group Guard'],
-    credits: ['Credits', 'Developers', 'Contributors', 'Team', 'Authors', 'Thanks'],
-    debug: ['Debug', 'Crash', 'Test', 'Internal'],
+  appearance: ['Appearance', 'Theme', 'Primary Neon', 'Accent Neon', 'Color', 'Hue', 'Background', 'Dark', 'Light', 'Particles', 'Glass', 'Blur', 'Opacity', 'Border', 'Radius', 'Orbs', 'Effects'],
+  audio: ['Audio', 'Notification Sound', 'Volume', 'Alert', 'Music'],
+  notifications: ['Notifications', 'Test', 'Alert', 'Visual'],
+  security: ['Security', 'Data', 'Auto-Login', 'Credentials', 'Sign in', 'Remember', 'Forget Device'],
+  osc: ['OSC', 'Integration', 'VRChat', 'Open Sound Control', 'Port', 'IP', 'Chatbox'],
+  discord: ['Discord', 'Webhook', 'RPC', 'Rich Presence', 'Status', 'Activity', 'Logs', 'Channel'],
+  about: ['About', 'System', 'Version', 'Group Guard'],
+  credits: ['Credits', 'Developers', 'Contributors', 'Team', 'Authors', 'Thanks'],
+  debug: ['Debug', 'Crash', 'Test', 'Internal'],
 };
 
-const HueSpectrumPicker: React.FC<{ 
-    label: string; 
-    hue: number; 
-    onChange: (hue: number) => void 
+const HueSpectrumPicker: React.FC<{
+  label: string;
+  hue: number;
+  onChange: (hue: number) => void
 }> = ({ label, hue, onChange }) => {
-    return (
-        <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <label style={{ color: 'var(--color-text-dim)' }}>{label}</label>
-                <div style={{ 
-                    width: '20px', 
-                    height: '20px', 
-                    borderRadius: '50%', 
-                    background: `hsl(${hue}, 100%, 50%)`,
-                    boxShadow: `0 0 10px hsl(${hue}, 100%, 50%)`
-                }} />
-            </div>
-            <div style={{ position: 'relative', height: '30px', borderRadius: '15px', overflow: 'hidden' }}>
-                 {/* Rainbow Background */}
-                 <div style={{
-                     position: 'absolute',
-                     inset: 0,
-                     background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)'
-                 }} />
-                 
-                 {/* Slider Input Overlay */}
-                 <input 
-                    type="range" 
-                    min="0" 
-                    max="360" 
-                    value={hue} 
-                    onChange={(e) => onChange(Number(e.target.value))}
-                    style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        opacity: 0,
-                        cursor: 'pointer',
-                        margin: 0
-                    }}
-                 />
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+        <label style={{ color: 'var(--color-text-dim)' }}>{label}</label>
+        <div style={{
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          background: `hsl(${hue}, 100%, 50%)`,
+          boxShadow: `0 0 10px hsl(${hue}, 100%, 50%)`
+        }} />
+      </div>
+      <div style={{ position: 'relative', height: '30px', borderRadius: '15px', overflow: 'hidden' }}>
+        {/* Rainbow Background */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)'
+        }} />
 
-                 {/* Custom Thumb Indicator */}
-                 <div style={{
-                     position: 'absolute',
-                     left: `${(hue / 360) * 100}%`,
-                     top: '0',
-                     bottom: '0',
-                     width: '4px',
-                     background: 'white',
-                     transform: 'translateX(-2px)',
-                     pointerEvents: 'none',
-                     boxShadow: '0 0 4px rgba(0,0,0,0.5)'
-                 }} />
-            </div>
-        </div>
-    );
+        {/* Slider Input Overlay */}
+        <input
+          type="range"
+          min="0"
+          max="360"
+          value={hue}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            opacity: 0,
+            cursor: 'pointer',
+            margin: 0
+          }}
+        />
+
+        {/* Custom Thumb Indicator */}
+        <div style={{
+          position: 'absolute',
+          left: `${(hue / 360) * 100}%`,
+          top: '0',
+          bottom: '0',
+          width: '4px',
+          background: 'white',
+          transform: 'translateX(-2px)',
+          pointerEvents: 'none',
+          boxShadow: '0 0 4px rgba(0,0,0,0.5)'
+        }} />
+      </div>
+    </div>
+  );
 };
 
 const tabContentVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
-    exit: { opacity: 0, y: -10, transition: { duration: 0.15 } }
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.15 } }
 };
 
 export const SettingsView: React.FC = () => {
@@ -142,9 +142,9 @@ export const SettingsView: React.FC = () => {
     setVersionClickCount(newCount);
 
     if (newCount === 5) {
-        setDebugMode(true);
-        addNotification({ type: 'success', title: 'Developer Mode', message: 'Debug settings unlocked!' });
-        setVersionClickCount(0);
+      setDebugMode(true);
+      addNotification({ type: 'success', title: 'Developer Mode', message: 'Debug settings unlocked!' });
+      setVersionClickCount(0);
     }
   };
 
@@ -162,38 +162,49 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-// Determine which tabs match the search
+  const handleOpenStorage = async () => {
+    try {
+      const success = await window.electron.storage.openFolder();
+      if (!success) {
+        addNotification({ type: 'error', title: 'Error', message: 'Could not open storage folder.' });
+      }
+    } catch (err) {
+      console.error('Failed to open storage folder:', err);
+    }
+  };
+
+  // Determine which tabs match the search
   const visibleTabs = useMemo(() => {
     const result: Record<SettingsTab, boolean> = {
-        appearance: false,
-        audio: false,
-        notifications: false,
-        security: false,
-        osc: false,
-        discord: false,
-        about: false,
-        credits: false,
-        debug: false,
+      appearance: false,
+      audio: false,
+      notifications: false,
+      security: false,
+      osc: false,
+      discord: false,
+      about: false,
+      credits: false,
+      debug: false,
     };
 
     for (const [tab, keywords] of Object.entries(TAB_SEARCH_DATA)) {
-        result[tab as SettingsTab] = matchesSearch(searchQuery, ...keywords);
+      result[tab as SettingsTab] = matchesSearch(searchQuery, ...keywords);
     }
 
     return result;
   }, [searchQuery]);
 
-// Count for search badges (1 if tab matches, 0 otherwise)
+  // Count for search badges (1 if tab matches, 0 otherwise)
   const tabCounts = useMemo(() => {
     if (!searchQuery.trim()) return undefined;
 
     const counts: Record<SettingsTab, number> = {
-        appearance: 0, audio: 0, notifications: 0, security: 0,
-        osc: 0, discord: 0, about: 0, credits: 0, debug: 0
+      appearance: 0, audio: 0, notifications: 0, security: 0,
+      osc: 0, discord: 0, about: 0, credits: 0, debug: 0
     };
 
     for (const tab of Object.keys(counts) as SettingsTab[]) {
-        counts[tab] = visibleTabs[tab] ? 1 : 0;
+      counts[tab] = visibleTabs[tab] ? 1 : 0;
     }
 
     return counts;
@@ -209,7 +220,7 @@ export const SettingsView: React.FC = () => {
     // If current tab has results, stay here
     if (visibleTabs[activeTab]) return;
 
-// Find the first tab that has results
+    // Find the first tab that has results
     const tabOrder: SettingsTab[] = ['appearance', 'audio', 'notifications', 'security', 'osc', 'discord', 'about', 'credits', 'debug'];
     for (const tab of tabOrder) {
       if (visibleTabs[tab]) {
@@ -225,15 +236,15 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        height: '100%', 
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
         width: '100%',
-        padding: '1rem', 
+        padding: '1rem',
         paddingBottom: 'var(--dock-height)',
         gap: '1rem',
         maxWidth: '900px',
@@ -246,15 +257,15 @@ export const SettingsView: React.FC = () => {
         <h1 className="text-gradient" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>SETTINGS</h1>
 
         {/* Search Bar */}
-        <SettingsSearch 
-          value={searchQuery} 
-          onChange={setSearchQuery} 
+        <SettingsSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
           placeholder="Search settings..."
         />
 
         {/* Tab Bar */}
-        <SettingsTabBar 
-          activeTab={activeTab} 
+        <SettingsTabBar
+          activeTab={activeTab}
           onTabChange={handleTabChange}
           tabCounts={tabCounts}
           showDebug={debugModeEnabled}
@@ -270,9 +281,9 @@ export const SettingsView: React.FC = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
               gap: '1.5rem',
               flex: 1,
               overflowY: 'auto',
@@ -281,624 +292,640 @@ export const SettingsView: React.FC = () => {
               width: '100%'
             }}
           >
-          {/* No Results Message */}
-          {hasNoResults && (
-            <div style={innerCardStyle}>
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                gap: '1rem', 
-                padding: '2rem',
-                color: 'var(--color-text-dim)' 
-              }}>
-                <SearchX size={48} style={{ opacity: 0.5 }} />
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>No settings found</div>
-                  <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
-                    Try a different search term or check other tabs
+            {/* No Results Message */}
+            {hasNoResults && (
+              <div style={innerCardStyle}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  padding: '2rem',
+                  color: 'var(--color-text-dim)'
+                }}>
+                  <SearchX size={48} style={{ opacity: 0.5 }} />
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>No settings found</div>
+                    <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
+                      Try a different search term or check other tabs
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* === APPEARANCE TAB === */}
-          {activeTab === 'appearance' && (
-            <>
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-                 <h2 style={{ color: 'var(--color-text-main)', margin: 0 }}>Appearance</h2>
-                 <NeonButton variant="ghost" onClick={resetTheme} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}>Reset All</NeonButton>
-              </div>
+            {/* === APPEARANCE TAB === */}
+            {activeTab === 'appearance' && (
+              <>
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                  <h2 style={{ color: 'var(--color-text-main)', margin: 0 }}>Appearance</h2>
+                  <NeonButton variant="ghost" onClick={resetTheme} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}>Reset All</NeonButton>
+                </div>
 
-              {/* Theme Mode Presets */}
-              <div style={innerCardStyle}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block' }}>Theme Preset</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {(['dark', 'light', 'midnight', 'sunset'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        onClick={() => setThemeMode(mode)}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          borderRadius: '8px',
-                          border: themeMode === mode ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
-                          background: themeMode === mode ? 'var(--color-surface-elevated)' : 'var(--color-surface-card)',
-                          color: themeMode === mode ? 'var(--color-primary)' : 'var(--color-text-dim)',
-                          cursor: 'pointer',
-                          textTransform: 'capitalize',
-                          fontWeight: themeMode === mode ? 600 : 400,
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        {mode}
-                      </button>
-                    ))}
+                {/* Theme Mode Presets */}
+                <div style={innerCardStyle}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block' }}>Theme Preset</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {(['dark', 'light', 'midnight', 'sunset'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => setThemeMode(mode)}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            borderRadius: '8px',
+                            border: themeMode === mode ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
+                            background: themeMode === mode ? 'var(--color-surface-elevated)' : 'var(--color-surface-card)',
+                            color: themeMode === mode ? 'var(--color-primary)' : 'var(--color-text-dim)',
+                            cursor: 'pointer',
+                            textTransform: 'capitalize',
+                            fontWeight: themeMode === mode ? 600 : 400,
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          {mode}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Neon Colors */}
-              <div style={innerCardStyle}>
-                <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Neon Colors</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                {/* Neon Colors */}
+                <div style={innerCardStyle}>
+                  <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Neon Colors</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                     <HueSpectrumPicker
-                        label="Primary Neon"
-                        hue={primaryHue}
-                        onChange={setPrimaryHue}
+                      label="Primary Neon"
+                      hue={primaryHue}
+                      onChange={setPrimaryHue}
                     />
                     <HueSpectrumPicker
-                        label="Accent Neon"
-                        hue={accentHue}
-                        onChange={setAccentHue}
+                      label="Accent Neon"
+                      hue={accentHue}
+                      onChange={setAccentHue}
                     />
+                  </div>
                 </div>
-              </div>
 
-              {/* Background Colors */}
-              <div style={innerCardStyle}>
-                <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Background</h3>
-                <HueSpectrumPicker
+                {/* Background Colors */}
+                <div style={innerCardStyle}>
+                  <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Background</h3>
+                  <HueSpectrumPicker
                     label="Background Hue"
                     hue={backgroundHue}
                     onChange={setBackgroundHue}
-                />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Saturation</label>
-                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{backgroundSaturation}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={backgroundSaturation}
-                      onChange={(e) => setBackgroundSaturation(Number(e.target.value))}
-                      style={{ width: '100%', cursor: 'pointer' }}
-                    />
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Lightness</label>
-                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{backgroundLightness}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={backgroundLightness}
-                      onChange={(e) => setBackgroundLightness(Number(e.target.value))}
-                      style={{ width: '100%', cursor: 'pointer' }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Glass & UI Effects */}
-              <div style={innerCardStyle}>
-                <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Glass & UI Effects</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Glass Blur</label>
-                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{glassBlur}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="50"
-                      value={glassBlur}
-                      onChange={(e) => setGlassBlur(Number(e.target.value))}
-                      style={{ width: '100%', cursor: 'pointer' }}
-                    />
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Glass Opacity</label>
-                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{glassOpacity}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={glassOpacity}
-                      onChange={(e) => setGlassOpacity(Number(e.target.value))}
-                      style={{ width: '100%', cursor: 'pointer' }}
-                    />
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Border Radius</label>
-                      <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{borderRadius}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="30"
-                      value={borderRadius}
-                      onChange={(e) => setBorderRadius(Number(e.target.value))}
-                      style={{ width: '100%', cursor: 'pointer' }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Particles */}
-              <div style={innerCardStyle}>
-                <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Particles & Effects</h3>
-
-                {/* Enable Particles Toggle */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                  <div>
-                    <div style={{ color: 'var(--color-text-main)', fontWeight: 500 }}>Enable Particles</div>
-                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Floating background particles</div>
-                  </div>
-                  <div
-                    onClick={() => setParticleSettings({ enabled: !particleSettings.enabled })}
-                    style={{
-                      width: '50px',
-                      height: '26px',
-                      background: particleSettings.enabled ? 'var(--color-primary)' : 'var(--color-surface-card)',
-                      borderRadius: '13px',
-                      position: 'relative',
-                      cursor: 'pointer',
-                      transition: 'background 0.3s ease',
-                      border: '1px solid var(--border-color)'
-                    }}
-                  >
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      background: 'white',
-                      borderRadius: '50%',
-                      position: 'absolute',
-                      top: '2px',
-                      left: particleSettings.enabled ? '26px' : '2px',
-                      transition: 'left 0.3s ease',
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                    }} />
-                  </div>
-                </div>
-
-                {particleSettings.enabled && (
-                  <>
-                    {/* Particle Count */}
-                    <div style={{ marginBottom: '1rem' }}>
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Particle Count</label>
-                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{particleSettings.count}</span>
+                        <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Saturation</label>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{backgroundSaturation}%</span>
                       </div>
                       <input
                         type="range"
-                        min="5"
-                        max="50"
-                        value={particleSettings.count}
-                        onChange={(e) => setParticleSettings({ count: Number(e.target.value) })}
+                        min="0"
+                        max="100"
+                        value={backgroundSaturation}
+                        onChange={(e) => setBackgroundSaturation(Number(e.target.value))}
                         style={{ width: '100%', cursor: 'pointer' }}
                       />
                     </div>
-
-                    {/* Particle Options */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      {/* Show Orbs */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Ambient Orbs</span>
-                        <div
-                          onClick={() => setParticleSettings({ showOrbs: !particleSettings.showOrbs })}
-                          style={{
-                            width: '44px',
-                            height: '24px',
-                            background: particleSettings.showOrbs ? 'var(--color-primary)' : 'var(--color-surface-card)',
-                            borderRadius: '12px',
-                            position: 'relative',
-                            cursor: 'pointer',
-                            transition: 'background 0.3s ease',
-                          }}
-                        >
-                          <div style={{
-                            width: '18px',
-                            height: '18px',
-                            background: 'white',
-                            borderRadius: '50%',
-                            position: 'absolute',
-                            top: '3px',
-                            left: particleSettings.showOrbs ? '22px' : '3px',
-                            transition: 'left 0.3s ease',
-                          }} />
-                        </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Lightness</label>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{backgroundLightness}%</span>
                       </div>
-
-                      {/* Color Shift */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Color Shift</span>
-                        <div
-                          onClick={() => setParticleSettings({ colorShift: !particleSettings.colorShift })}
-                          style={{
-                            width: '44px',
-                            height: '24px',
-                            background: particleSettings.colorShift ? 'var(--color-primary)' : 'var(--color-surface-card)',
-                            borderRadius: '12px',
-                            position: 'relative',
-                            cursor: 'pointer',
-                            transition: 'background 0.3s ease',
-                          }}
-                        >
-                          <div style={{
-                            width: '18px',
-                            height: '18px',
-                            background: 'white',
-                            borderRadius: '50%',
-                            position: 'absolute',
-                            top: '3px',
-                            left: particleSettings.colorShift ? '22px' : '3px',
-                            transition: 'left 0.3s ease',
-                          }} />
-                        </div>
-                      </div>
-
-                      {/* Mouse Reactive */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Mouse Reactive</span>
-                        <div
-                          onClick={() => setParticleSettings({ mouseReactive: !particleSettings.mouseReactive })}
-                          style={{
-                            width: '44px',
-                            height: '24px',
-                            background: particleSettings.mouseReactive ? 'var(--color-primary)' : 'var(--color-surface-card)',
-                            borderRadius: '12px',
-                            position: 'relative',
-                            cursor: 'pointer',
-                            transition: 'background 0.3s ease',
-                          }}
-                        >
-                          <div style={{
-                            width: '18px',
-                            height: '18px',
-                            background: 'white',
-                            borderRadius: '50%',
-                            position: 'absolute',
-                            top: '3px',
-                            left: particleSettings.mouseReactive ? '22px' : '3px',
-                            transition: 'left 0.3s ease',
-                          }} />
-                        </div>
-                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={backgroundLightness}
+                        onChange={(e) => setBackgroundLightness(Number(e.target.value))}
+                        style={{ width: '100%', cursor: 'pointer' }}
+                      />
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                </div>
 
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', fontStyle: 'italic', textAlign: 'center', marginTop: '0.5rem' }}>
-                All theme settings are automatically saved.
-              </p>
-            </>
-          )}
+                {/* Glass & UI Effects */}
+                <div style={innerCardStyle}>
+                  <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Glass & UI Effects</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Glass Blur</label>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{glassBlur}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="50"
+                        value={glassBlur}
+                        onChange={(e) => setGlassBlur(Number(e.target.value))}
+                        style={{ width: '100%', cursor: 'pointer' }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Glass Opacity</label>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{glassOpacity}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={glassOpacity}
+                        onChange={(e) => setGlassOpacity(Number(e.target.value))}
+                        style={{ width: '100%', cursor: 'pointer' }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Border Radius</label>
+                        <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{borderRadius}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="30"
+                        value={borderRadius}
+                        onChange={(e) => setBorderRadius(Number(e.target.value))}
+                        style={{ width: '100%', cursor: 'pointer' }}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-          {/* === AUDIO TAB === */}
-          {activeTab === 'audio' && <AudioSettings />}
+                {/* Particles */}
+                <div style={innerCardStyle}>
+                  <h3 style={{ color: 'var(--color-text-main)', margin: '0 0 1rem 0', fontSize: '1rem' }}>Particles & Effects</h3>
 
-          {/* === NOTIFICATIONS TAB === */}
-          {activeTab === 'notifications' && (
-            <section>
-              <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Notifications & Alerts</h2>
-              <div style={innerCardStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                   <div>
+                  {/* Enable Particles Toggle */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                    <div>
+                      <div style={{ color: 'var(--color-text-main)', fontWeight: 500 }}>Enable Particles</div>
+                      <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Floating background particles</div>
+                    </div>
+                    <div
+                      onClick={() => setParticleSettings({ enabled: !particleSettings.enabled })}
+                      style={{
+                        width: '50px',
+                        height: '26px',
+                        background: particleSettings.enabled ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                        borderRadius: '13px',
+                        position: 'relative',
+                        cursor: 'pointer',
+                        transition: 'background 0.3s ease',
+                        border: '1px solid var(--border-color)'
+                      }}
+                    >
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        background: 'white',
+                        borderRadius: '50%',
+                        position: 'absolute',
+                        top: '2px',
+                        left: particleSettings.enabled ? '26px' : '2px',
+                        transition: 'left 0.3s ease',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                      }} />
+                    </div>
+                  </div>
+
+                  {particleSettings.enabled && (
+                    <>
+                      {/* Particle Count */}
+                      <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                          <label style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Particle Count</label>
+                          <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{particleSettings.count}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="5"
+                          max="50"
+                          value={particleSettings.count}
+                          onChange={(e) => setParticleSettings({ count: Number(e.target.value) })}
+                          style={{ width: '100%', cursor: 'pointer' }}
+                        />
+                      </div>
+
+                      {/* Particle Options */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        {/* Show Orbs */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Ambient Orbs</span>
+                          <div
+                            onClick={() => setParticleSettings({ showOrbs: !particleSettings.showOrbs })}
+                            style={{
+                              width: '44px',
+                              height: '24px',
+                              background: particleSettings.showOrbs ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                              borderRadius: '12px',
+                              position: 'relative',
+                              cursor: 'pointer',
+                              transition: 'background 0.3s ease',
+                            }}
+                          >
+                            <div style={{
+                              width: '18px',
+                              height: '18px',
+                              background: 'white',
+                              borderRadius: '50%',
+                              position: 'absolute',
+                              top: '3px',
+                              left: particleSettings.showOrbs ? '22px' : '3px',
+                              transition: 'left 0.3s ease',
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Color Shift */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Color Shift</span>
+                          <div
+                            onClick={() => setParticleSettings({ colorShift: !particleSettings.colorShift })}
+                            style={{
+                              width: '44px',
+                              height: '24px',
+                              background: particleSettings.colorShift ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                              borderRadius: '12px',
+                              position: 'relative',
+                              cursor: 'pointer',
+                              transition: 'background 0.3s ease',
+                            }}
+                          >
+                            <div style={{
+                              width: '18px',
+                              height: '18px',
+                              background: 'white',
+                              borderRadius: '50%',
+                              position: 'absolute',
+                              top: '3px',
+                              left: particleSettings.colorShift ? '22px' : '3px',
+                              transition: 'left 0.3s ease',
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Mouse Reactive */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Mouse Reactive</span>
+                          <div
+                            onClick={() => setParticleSettings({ mouseReactive: !particleSettings.mouseReactive })}
+                            style={{
+                              width: '44px',
+                              height: '24px',
+                              background: particleSettings.mouseReactive ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                              borderRadius: '12px',
+                              position: 'relative',
+                              cursor: 'pointer',
+                              transition: 'background 0.3s ease',
+                            }}
+                          >
+                            <div style={{
+                              width: '18px',
+                              height: '18px',
+                              background: 'white',
+                              borderRadius: '50%',
+                              position: 'absolute',
+                              top: '3px',
+                              left: particleSettings.mouseReactive ? '22px' : '3px',
+                              transition: 'left 0.3s ease',
+                            }} />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', fontStyle: 'italic', textAlign: 'center', marginTop: '0.5rem' }}>
+                  All theme settings are automatically saved.
+                </p>
+              </>
+            )}
+
+            {/* === AUDIO TAB === */}
+            {activeTab === 'audio' && <AudioSettings />}
+
+            {/* === NOTIFICATIONS TAB === */}
+            {activeTab === 'notifications' && (
+              <section>
+                <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Notifications & Alerts</h2>
+                <div style={innerCardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
                       <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Test Notifications</div>
                       <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Send a test notification to verify audio and visual alerts.</div>
-                   </div>
-                   <NeonButton
+                    </div>
+                    <NeonButton
                       variant="primary"
                       onClick={() => window.electron.automod.testNotification('TEST_GROUP')}
-                   >
+                    >
                       Test Notification
-                   </NeonButton>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* === SECURITY TAB === */}
-          {activeTab === 'security' && (
-            <section>
-              <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Security & Data</h2>
-              <div style={innerCardStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                  <div>
-                    <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Auto-Login</div>
-                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Automatically sign in when application starts</div>
-                  </div>
-                  <div
-                    onClick={() => setRememberMe(!rememberMe)}
-                    style={{
-                      width: '50px',
-                      height: '26px',
-                      background: rememberMe ? 'var(--color-primary)' : 'var(--color-surface-card)',
-                      borderRadius: '13px',
-                      position: 'relative',
-                      cursor: 'pointer',
-                      transition: 'background 0.3s ease',
-                      border: '1px solid var(--border-color)'
-                    }}
-                  >
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      background: 'white',
-                      borderRadius: '50%',
-                      position: 'absolute',
-                      top: '2px',
-                      left: rememberMe ? '26px' : '2px',
-                      transition: 'left 0.3s ease',
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                    }} />
+                    </NeonButton>
                   </div>
                 </div>
+              </section>
+            )}
 
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-                   <NeonButton variant="secondary" onClick={handleClearCredentials} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
-                     Forget This Device
-                   </NeonButton>
-                   <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
-                     Completely removes your saved login data from this device. You will need to enter credentials and 2FA again.
-                   </p>
+            {/* === SECURITY TAB === */}
+            {activeTab === 'security' && (
+              <section>
+                <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Security & Data</h2>
+                <div style={innerCardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <div>
+                      <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Auto-Login</div>
+                      <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Automatically sign in when application starts</div>
+                    </div>
+                    <div
+                      onClick={() => setRememberMe(!rememberMe)}
+                      style={{
+                        width: '50px',
+                        height: '26px',
+                        background: rememberMe ? 'var(--color-primary)' : 'var(--color-surface-card)',
+                        borderRadius: '13px',
+                        position: 'relative',
+                        cursor: 'pointer',
+                        transition: 'background 0.3s ease',
+                        border: '1px solid var(--border-color)'
+                      }}
+                    >
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        background: 'white',
+                        borderRadius: '50%',
+                        position: 'absolute',
+                        top: '2px',
+                        left: rememberMe ? '26px' : '2px',
+                        transition: 'left 0.3s ease',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                      }} />
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                    <NeonButton variant="secondary" onClick={handleClearCredentials} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
+                      Forget This Device
+                    </NeonButton>
+                    <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
+                      Completely removes your saved login data from this device. You will need to enter credentials and 2FA again.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </section>
-          )}
 
-          {/* === OSC TAB === */}
-          {activeTab === 'osc' && <OscSettings />}
+                <div style={{ ...innerCardStyle, marginTop: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Local Storage</div>
+                      <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Open the folder containing your logs and local database.</div>
+                    </div>
+                    <NeonButton
+                      variant="primary"
+                      onClick={handleOpenStorage}
+                    >
+                      <Folder size={16} style={{ marginRight: '8px' }} />
+                      Open Folder
+                    </NeonButton>
+                  </div>
+                </div>
+              </section>
+            )}
 
-          {/* === DISCORD TAB === */}
-          {activeTab === 'discord' && (
-            <>
-              <DiscordWebhookSettings />
-              <DiscordRpcSettings />
-            </>
-          )}
+            {/* === OSC TAB === */}
+            {activeTab === 'osc' && <OscSettings />}
 
-{/* === ABOUT TAB === */}
-{activeTab === 'about' && (
-  <section>
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'space-between', 
-      alignItems: 'center', 
-      marginBottom: '1rem', 
-      borderBottom: '1px solid var(--border-color)', 
-      paddingBottom: '0.5rem' 
-    }}>
-      <h2 style={{ color: 'var(--color-text-main)', margin: 0 }}>About Group Guard</h2>
-      <NeonButton
-         variant="secondary"
-         onClick={() => window.open('https://discord.gg/eDKC5yEQJN', '_blank')}
-         style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
-      >
-         Join Discord Server
-      </NeonButton>
-    </div>
+            {/* === DISCORD TAB === */}
+            {activeTab === 'discord' && (
+              <>
+                <DiscordWebhookSettings />
+                <DiscordRpcSettings />
+              </>
+            )}
 
-    {/* === MAIN ABOUT INFO === */}
-    <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <img
-            src={appIcon}
-            alt="Group Guard Icon"
-            style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '16px',
-              filter: 'drop-shadow(0 0 10px var(--color-primary))'
-            }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ margin: 0, fontSize: '1.4rem' }}>Group Guard for VRChat</h3>
-          <p
-            style={{
-              color: 'var(--color-text-dim)',
-              margin: '0.2rem 0',
-              cursor: 'pointer',
-              userSelect: 'none',
-              fontSize: '1rem'
-            }}
-            onClick={handleVersionClick}
-            title="Click 5 times to unlock debug mode"
-          >
-            Version {APP_VERSION} (Beta)
-          </p>
-          <div style={{ 
-            color: 'var(--color-text-dim)', 
-            fontSize: '0.9rem', 
-            marginTop: '0.25rem',
-            opacity: 0.8
-          }}>
-            Advanced Group Protection System
-          </div>
-        </div>
-      </div>
-
-      {/* Application Details */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div>
-          <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Technology Stack</h4>
-          <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-            • Electron Desktop App<br/>
-            • React 18 + TypeScript<br/>
-            • Vite Build System<br/>
-            • Framer Motion Animations
-          </div>
-        </div>
-        <div>
-          <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Features</h4>
-          <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-            • Real-time Group Monitoring<br/>
-            • Custom Notification System<br/>
-            • OSC Integration<br/>
-            • Discord Rich Presence<br/>
-            • Advanced Theme System
-          </div>
-        </div>
-      </div>
-
-      {/* Build Information */}
-      <div style={{ 
-        borderTop: '1px solid var(--border-color)', 
-        paddingTop: '1rem',
-        marginTop: '1rem'
-      }}>
-        <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Build Information</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-          <div>
-            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>Build Date</div>
-            <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>January 2026</div>
-          </div>
-          <div>
-            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>Platform</div>
-            <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>Windows/macOS/Linux</div>
-          </div>
-          <div>
-            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>License</div>
-            <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>MIT License</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div style={{
-        textAlign: 'center',
-        marginTop: '1.5rem',
-        paddingTop: '1rem',
-        borderTop: '1px solid var(--border-color)',
-        color: 'var(--color-text-dim)',
-        fontSize: '0.8rem',
-        opacity: 0.6
-      }}>
-        © 2026 Group Guard • Protecting VRChat Communities
-      </div>
-    </div>
-
-
-  </section>
- )}
-
-          {/* === CREDITS TAB === */}
-          {activeTab === 'credits' && (
-            <section>
-              <h2
-                style={{
-                  color: 'var(--color-text-main)',
+            {/* === ABOUT TAB === */}
+            {activeTab === 'about' && (
+              <section>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   marginBottom: '1rem',
                   borderBottom: '1px solid var(--border-color)',
                   paddingBottom: '0.5rem'
-                }}
-              >
-                Credits
-              </h2>
+                }}>
+                  <h2 style={{ color: 'var(--color-text-main)', margin: 0 }}>About Group Guard</h2>
+                  <NeonButton
+                    variant="secondary"
+                    onClick={() => window.open('https://discord.gg/eDKC5yEQJN', '_blank')}
+                    style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
+                  >
+                    Join Discord Server
+                  </NeonButton>
+                </div>
 
-              {/* === APPLEEXPLO1T CARD === */}
-              <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 0 10px var(--color-primary))' }}>🛡️</div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>AppleExpl01t</h3>
-                    <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Lead Developer • Project Founder</p>
-
-                    <div
-                      style={{
-                        fontSize: '0.8rem',
+                {/* === MAIN ABOUT INFO === */}
+                <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div>
+                      <img
+                        src={appIcon}
+                        alt="Group Guard Icon"
+                        style={{
+                          width: '80px',
+                          height: '80px',
+                          borderRadius: '16px',
+                          filter: 'drop-shadow(0 0 10px var(--color-primary))'
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: 0, fontSize: '1.4rem' }}>Group Guard for VRChat</h3>
+                      <p
+                        style={{
+                          color: 'var(--color-text-dim)',
+                          margin: '0.2rem 0',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          fontSize: '1rem'
+                        }}
+                        onClick={handleVersionClick}
+                        title="Click 5 times to unlock debug mode"
+                      >
+                        Version {APP_VERSION} (Beta)
+                      </p>
+                      <div style={{
                         color: 'var(--color-text-dim)',
-                        opacity: 0.6,
-                        marginTop: '0.5rem'
-                      }}
-                    >
-                      <a
-                        href="https://vrchat.com/home/user/usr_ef7c23be-3c3c-40b4-a01c-82f59b2a8229"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}
+                        fontSize: '0.9rem',
+                        marginTop: '0.25rem',
+                        opacity: 0.8
+                      }}>
+                        Advanced Group Protection System
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Application Details */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div>
+                      <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Technology Stack</h4>
+                      <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                        • Electron Desktop App<br />
+                        • React 18 + TypeScript<br />
+                        • Vite Build System<br />
+                        • Framer Motion Animations
+                      </div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Features</h4>
+                      <div style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                        • Real-time Group Monitoring<br />
+                        • Custom Notification System<br />
+                        • OSC Integration<br />
+                        • Discord Rich Presence<br />
+                        • Advanced Theme System
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Build Information */}
+                  <div style={{
+                    borderTop: '1px solid var(--border-color)',
+                    paddingTop: '1rem',
+                    marginTop: '1rem'
+                  }}>
+                    <h4 style={{ color: 'var(--color-text-main)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>Build Information</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+                      <div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>Build Date</div>
+                        <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>January 2026</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>Platform</div>
+                        <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>Windows/macOS/Linux</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', opacity: 0.7 }}>License</div>
+                        <div style={{ color: 'var(--color-text-main)', fontSize: '0.85rem' }}>MIT License</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div style={{
+                    textAlign: 'center',
+                    marginTop: '1.5rem',
+                    paddingTop: '1rem',
+                    borderTop: '1px solid var(--border-color)',
+                    color: 'var(--color-text-dim)',
+                    fontSize: '0.8rem',
+                    opacity: 0.6
+                  }}>
+                    © 2026 Group Guard • Protecting VRChat Communities
+                  </div>
+                </div>
+
+
+              </section>
+            )}
+
+            {/* === CREDITS TAB === */}
+            {activeTab === 'credits' && (
+              <section>
+                <h2
+                  style={{
+                    color: 'var(--color-text-main)',
+                    marginBottom: '1rem',
+                    borderBottom: '1px solid var(--border-color)',
+                    paddingBottom: '0.5rem'
+                  }}
+                >
+                  Credits
+                </h2>
+
+                {/* === APPLEEXPLO1T CARD === */}
+                <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 0 10px var(--color-primary))' }}>🛡️</div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.2rem' }}>AppleExpl01t</h3>
+                      <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Lead Developer • Project Founder</p>
+
+                      <div
+                        style={{
+                          fontSize: '0.8rem',
+                          color: 'var(--color-text-dim)',
+                          opacity: 0.6,
+                          marginTop: '0.5rem'
+                        }}
                       >
-                        VRChat
-                      </a>
-                      {' • '}
-                      <a
-                        href="https://github.com/AppleExpl01t"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}
-                      >
-                        GitHub
-                      </a>
+                        <a
+                          href="https://vrchat.com/home/user/usr_ef7c23be-3c3c-40b4-a01c-82f59b2a8229"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}
+                        >
+                          VRChat
+                        </a>
+                        {' • '}
+                        <a
+                          href="https://github.com/AppleExpl01t"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}
+                        >
+                          GitHub
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* === PAWTISTIC CARD === */}
-              <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <div>
-                    <img
-                      src={paw}
-                      alt="Pawtistic Logo"
-                      style={{
-                        width: '60px',
-                        height: '60px',
-                        borderRadius: '8px',
-                        filter: 'drop-shadow(0 0 10px var(--color-primary))'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Pawtistic</h3>
-                    <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Theme System & Visual Design</p>
+                {/* === PAWTISTIC CARD === */}
+                <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div>
+                      <img
+                        src={paw}
+                        alt="Pawtistic Logo"
+                        style={{
+                          width: '60px',
+                          height: '60px',
+                          borderRadius: '8px',
+                          filter: 'drop-shadow(0 0 10px var(--color-primary))'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Pawtistic</h3>
+                      <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Theme System & Visual Design</p>
 
-                    <div
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--color-text-dim)',
-                        opacity: 0.6,
-                        marginTop: '0.5rem'
-                      }}
-                    >
-                      <a href="https://github.com/gooseontheloose" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>GitHub</a>
-                      {' • '}
-                      <a href="https://vrchat.com/home/user/usr_..." target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>VRChat</a>
+                      <div
+                        style={{
+                          fontSize: '0.8rem',
+                          color: 'var(--color-text-dim)',
+                          opacity: 0.6,
+                          marginTop: '0.5rem'
+                        }}
+                      >
+                        <a href="https://github.com/gooseontheloose" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>GitHub</a>
+                        {' • '}
+                        <a href="https://vrchat.com/home/user/usr_..." target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>VRChat</a>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* === COMFYCHLOE CARD === */}
-              <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-<div style={{ 
-                      fontSize: '3.5rem', 
+                {/* === COMFYCHLOE CARD === */}
+                <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{
+                      fontSize: '3.5rem',
                       filter: 'drop-shadow(0 0 10px var(--color-primary))',
                       display: 'flex',
                       alignItems: 'center',
@@ -907,94 +934,94 @@ export const SettingsView: React.FC = () => {
                       width: '60px',
                       lineHeight: '60px',
                       textAlign: 'center'
-                     }}>🌸</div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>ComfyChloe</h3>
-                    <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Special thanks • Support & Testing</p>
+                    }}>🌸</div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.2rem' }}>ComfyChloe</h3>
+                      <p style={{ color: 'var(--color-text-dim)', margin: '0.2rem 0' }}>Special thanks • Support & Testing</p>
 
-                    <div
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--color-text-dim)',
-                        opacity: 0.6,
-                        marginTop: '0.5rem'
-                      }}
-                    >
-                      <a href="https://vrchat.com/home/user/usr_..." target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>VRChat</a>
+                      <div
+                        style={{
+                          fontSize: '0.8rem',
+                          color: 'var(--color-text-dim)',
+                          opacity: 0.6,
+                          marginTop: '0.5rem'
+                        }}
+                      >
+                        <a href="https://vrchat.com/home/user/usr_..." target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline', cursor: 'pointer' }}>VRChat</a>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
-          )}
+              </section>
+            )}
 
-          {/* === DEBUG TAB === */}
-          {activeTab === 'debug' && debugModeEnabled && (
-            <section>
-               <h2 style={{ color: '#f87171', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Debug & Testing</h2>
-               <div style={innerCardStyle}>
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* === DEBUG TAB === */}
+            {activeTab === 'debug' && debugModeEnabled && (
+              <section>
+                <h2 style={{ color: '#f87171', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Debug & Testing</h2>
+                <div style={innerCardStyle}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
                     {/* Crash Test */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                       <div>
-                          <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Crash Application</div>
-                          <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Force a renderer crash to test the error boundary.</div>
-                       </div>
-                       <NeonButton
-                          variant="danger"
-                          onClick={() => setShouldCrash(true)}
-                       >
-                          Crash App
-                       </NeonButton>
+                      <div>
+                        <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Crash Application</div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Force a renderer crash to test the error boundary.</div>
+                      </div>
+                      <NeonButton
+                        variant="danger"
+                        onClick={() => setShouldCrash(true)}
+                      >
+                        Crash App
+                      </NeonButton>
                     </div>
 
                     {/* Test Notification (Copied here for convenience) */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0' }}>
-                       <div>
-                          <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Test Notification</div>
-                          <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Trigger a test notification.</div>
-                       </div>
-                       <NeonButton
-                          variant="secondary"
-                          onClick={() => window.electron.automod.testNotification('TEST_GROUP')}
-                       >
-                          Test
-                       </NeonButton>
+                      <div>
+                        <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Test Notification</div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Trigger a test notification.</div>
+                      </div>
+                      <NeonButton
+                        variant="secondary"
+                        onClick={() => window.electron.automod.testNotification('TEST_GROUP')}
+                      >
+                        Test
+                      </NeonButton>
                     </div>
 
                     {/* Show Setup Screen */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0' }}>
-                       <div>
-                          <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Show Setup</div>
-                          <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Go back to the initial setup screen.</div>
-                       </div>
-                       <NeonButton
-                          variant="secondary"
-                          onClick={async () => {
-                             if (await confirm('Show setup screen? Your current storage will be preserved.')) {
-                                await window.electron.storage.reconfigure();
-                                window.location.reload();
-                             }
-                          }}
-                       >
-                          Show Setup
-                       </NeonButton>
+                      <div>
+                        <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Show Setup</div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Go back to the initial setup screen.</div>
+                      </div>
+                      <NeonButton
+                        variant="secondary"
+                        onClick={async () => {
+                          if (await confirm('Show setup screen? Your current storage will be preserved.')) {
+                            await window.electron.storage.reconfigure();
+                            window.location.reload();
+                          }
+                        }}
+                      >
+                        Show Setup
+                      </NeonButton>
                     </div>
 
                     {/* Bulk Friend Import */}
                     <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
-                       <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Bulk Friend from VRCX JSON</div>
-                       <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Import a VRCX friends export and send friend requests to all users.</div>
-                       <BulkFriendImport />
+                      <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Bulk Friend from VRCX JSON</div>
+                      <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Import a VRCX friends export and send friend requests to all users.</div>
+                      <BulkFriendImport />
                     </div>
-                 </div>
-               </div>
-            </section>
-          )}
+                  </div>
+                </div>
+              </section>
+            )}
 
-        </motion.div>
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
       </GlassPanel>
     </motion.div>
   );

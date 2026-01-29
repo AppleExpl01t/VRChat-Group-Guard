@@ -158,6 +158,7 @@ contextBridge.exposeInMainWorld('electron', {
         setPath: (path: string) => ipcRenderer.invoke('storage:set-path', path),
         reset: () => ipcRenderer.invoke('storage:reconfigure'), // Alias reset to reconfigure for compatibility
         reconfigure: () => ipcRenderer.invoke('storage:reconfigure'),
+        openFolder: () => ipcRenderer.invoke('storage:open-folder'),
     },
 
     // Instance Presence API
@@ -329,6 +330,13 @@ contextBridge.exposeInMainWorld('electron', {
         getMutualFriends: (userId: string) => ipcRenderer.invoke('userProfile:getMutualFriends', userId),
         getMutualGroups: (userId: string) => ipcRenderer.invoke('userProfile:getMutualGroups', userId),
         setUserNote: (userId: string, note: string) => ipcRenderer.invoke('userProfile:setUserNote', userId, note),
+    },
+
+    // Player Flags API
+    playerFlags: {
+        getFlags: (userId: string) => ipcRenderer.invoke('playerFlags:getFlags', userId),
+        setFlags: (userId: string, flagIds: string[]) => ipcRenderer.invoke('playerFlags:setFlags', { userId, flagIds }),
+        getDefinitions: () => ipcRenderer.invoke('playerFlags:getDefinitions'),
     },
 
     // Settings API

@@ -6,17 +6,16 @@ import {
 import { useGroupStore } from "../stores/groupStore";
 
 export function useInstanceMonitorInit(isAuthenticated: boolean) {
-  const {
-    addPlayer,
-    removePlayer,
-    setWorldId,
-    setInstanceInfo,
-    setWorldName,
-    setInstanceImage,
-    clearInstance,
-    clearLiveScan,
-    setCurrentGroupId,
-  } = useInstanceMonitorStore();
+  const addPlayer = useInstanceMonitorStore(state => state.addPlayer);
+  const removePlayer = useInstanceMonitorStore(state => state.removePlayer);
+  const setWorldId = useInstanceMonitorStore(state => state.setWorldId);
+  const setInstanceInfo = useInstanceMonitorStore(state => state.setInstanceInfo);
+  const setWorldName = useInstanceMonitorStore(state => state.setWorldName);
+  const setInstanceImage = useInstanceMonitorStore(state => state.setInstanceImage);
+  const clearInstance = useInstanceMonitorStore(state => state.clearInstance);
+  const clearLiveScan = useInstanceMonitorStore(state => state.clearLiveScan);
+  const setCurrentGroupId = useInstanceMonitorStore(state => state.setCurrentGroupId);
+
   const { isRoamingMode, exitRoamingMode } = useGroupStore();
 
   // Clear live scan history when exiting roaming mode
