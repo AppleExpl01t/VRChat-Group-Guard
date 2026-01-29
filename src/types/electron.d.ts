@@ -650,6 +650,7 @@ export interface ElectronAPI {
     getMutualFriends: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
     getMutualGroups: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
     getUserFeedback: (userId: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+    setUserNote: (userId: string, note: string) => Promise<{ success: boolean; error?: string }>;
   };
 
   // Debug API (developer tools)

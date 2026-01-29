@@ -34,7 +34,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     const [note, setNote] = useState('');
     const [isSavingNote, setIsSavingNote] = useState(false);
     const [noteSaved, setNoteSaved] = useState(false);
-    const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+    const [typingTimeout, setTypingTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
@@ -214,6 +214,40 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                                         <p className={styles.bio}>{profile.bio}</p>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+
+                        {/* Personal Note Card */}
+                        <div className={styles.card}>
+                            <div className={styles.cardHeader}>
+                                <Edit3 size={16} />
+                                Personal Note
+                            </div>
+                            <div className={styles.cardContent} style={{ padding: 0 }}>
+                                <textarea
+                                    className={styles.noteInput}
+                                    value={note}
+                                    onChange={handleNoteChange}
+                                    placeholder="Add a private note about this player..."
+                                    spellCheck={false}
+                                />
+                                <div className={styles.noteFooter}>
+                                    <div className={`${styles.saveStatus} ${noteSaved ? styles.saved : ''}`}>
+                                        {isSavingNote ? (
+                                            <>
+                                                <Loader2 size={12} className={styles.spin} />
+                                                <span>Saving...</span>
+                                            </>
+                                        ) : noteSaved ? (
+                                            <>
+                                                <Check size={12} />
+                                                <span>Saved</span>
+                                            </>
+                                        ) : (
+                                            <span style={{ opacity: 0 }}>.</span>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

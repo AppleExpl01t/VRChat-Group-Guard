@@ -326,6 +326,7 @@ contextBridge.exposeInMainWorld('electron', {
         getMutualCounts: (userId: string) => ipcRenderer.invoke('userProfile:getMutualCounts', userId),
         getMutualFriends: (userId: string) => ipcRenderer.invoke('userProfile:getMutualFriends', userId),
         getMutualGroups: (userId: string) => ipcRenderer.invoke('userProfile:getMutualGroups', userId),
+        setUserNote: (userId: string, note: string) => ipcRenderer.invoke('userProfile:setUserNote', userId, note),
     },
 
     // Settings API
