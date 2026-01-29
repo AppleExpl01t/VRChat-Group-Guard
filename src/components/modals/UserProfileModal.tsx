@@ -222,6 +222,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                             <div className={styles.cardHeader}>
                                 <Edit3 size={16} />
                                 Personal Note
+                                <div className={`${styles.saveStatus} ${noteSaved ? styles.saved : ''}`} style={{ marginLeft: 'auto', marginRight: '4px' }}>
+                                    {isSavingNote ? (
+                                        <>
+                                            <Loader2 size={12} className={styles.spin} />
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : noteSaved ? (
+                                        <>
+                                            <Check size={12} />
+                                            <span>Saved</span>
+                                        </>
+                                    ) : null}
+                                </div>
                             </div>
                             <div className={styles.cardContent} style={{ padding: 0 }}>
                                 <textarea
@@ -231,23 +244,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                                     placeholder="Add a private note about this player..."
                                     spellCheck={false}
                                 />
-                                <div className={styles.noteFooter}>
-                                    <div className={`${styles.saveStatus} ${noteSaved ? styles.saved : ''}`}>
-                                        {isSavingNote ? (
-                                            <>
-                                                <Loader2 size={12} className={styles.spin} />
-                                                <span>Saving...</span>
-                                            </>
-                                        ) : noteSaved ? (
-                                            <>
-                                                <Check size={12} />
-                                                <span>Saved</span>
-                                            </>
-                                        ) : (
-                                            <span style={{ opacity: 0 }}>.</span>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
                         </div>
 

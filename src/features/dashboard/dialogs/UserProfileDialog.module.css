@@ -112,6 +112,37 @@
     max-width: 180px;
 }
 
+/* Card */
+.card {
+    background: var(--color-surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--color-surface-elevated);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--color-text-dim);
+    font-weight: 600;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.cardContent {
+    padding: 0.8rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
 .copyBtn {
     background: transparent;
     border: none;
@@ -278,6 +309,14 @@
     line-height: 1.5;
     outline: none;
     display: block;
+    flex: 1;
+    /* Fill remaining space in card */
+    padding-bottom: 0.5rem;
+    /* Space at bottom */
+}
+
+.noteInput:focus {
+    box-shadow: inset 0 0 0 2px var(--color-primary);
 }
 
 .noteInput::placeholder {
