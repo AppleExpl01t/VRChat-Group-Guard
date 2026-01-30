@@ -31,6 +31,11 @@ export function setupFriendshipHandlers() {
         windowService.broadcast('friendship:update', { type: 'relationship', event });
     });
 
+    serviceEventBus.on('friend-stats-updated', (payload) => {
+        // Broadcast to UI so open modals can update in real-time
+        windowService.broadcast('friendship:stats-update', payload);
+    });
+
     // Game Log (Instance History - World Changes)
     ipcMain.handle('friendship:get-game-log', async (_event, limit?: number) => {
         logger.debug(`[IPC] friendship:get-game-log called (limit: ${limit})`);
@@ -204,8 +209,33 @@ export function setupFriendshipHandlers() {
     ipcMain.handle('friendship:get-player-stats', async (_event, userId: string) => {
         logger.debug(`[IPC] friendship:get-player-stats called for ${userId}`);
         try {
-            const stats = await playerLogService.getPlayerStats(userId);
-            return { success: true, stats };
+            // HYBRID MERGE: Get DB Stats (Robust Time) + Log Stats (Rich History/Worlds)
+            const { timeTrackingService } = await import('./TimeTrackingService');
+
+            const [legacyStats, dbStats] = await Promise.all([
+                playerLogService.getPlayerStats(userId),
+                timeTrackingService.getPlayerStats(userId)
+            ]);
+
+            // Default fallback
+            const finalStats = legacyStats || {
+                firstSeen: new Date().toISOString(),
+                lastSeen: new Date().toISOString(),
+                encounterCount: 0,
+                timeSpent: 0,
+                commonWorlds: []
+            };
+
+            // Overlay DB stats if available (They are the authority for Time & Encounters now)
+            if (dbStats) {
+                finalStats.timeSpent = dbStats.timeSpentMinutes * 60 * 1000; // Convert min to ms
+                finalStats.encounterCount = Math.max(finalStats.encounterCount, dbStats.encounterCount);
+                if (new Date(dbStats.lastSeen) > new Date(finalStats.lastSeen)) {
+                    finalStats.lastSeen = dbStats.lastSeen.toISOString();
+                }
+            }
+
+            return { success: true, stats: finalStats };
         } catch (e) {
             logger.error('Failed to get player stats:', e);
             return { success: false, error: String(e) };

@@ -87,6 +87,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         };
 
         loadData();
+
+        // Listen for real-time stats updates
+        const removeListener = window.electron.friendship.onStatsUpdate((data) => {
+            if (data.userIds.includes(userId)) {
+                setStats(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        timeSpent: prev.timeSpent + (data.addedMinutes * 60 * 1000),
+                        // Optionally update lastSeen
+                        lastSeen: new Date().toISOString()
+                    };
+                });
+            }
+        });
+
+        return () => {
+            removeListener();
+        };
     }, [userId]);
 
     // Update note state when profile loads

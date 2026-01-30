@@ -636,6 +636,7 @@ export interface ElectronAPI {
     import: (json: string) => Promise<boolean>;
     export: () => Promise<string>;
     searchScannedUsers: (query: string) => Promise<ScannedUser[]>;
+    getScannedUser: (userId: string) => Promise<ScannedUser | null>;
     onUpdate: (callback: (data: { entities: WatchedEntity[]; tags: ModerationTag[] }) => void) => () => void;
   };
 
@@ -726,6 +727,7 @@ export interface ElectronAPI {
     }>;
     getFriendsList: () => Promise<FriendListItem[]>;
     getMutualsBatch: (userIds: string[]) => Promise<Record<string, { friends: number; groups: number }>>;
+    onStatsUpdate: (callback: (data: { userIds: string[]; addedMinutes: number }) => void) => () => void;
   };
 }
 

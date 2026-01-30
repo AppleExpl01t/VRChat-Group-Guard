@@ -15,7 +15,8 @@ export type ServiceEventType =
     | 'friendship-relationship-changed'
     | 'player-joined'
     | 'player-left'
-    | 'location';
+    | 'location'
+    | 'friend-stats-updated';
 
 export interface ServiceEventPayloads {
     'location': {
@@ -25,6 +26,7 @@ export interface ServiceEventPayloads {
         worldName?: string;
         timestamp?: string
     };
+    'friend-stats-updated': { userIds: string[]; addedMinutes: number };
     'groups-updated': { groups: { id: string;[key: string]: unknown }[] };
     'groups-raw': { groups: { id: string;[key: string]: unknown }[]; userId: string };
     'groups-cache-ready': { groupIds: string[] };

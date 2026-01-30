@@ -299,6 +299,7 @@ contextBridge.exposeInMainWorld('electron', {
         import: (json: string) => ipcRenderer.invoke('watchlist:import', json),
         export: () => ipcRenderer.invoke('watchlist:export'),
         searchScannedUsers: (query: string) => ipcRenderer.invoke('watchlist:search-scanned-users', query),
+        getScannedUser: (userId: string) => ipcRenderer.invoke('watchlist:get-scanned-user', userId),
         onUpdate: (callback: (data: { entities: unknown[]; tags: unknown[] }) => void) => {
             const handler = (_event: Electron.IpcRendererEvent, data: { entities: unknown[]; tags: unknown[] }) => callback(data);
             ipcRenderer.on('watchlist:update', handler);
@@ -379,6 +380,11 @@ contextBridge.exposeInMainWorld('electron', {
         getWorldStats: (worldId: string) => ipcRenderer.invoke('friendship:get-world-stats', worldId),
         getFriendsList: () => ipcRenderer.invoke('friendship:get-friends-list'),
         getMutualsBatch: (userIds: string[]) => ipcRenderer.invoke('friendship:get-mutuals-batch', userIds),
+        onStatsUpdate: (callback: (data: { userIds: string[]; addedMinutes: number }) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, data: { userIds: string[]; addedMinutes: number }) => callback(data);
+            ipcRenderer.on('friendship:stats-update', handler);
+            return () => ipcRenderer.removeListener('friendship:stats-update', handler);
+        },
     },
 
     // Generic IPC Renderer for event listening

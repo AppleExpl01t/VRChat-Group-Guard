@@ -72,7 +72,7 @@ class WatchlistService {
   public saveEntity(entity: Partial<WatchedEntity> & { id: string; type: EntityType }) {
     const map = this.store.get('entities');
     const existing = map[entity.id];
-    
+
     // Merge or Create
     const now = Date.now();
     const updated: WatchedEntity = {
@@ -90,7 +90,7 @@ class WatchlistService {
 
     map[entity.id] = updated;
     this.store.set('entities', map);
-    
+
     this.notifyUpdate();
     return updated;
   }
@@ -98,10 +98,10 @@ class WatchlistService {
   public deleteEntity(id: string) {
     const map = this.store.get('entities');
     if (map[id]) {
-        delete map[id];
-        this.store.set('entities', map);
-        this.notifyUpdate();
-        return true;
+      delete map[id];
+      this.store.set('entities', map);
+      this.notifyUpdate();
+      return true;
     }
     return false;
   }
@@ -124,24 +124,24 @@ class WatchlistService {
   }
 
   public deleteTag(tagId: string) {
-      const tags = this.store.get('tags');
-      const filtered = tags.filter(t => t.id !== tagId);
-      if (filtered.length !== tags.length) {
-          this.store.set('tags', filtered);
-          this.notifyUpdate();
-      }
+    const tags = this.store.get('tags');
+    const filtered = tags.filter(t => t.id !== tagId);
+    if (filtered.length !== tags.length) {
+      this.store.set('tags', filtered);
+      this.notifyUpdate();
+    }
   }
 
   public saveTag(tag: ModerationTag) {
-     const tags = this.store.get('tags');
-     const index = tags.findIndex(t => t.id === tag.id);
-     if (index !== -1) {
-         tags[index] = tag;
-     } else {
-         tags.push(tag);
-     }
-     this.store.set('tags', tags);
-     this.notifyUpdate();
+    const tags = this.store.get('tags');
+    const index = tags.findIndex(t => t.id === tag.id);
+    if (index !== -1) {
+      tags[index] = tag;
+    } else {
+      tags.push(tag);
+    }
+    this.store.set('tags', tags);
+    this.notifyUpdate();
   }
 
   // ============================================
@@ -150,47 +150,51 @@ class WatchlistService {
 
   private notifyUpdate() {
     windowService.broadcast('watchlist:update', {
-        entities: this.getEntities(),
-        tags: this.getTags()
+      entities: this.getEntities(),
+      tags: this.getTags()
     });
   }
 
   public importData(json: string) {
-      try {
-          const data = JSON.parse(json);
-          // Basic validation could go here
-          if (data.entities) this.store.set('entities', data.entities);
-          if (data.tags) this.store.set('tags', data.tags);
-          this.notifyUpdate();
-          return true;
-      } catch (e) {
-          logger.error('Failed to import watchlist data', e);
-          return false;
-      }
+    try {
+      const data = JSON.parse(json);
+      // Basic validation could go here
+      if (data.entities) this.store.set('entities', data.entities);
+      if (data.tags) this.store.set('tags', data.tags);
+      this.notifyUpdate();
+      return true;
+    } catch (e) {
+      logger.error('Failed to import watchlist data', e);
+      return false;
+    }
   }
-  
+
   public exportData() {
-      return JSON.stringify(this.store.store, null, 2);
+    return JSON.stringify(this.store.store, null, 2);
   }
 
   private setupHandlers() {
-      // IPC Handlers
-      ipcMain.handle('watchlist:get-entities', () => this.getEntities());
-      ipcMain.handle('watchlist:get-entity', (_, id) => this.getEntity(id));
-      ipcMain.handle('watchlist:save-entity', (_, entity) => this.saveEntity(entity));
-      ipcMain.handle('watchlist:delete-entity', (_, id) => this.deleteEntity(id));
-      
-      ipcMain.handle('watchlist:get-tags', () => this.getTags());
-      ipcMain.handle('watchlist:save-tag', (_, tag) => this.saveTag(tag));
-      ipcMain.handle('watchlist:delete-tag', (_, id) => this.deleteTag(id));
-      
-      ipcMain.handle('watchlist:import', (_, json) => this.importData(json));
-      ipcMain.handle('watchlist:export', () => this.exportData());
-      
-      // Search scanned users from database
-      ipcMain.handle('watchlist:search-scanned-users', async (_, query: string) => {
-          return databaseService.searchScannedUsers(query, 20);
-      });
+    // IPC Handlers
+    ipcMain.handle('watchlist:get-entities', () => this.getEntities());
+    ipcMain.handle('watchlist:get-entity', (_, id) => this.getEntity(id));
+    ipcMain.handle('watchlist:save-entity', (_, entity) => this.saveEntity(entity));
+    ipcMain.handle('watchlist:delete-entity', (_, id) => this.deleteEntity(id));
+
+    ipcMain.handle('watchlist:get-tags', () => this.getTags());
+    ipcMain.handle('watchlist:save-tag', (_, tag) => this.saveTag(tag));
+    ipcMain.handle('watchlist:delete-tag', (_, id) => this.deleteTag(id));
+
+    ipcMain.handle('watchlist:import', (_, json) => this.importData(json));
+    ipcMain.handle('watchlist:export', () => this.exportData());
+
+    // Search scanned users from database
+    ipcMain.handle('watchlist:search-scanned-users', async (_, query: string) => {
+      return databaseService.searchScannedUsers(query, 20);
+    });
+
+    ipcMain.handle('watchlist:get-scanned-user', async (_, userId: string) => {
+      return databaseService.getScannedUser(userId);
+    });
   }
 }
 

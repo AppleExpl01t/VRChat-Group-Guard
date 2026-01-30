@@ -143,15 +143,17 @@ export const LiveView: React.FC = () => {
 
                     // Try to find rank in our local history first
                     let rank = rankHistoryRef.current.get(id);
+                    let avatarUrl: string | undefined = undefined;
 
-                    // If not found, see if we can get it from the user service (EntityEnrichment/Cache) via IPC
+                    // If not found, fall back to the secure local database (Scanned Users)
+                    // This ensures persistence even effectively "offline" or after restart
                     if (!rank) {
                         try {
-                            // Quick check to cached user data if available
-                            // We use getUser but only invalidating if it's super important, usually it hits cache
-                            // Note: We avoid await in loop if possible, but for 50 items it might be okay.
-                            // To optimize, we'll just check if we have it. If not, default to 'User' to avoid 50 API calls spam.
-                            // For now, let's rely on history.
+                            const scannedUser = await window.electron.watchlist.getScannedUser(id);
+                            if (scannedUser) {
+                                rank = scannedUser.rank || undefined;
+                                avatarUrl = scannedUser.thumbnailUrl || undefined;
+                            }
                         } catch (e) {
                             // ignore
                         }
@@ -166,7 +168,7 @@ export const LiveView: React.FC = () => {
                         rank: rank || 'User', // Use cached rank or fallback
                         isGroupMember: false,
                         status: 'left',
-                        avatarUrl: undefined,
+                        avatarUrl: avatarUrl,
                         lastUpdated: new Date(l.timestamp).getTime(),
                         leftAt: l.timestamp
                     };

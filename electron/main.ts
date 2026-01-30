@@ -273,6 +273,9 @@ settingsService.initialize();
 import { watchlistService } from './services/WatchlistService';
 watchlistService.initialize();
 
+import { timeTrackingService } from './services/TimeTrackingService';
+timeTrackingService.initialize();
+
 // Initialize Blocking/Critical Async Services concurrently
 Promise.all([
   databaseService.initialize().catch(err => {

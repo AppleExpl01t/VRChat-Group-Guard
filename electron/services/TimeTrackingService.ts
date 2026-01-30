@@ -112,6 +112,12 @@ class TimeTrackingService {
             // Batch update DB
             await this.incrementTime(friendsWithMe.map(f => f.userId));
 
+            // Emit live update event for UI
+            serviceEventBus.emit('friend-stats-updated', {
+                userIds: friendsWithMe.map(f => f.userId),
+                addedMinutes: 1
+            });
+
         } catch (e) {
             logger.error('[Heartbeat] Failed:', e);
         }
@@ -144,6 +150,24 @@ class TimeTrackingService {
             )
         );
         logger.debug(`[Heartbeat] Incremented time for ${userIds.length} users.`);
+    }
+
+    /**
+     * Retrieves aggregated stats for a user from the authoritative database.
+     */
+    public async getPlayerStats(userId: string) {
+        if (!this.isInitialized) return null;
+        try {
+            const client = databaseService.getClient();
+            // @ts-ignore
+            const stats = await (client as any).friendStats.findUnique({
+                where: { userId }
+            });
+            return stats;
+        } catch (e) {
+            logger.error(`Failed to get stats for ${userId}:`, e);
+            return null;
+        }
     }
 }
 

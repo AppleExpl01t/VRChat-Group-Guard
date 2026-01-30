@@ -578,6 +578,7 @@ class LogWatcherService extends EventEmitter {
         // Inform UI to clear its local player list and update world
         this.emitToRenderer('log:location', { worldId, instanceId, location, timestamp });
         this.emit('location', { worldId, instanceId, location, timestamp });
+        serviceEventBus.emit('location', { worldId, instanceId, location, timestamp });
 
         // INSTANT RECONCILE: Immediately pull the fresh user list from the API for the NEW instance
         // This is the "failsafe" to ensure the Roaming Card is correct even if logs are slow
