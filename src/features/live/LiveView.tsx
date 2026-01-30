@@ -149,10 +149,14 @@ export const LiveView: React.FC = () => {
                     // This ensures persistence even effectively "offline" or after restart
                     if (!rank) {
                         try {
-                            const scannedUser = await window.electron.watchlist.getScannedUser(id);
-                            if (scannedUser) {
-                                rank = scannedUser.rank || undefined;
-                                avatarUrl = scannedUser.thumbnailUrl || undefined;
+                            // Safety: Check if API exists (handles preload mismatch)
+                            const api = window.electron.watchlist as any;
+                            if (api.getScannedUser) {
+                                const scannedUser = await api.getScannedUser(id);
+                                if (scannedUser) {
+                                    rank = scannedUser.rank || undefined;
+                                    avatarUrl = scannedUser.thumbnailUrl || undefined;
+                                }
                             }
                         } catch (e) {
                             // ignore
