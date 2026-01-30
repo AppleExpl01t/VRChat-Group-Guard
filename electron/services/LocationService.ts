@@ -31,16 +31,19 @@ class LocationService {
     private snapshotPath: string | null = null;
     private friends = new Map<string, FriendLocation>();
 
-    constructor() {
-        // Setup listeners
-        // Note: PipelineService emits via windowService.broadcast usually.
-        // But we need to listen internally. 
-        // We should add a listener to the IPC or just make PipelineService emit to a NodeJS event emitter too.
-        // For now, let's assume we can listen to `serviceEventBus` if we bridge it, 
-        // OR we can expose a method `updateFriendStatus` that PipelineService calls.
+    private selfLocation: { location: string; worldId?: string; instanceId?: string } | null = null;
 
-        // BETTER ARCHITECTURE: PipelineService should emit events to `serviceEventBus`.
-        // I will need to update PipelineService to emit 'friend-update' to the bus.
+    constructor() {
+        // Listen for self location updates
+        serviceEventBus.on('location', (event: any) => {
+            if (event.location) {
+                this.selfLocation = {
+                    location: event.location,
+                    worldId: event.worldId,
+                    instanceId: event.instanceId
+                };
+            }
+        });
     }
 
     public initialize(userDataDir: string) {
@@ -165,6 +168,10 @@ class LocationService {
 
     public getFriend(userId: string): FriendLocation | undefined {
         return this.friends.get(userId);
+    }
+
+    public getSelfLocation() {
+        return this.selfLocation;
     }
 
     private loadSnapshot() {

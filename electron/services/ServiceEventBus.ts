@@ -14,9 +14,17 @@ export type ServiceEventType =
     | 'social-feed-entry-added'
     | 'friendship-relationship-changed'
     | 'player-joined'
-    | 'player-left';
+    | 'player-left'
+    | 'location';
 
 export interface ServiceEventPayloads {
+    'location': {
+        location: string;
+        worldId?: string;
+        instanceId?: string;
+        worldName?: string;
+        timestamp?: string
+    };
     'groups-updated': { groups: { id: string;[key: string]: unknown }[] };
     'groups-raw': { groups: { id: string;[key: string]: unknown }[]; userId: string };
     'groups-cache-ready': { groupIds: string[] };

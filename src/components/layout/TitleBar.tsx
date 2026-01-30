@@ -164,6 +164,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick, onLogoutCli
           <motion.button
             onClick={() => {
               useGroupStore.getState().enterRoamingMode();
+              useAppViewStore.getState().setView('live');
             }}
             whileTap={{ scale: 0.95 }}
             className={styles.friendshipButton} // Reusing the same style as requested ("duplicate it")

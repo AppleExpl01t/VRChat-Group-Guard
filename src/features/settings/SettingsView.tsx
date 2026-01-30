@@ -31,8 +31,7 @@ const innerCardStyle: React.CSSProperties = {
 // Searchable text for each tab
 const TAB_SEARCH_DATA: Record<SettingsTab, string[]> = {
   appearance: ['Appearance', 'Theme', 'Primary Neon', 'Accent Neon', 'Color', 'Hue', 'Background', 'Dark', 'Light', 'Particles', 'Glass', 'Blur', 'Opacity', 'Border', 'Radius', 'Orbs', 'Effects'],
-  audio: ['Audio', 'Notification Sound', 'Volume', 'Alert', 'Music'],
-  notifications: ['Notifications', 'Test', 'Alert', 'Visual'],
+  audio: ['Audio', 'Notification Sound', 'Volume', 'Music', 'Alert', 'Notifications', 'Test', 'Visual'],
   security: ['Security', 'Data', 'Auto-Login', 'Credentials', 'Sign in', 'Remember', 'Forget Device'],
   osc: ['OSC', 'Integration', 'VRChat', 'Open Sound Control', 'Port', 'IP', 'Chatbox'],
   discord: ['Discord', 'Webhook', 'RPC', 'Rich Presence', 'Status', 'Activity', 'Logs', 'Channel'],
@@ -178,7 +177,6 @@ export const SettingsView: React.FC = () => {
     const result: Record<SettingsTab, boolean> = {
       appearance: false,
       audio: false,
-      notifications: false,
       security: false,
       osc: false,
       discord: false,
@@ -199,7 +197,7 @@ export const SettingsView: React.FC = () => {
     if (!searchQuery.trim()) return undefined;
 
     const counts: Record<SettingsTab, number> = {
-      appearance: 0, audio: 0, notifications: 0, security: 0,
+      appearance: 0, audio: 0, security: 0,
       osc: 0, discord: 0, about: 0, credits: 0, debug: 0
     };
 
@@ -221,7 +219,7 @@ export const SettingsView: React.FC = () => {
     if (visibleTabs[activeTab]) return;
 
     // Find the first tab that has results
-    const tabOrder: SettingsTab[] = ['appearance', 'audio', 'notifications', 'security', 'osc', 'discord', 'about', 'credits', 'debug'];
+    const tabOrder: SettingsTab[] = ['appearance', 'audio', 'security', 'osc', 'discord', 'about', 'credits', 'debug'];
     for (const tab of tabOrder) {
       if (visibleTabs[tab]) {
         setActiveTab(tab);
@@ -608,28 +606,29 @@ export const SettingsView: React.FC = () => {
               </>
             )}
 
-            {/* === AUDIO TAB === */}
-            {activeTab === 'audio' && <AudioSettings />}
+            {/* === AUDIO & ALERTS TAB === */}
+            {activeTab === 'audio' && (
+              <>
+                <AudioSettings />
 
-            {/* === NOTIFICATIONS TAB === */}
-            {activeTab === 'notifications' && (
-              <section>
-                <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Notifications & Alerts</h2>
-                <div style={innerCardStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Test Notifications</div>
-                      <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Send a test notification to verify audio and visual alerts.</div>
+                <section style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
+                  <h2 style={{ color: 'var(--color-text-main)', marginBottom: '1rem', paddingBottom: '0.5rem' }}>Notifications & Alerts</h2>
+                  <div style={innerCardStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Test Notifications</div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Send a test notification to verify audio and visual alerts.</div>
+                      </div>
+                      <NeonButton
+                        variant="primary"
+                        onClick={() => window.electron.automod.testNotification('TEST_GROUP')}
+                      >
+                        Test Notification
+                      </NeonButton>
                     </div>
-                    <NeonButton
-                      variant="primary"
-                      onClick={() => window.electron.automod.testNotification('TEST_GROUP')}
-                    >
-                      Test Notification
-                    </NeonButton>
                   </div>
-                </div>
-              </section>
+                </section>
+              </>
             )}
 
             {/* === SECURITY TAB === */}

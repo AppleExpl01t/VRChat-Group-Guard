@@ -11,12 +11,40 @@ export interface AppSettings {
         notificationSoundPath: string | null;
         volume: number;
     };
+    notifications: {
+        enabled: boolean; // Master toggle
+        types: {
+            join: boolean;
+            leave: boolean;
+            automod: boolean;
+            friend: boolean;
+        };
+        behavior: {
+            desktop: boolean; // Windows Toast
+            sound: boolean;   // Play Sound
+            taskbarFlash: boolean;
+        };
+    };
 }
 
 const defaultSettings: AppSettings = {
     audio: {
         notificationSoundPath: null, // null means default
         volume: 0.6
+    },
+    notifications: {
+        enabled: true,
+        types: {
+            join: true,
+            leave: true,
+            automod: true,
+            friend: true
+        },
+        behavior: {
+            desktop: true,
+            sound: true,
+            taskbarFlash: true
+        }
     }
 };
 
@@ -58,12 +86,12 @@ class SettingsService {
 
         const filePath = result.filePaths[0];
         const fileName = path.basename(filePath);
-        
+
         try {
             // Read file and convert to base64 for immediate preview/usage without CSP issues
             const fileBuffer = fs.readFileSync(filePath);
             const base64Data = `data:audio/${path.extname(filePath).slice(1)};base64,${fileBuffer.toString('base64')}`;
-            
+
             return {
                 path: filePath,
                 name: fileName,
@@ -78,11 +106,11 @@ class SettingsService {
     public getAudioData(filePath: string): string | null {
         if (!filePath) return null;
         try {
-             if (fs.existsSync(filePath)) {
+            if (fs.existsSync(filePath)) {
                 const fileBuffer = fs.readFileSync(filePath);
                 return `data:audio/${path.extname(filePath).slice(1)};base64,${fileBuffer.toString('base64')}`;
-             }
-             return null;
+            }
+            return null;
         } catch (error) {
             logger.error(`Failed to load audio: ${filePath}`, error);
             return null;

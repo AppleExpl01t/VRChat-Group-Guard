@@ -230,18 +230,24 @@ function App() {
     attemptAutoLogin();
   }, [autoLogin, isStorageConfigured]);
 
-  // Auto-switch to Live View when entering Roaming Mode
+  // 1. Auto-switch to Live View when entering Roaming Mode
+  // INTENTIONAL: We only listen to isRoamingMode changes to prevent hijacking navigation
+  // when the user moves to Settings or other views.
   useEffect(() => {
-    if (isRoamingMode) {
-      if (currentView !== 'live') {
-        const t = setTimeout(() => setCurrentView('live'), 0);
-        return () => clearTimeout(t);
-      }
-    } else if (currentView === 'live' && !selectedGroup) {
+    if (isRoamingMode && currentView === 'main') {
+      const t = setTimeout(() => setCurrentView('live'), 0);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRoamingMode, setCurrentView]); // Exclude currentView to prevent re-running on nav
+
+  // 2. Safety Guard: Kick out of Live view if not allowed
+  useEffect(() => {
+    if (currentView === 'live' && !selectedGroup && !isRoamingMode) {
       const t = setTimeout(() => setCurrentView('main'), 0);
       return () => clearTimeout(t);
     }
-  }, [isRoamingMode, selectedGroup, currentView, setCurrentView]);
+  }, [currentView, selectedGroup, isRoamingMode, setCurrentView]);
 
   // Handle View Switching - memoized to prevent re-renders
   const handleViewChange = useCallback((view: DockView) => {
@@ -250,7 +256,7 @@ function App() {
       return;
     }
 
-    if ((view === 'moderation' || view === 'instances' || view === 'audit' || view === 'database' || view === 'live' || view === 'watchlist') && !selectedGroup) {
+    if ((view === 'moderation' || view === 'instances' || view === 'audit' || view === 'database' || view === 'live' || view === 'watchlist') && !selectedGroup && !isRoamingMode) {
       selectGroup(null);
       startTransition(() => setCurrentView('main'));
       return;

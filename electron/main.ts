@@ -4,27 +4,55 @@ import fs from 'fs'; // Added for log rotation
 import dotenv from 'dotenv';
 
 // Load environment variables
+// Load environment variables
 dotenv.config();
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import { storageService } from './services/StorageService'; // Import early
+
 const logger = log.scope('App');
+
+// Initialize Storage Service (Sync) to get the correct path
+storageService.initialize();
 
 // ========================================
 // LOGGING & ERROR HANDLING
 // ========================================
 
-// LOG ROTATION LOGIC (Must run before log.initialize)
-try {
-  const userDataPath = app.getPath('userData');
-  const logDir = path.join(userDataPath, 'logs');
-  const logFile = path.join(logDir, 'latest.log');
+// Determine Log Path
+const logDir = path.join(storageService.getDataDir(), 'logs');
+const logFile = path.join(logDir, 'latest.log');
 
-  // Ensure log directory exists
+// LOG ROTATION & MIGRATION LOGIC
+try {
+  const oldLogDir = path.join(app.getPath('userData'), 'logs');
+
+  // Ensure new log directory exists
   if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
   }
 
-  // Rotate existing latest.log
+  // MIGRATION: Move logs from old default to new location if different
+  if (oldLogDir !== logDir && fs.existsSync(oldLogDir)) {
+    try {
+      const files = fs.readdirSync(oldLogDir);
+      for (const file of files) {
+        const oldPath = path.join(oldLogDir, file);
+        const newPath = path.join(logDir, file);
+        // Only move if destination doesn't exist
+        if (!fs.existsSync(newPath)) {
+          fs.renameSync(oldPath, newPath);
+        }
+      }
+      // Try to remove old dir if empty
+      try { fs.rmdirSync(oldLogDir); } catch { /* ignore */ }
+      console.log(`[Startup] Migrated logs from ${oldLogDir} to ${logDir}`);
+    } catch (e) {
+      console.error('[Startup] Failed to migrate logs:', e);
+    }
+  }
+
+  // Rotate existing latest.log in the NEW location
   if (fs.existsSync(logFile)) {
     const stats = fs.statSync(logFile);
     const date = stats.mtime; // Use modification time (when the last session ended)
@@ -44,13 +72,13 @@ try {
     console.log(`[Startup] Archived previous log to ${archiveName}`);
   }
 } catch (err) {
-  console.error('[Startup] Failed to rotate logs:', err);
+  console.error('[Startup] Failed to rotate/migrate logs:', err);
 }
 
 // Configure logging for production
 // Force electron-log to use our specific path and filename
-log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'logs/latest.log');
-log.transports.file.fileName = 'latest.log';
+log.transports.file.resolvePathFn = () => logFile;
+log.transports.file.fileName = 'latest.log'; // Redundant with resolvePathFn but safer
 log.transports.file.archiveLogFn = (oldLogFile) => {
   // Disable built-in rotation since we handle it manually on startup
   // This empty function prevents electron-log from renaming 'latest.log'
@@ -209,7 +237,7 @@ ipcMain.handle('process:get-status', async () => {
 });
 
 
-import { storageService } from './services/StorageService';
+
 import { discordBroadcastService } from './services/DiscordBroadcastService';
 import { databaseService } from './services/DatabaseService';
 
@@ -236,7 +264,7 @@ ipcMain.handle('storage:reconfigure', () => {
 });
 
 // Initialize storage service
-storageService.initialize();
+
 storageService.setupHandlers();
 
 import { settingsService, AppSettings } from './services/SettingsService';

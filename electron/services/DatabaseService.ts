@@ -18,12 +18,52 @@ class DatabaseService {
 
         try {
             const dataDir = storageService.getDataDir();
+            const dbDir = path.join(dataDir, 'database');
+            const backupsDir = path.join(dbDir, 'backups');
+
+            // Ensure directories exist
             if (!fs.existsSync(dataDir)) {
                 fs.mkdirSync(dataDir, { recursive: true });
             }
+            if (!fs.existsSync(dbDir)) {
+                fs.mkdirSync(dbDir, { recursive: true });
+            }
+            if (!fs.existsSync(backupsDir)) {
+                fs.mkdirSync(backupsDir, { recursive: true });
+            }
 
-            const dbPath = path.join(dataDir, 'database.sqlite');
-            // Ensure file exists to avoid some driver oddities, though usually not needed
+            // MIGRATION: Move DB from root to database/ folder
+            const oldDbPath = path.join(dataDir, 'database.sqlite');
+            const newDbPath = path.join(dbDir, 'database.sqlite');
+
+            if (fs.existsSync(oldDbPath) && !fs.existsSync(newDbPath)) {
+                try {
+                    fs.renameSync(oldDbPath, newDbPath);
+                    logger.info('Migrated database.sqlite to database/ subfolder.');
+                } catch (e) {
+                    logger.error('Failed to migrate database file:', e);
+                }
+            }
+
+            // MIGRATION: Move old backups from root to database/backups/ folder
+            try {
+                const files = fs.readdirSync(dataDir);
+                for (const file of files) {
+                    if (file.startsWith('database.sqlite.backup-')) {
+                        const oldBackupPath = path.join(dataDir, file);
+                        const newBackupPath = path.join(backupsDir, file);
+                        fs.renameSync(oldBackupPath, newBackupPath);
+                        logger.info(`Migrated backup ${file} to database/backups/`);
+                    }
+                }
+            } catch (e) {
+                logger.warn('Failed to migrate old backups:', e);
+            }
+
+            // Use the new path
+            const dbPath = newDbPath;
+
+            // Ensure file exists to avoid some driver oddities
             if (!fs.existsSync(dbPath)) {
                 fs.writeFileSync(dbPath, '');
             }
@@ -66,20 +106,27 @@ class DatabaseService {
     private async backupDatabase(dbPath: string) {
         try {
             if (fs.existsSync(dbPath)) {
-                const backupPath = `${dbPath}.backup-${Date.now()}`;
+                const dbDir = path.dirname(dbPath);
+                // Backups go to database/backups/ (which is dbDir/backups/ if dbPath is in database/)
+                // But let's be explicit based on our new structure plan
+                const backupsDir = path.join(dbDir, 'backups');
+                if (!fs.existsSync(backupsDir)) {
+                    fs.mkdirSync(backupsDir, { recursive: true });
+                }
+
+                const backupPath = path.join(backupsDir, `database.sqlite.backup-${Date.now()}`);
                 fs.copyFileSync(dbPath, backupPath);
                 logger.info(`Database backed up to: ${backupPath}`);
 
                 // Cleanup old backups (keep last 5)
-                const dataDir = path.dirname(dbPath);
-                const files = fs.readdirSync(dataDir)
+                const files = fs.readdirSync(backupsDir)
                     .filter(f => f.startsWith('database.sqlite.backup-'))
                     .sort();
 
                 if (files.length > 5) {
                     const toDelete = files.slice(0, files.length - 5);
                     for (const file of toDelete) {
-                        fs.unlinkSync(path.join(dataDir, file));
+                        fs.unlinkSync(path.join(backupsDir, file));
                     }
                 }
             }

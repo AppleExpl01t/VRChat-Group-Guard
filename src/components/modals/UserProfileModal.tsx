@@ -246,7 +246,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                                     ) : null}
                                 </div>
                             </div>
-                            <div className={styles.cardContent} style={{ padding: 0 }}>
+                            <div className={styles.cardContent}>
                                 <textarea
                                     className={styles.noteInput}
                                     value={note}

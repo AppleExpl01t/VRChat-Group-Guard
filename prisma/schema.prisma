@@ -62,3 +62,17 @@ model ScannedUser {
   @@index([groupId])
   @@index([lastSeenAt])
 }
+
+model FriendStats {
+  userId           String   @id
+  displayName      String
+  timeSpentMinutes Int      @default(0)
+  encounterCount   Int      @default(0)
+  lastSeen         DateTime
+  lastHeartbeat    DateTime?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([lastSeen])
+}

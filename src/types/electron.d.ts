@@ -405,6 +405,20 @@ export interface AppSettings {
     notificationSoundPath: string | null;
     volume: number;
   };
+  notifications: {
+    enabled: boolean;
+    types: {
+      join: boolean;
+      leave: boolean;
+      automod: boolean;
+      friend: boolean;
+    };
+    behavior: {
+      desktop: boolean;
+      sound: boolean;
+      taskbarFlash: boolean;
+    };
+  };
 }
 
 export interface ElectronAPI {
