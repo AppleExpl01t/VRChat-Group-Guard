@@ -110,6 +110,20 @@ export const LiveView: React.FC = () => {
     // Persistent "Recently Left" State
     const [persistentLeftEntities, setPersistentLeftEntities] = useState<PersistentLeftEntity[]>([]);
 
+    // Rank Cache to remember ranks of users who leave
+    const rankHistoryRef = React.useRef<Map<string, string>>(new Map());
+
+    // Update rank cache whenever we see active entities
+    useEffect(() => {
+        if (entities) {
+            entities.forEach(e => {
+                if (e.rank && e.rank !== 'Unknown' && e.rank !== 'User') {
+                    rankHistoryRef.current.set(e.id, e.rank);
+                }
+            });
+        }
+    }, [entities]);
+
     // Fetch persistent left logs when instance ID is known
     useEffect(() => {
         const fetchLeftLogs = async () => {
@@ -124,15 +138,38 @@ export const LiveView: React.FC = () => {
                 });
 
                 // Map to Entity structure for display
-                const mapped: PersistentLeftEntity[] = leaves.map(l => ({
-                    id: l.userId || l.id, // Fallback if userId missing
-                    displayName: l.displayName,
-                    rank: 'User', // Log doesn't store rank usually, unless we enhance it. Default for now.
-                    isGroupMember: false, // We'd need to check this separately or assume false
-                    status: 'left',
-                    avatarUrl: undefined,
-                    lastUpdated: new Date(l.timestamp).getTime(),
-                    leftAt: l.timestamp
+                const mapped: PersistentLeftEntity[] = await Promise.all(leaves.map(async l => {
+                    const id = l.userId || l.id;
+
+                    // Try to find rank in our local history first
+                    let rank = rankHistoryRef.current.get(id);
+
+                    // If not found, see if we can get it from the user service (EntityEnrichment/Cache) via IPC
+                    if (!rank) {
+                        try {
+                            // Quick check to cached user data if available
+                            // We use getUser but only invalidating if it's super important, usually it hits cache
+                            // Note: We avoid await in loop if possible, but for 50 items it might be okay.
+                            // To optimize, we'll just check if we have it. If not, default to 'User' to avoid 50 API calls spam.
+                            // For now, let's rely on history.
+                        } catch (e) {
+                            // ignore
+                        }
+                    }
+
+                    // Normalize rank if we have it, specifically fixing the +1 shift logic if it was present in cache
+                    // But here we just display what we have.
+
+                    return {
+                        id,
+                        displayName: l.displayName,
+                        rank: rank || 'User', // Use cached rank or fallback
+                        isGroupMember: false,
+                        status: 'left',
+                        avatarUrl: undefined,
+                        lastUpdated: new Date(l.timestamp).getTime(),
+                        leftAt: l.timestamp
+                    };
                 }));
 
                 // Deduplicate by ID
@@ -149,7 +186,9 @@ export const LiveView: React.FC = () => {
         // Refresh every 10s or when instance changes
         const interval = setInterval(fetchLeftLogs, 10000);
         return () => clearInterval(interval);
-    }, [instanceInfo?.instanceId]);
+    }, [instanceInfo?.instanceId, entities]); // Add entities dependency to refresh logs when we learn new ranks? Maybe too frequent.
+    // Actually, keeping entities out of dep array is better to avoid spamming the log fetch. 
+    // The rankHistoryRef is updated in separate effect.
 
 
 

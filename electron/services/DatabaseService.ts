@@ -46,6 +46,14 @@ class DatabaseService {
             // Connect explicitly
             await this.prisma.$connect();
 
+            // AUTO-MIGRATION: Ensure 'flags' column exists (fix for mismatch)
+            try {
+                await this.prisma.$executeRaw`ALTER TABLE ScannedUser ADD COLUMN flags TEXT`;
+                logger.info('Applied auto-migration: Added flags column to ScannedUser');
+            } catch (e) {
+                // Ignore if column already exists
+            }
+
             this.isInitialized = true;
             logger.info('Database initialized successfully.');
 
@@ -177,12 +185,15 @@ class DatabaseService {
         rank?: string;
         thumbnailUrl?: string;
         groupId?: string;
+        flags?: string[]; // Add flags support
     }) {
         try {
             // Check if user exists
             const existing = await this.getClient().$queryRaw`
               SELECT id, timesEncountered FROM ScannedUser WHERE id = ${user.id}
           ` as { id: string; timesEncountered: number }[];
+
+            const flagsJson = user.flags ? JSON.stringify(user.flags) : null;
 
             if (existing.length > 0) {
                 // Update existing user
@@ -193,14 +204,15 @@ class DatabaseService {
                       thumbnailUrl = ${user.thumbnailUrl || null},
                       groupId = ${user.groupId || null},
                       lastSeenAt = ${new Date().toISOString()},
-                      timesEncountered = ${existing[0].timesEncountered + 1}
+                      timesEncountered = ${existing[0].timesEncountered + 1},
+                      flags = COALESCE(${flagsJson}, flags)
                   WHERE id = ${user.id}
               `;
             } else {
                 // Insert new user
                 await this.getClient().$executeRaw`
-                  INSERT INTO ScannedUser (id, displayName, rank, thumbnailUrl, groupId, firstSeenAt, lastSeenAt, timesEncountered)
-                  VALUES (${user.id}, ${user.displayName}, ${user.rank || null}, ${user.thumbnailUrl || null}, ${user.groupId || null}, ${new Date().toISOString()}, ${new Date().toISOString()}, 1)
+                  INSERT INTO ScannedUser (id, displayName, rank, thumbnailUrl, groupId, firstSeenAt, lastSeenAt, timesEncountered, flags)
+                  VALUES (${user.id}, ${user.displayName}, ${user.rank || null}, ${user.thumbnailUrl || null}, ${user.groupId || null}, ${new Date().toISOString()}, ${new Date().toISOString()}, 1, ${flagsJson})
               `;
             }
             return true;
