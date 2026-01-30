@@ -163,7 +163,11 @@ class OscAnnouncementService {
     }
 
     private handlePlayerJoined(event: PlayerJoinedEvent) {
-        logger.info(`[handlePlayerJoined] Player: ${event.displayName}, ActiveGroup: ${this.activeGroupId}, isBackfill: ${event.isBackfill}`);
+        if (!event.isBackfill) {
+            logger.info(`[handlePlayerJoined] Player: ${event.displayName}, ActiveGroup: ${this.activeGroupId}, isBackfill: ${event.isBackfill}`);
+        } else {
+            // logger.debug(`[handlePlayerJoined] Player: ${event.displayName}, ActiveGroup: ${this.activeGroupId}, isBackfill: ${event.isBackfill}`);
+        }
 
         this.currentPlayers.add(event.displayName);
 

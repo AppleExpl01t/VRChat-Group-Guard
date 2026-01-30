@@ -245,16 +245,31 @@ export const LiveView: React.FC = () => {
         setFlagDialogUser({ id: userId, displayName: name });
     }, []);
 
+    // Concurrency Control: Prevent old scans from overwriting new ones (Ghosting)
+    const scanSequenceRef = React.useRef<number>(0);
+
     const performScan = useCallback(async () => {
         if (!selectedGroup && !isRoamingMode) return;
+
+        // generated scan ID
+        const scanId = Date.now();
+        scanSequenceRef.current = scanId;
 
         try {
             const scanGroupId = selectedGroup ? selectedGroup.id : undefined;
             const results = await window.electron.instance.scanSector(scanGroupId);
+
+            // Abort if a newer scan started
+            if (scanSequenceRef.current !== scanId) return;
+
             updateLiveScan(results as LiveEntity[]);
 
             if (window.electron.instance.getInstanceInfo) {
                 const info = await window.electron.instance.getInstanceInfo();
+
+                // Check again after second await
+                if (scanSequenceRef.current !== scanId) return;
+
                 if (info.success) {
                     setInstanceInfo({
                         name: info.name || currentWorldName || 'Unknown',
@@ -274,7 +289,9 @@ export const LiveView: React.FC = () => {
         } catch (err) {
             console.error(err);
         } finally {
-            setIsInitialLoad(false);
+            if (scanSequenceRef.current === scanId) {
+                setIsInitialLoad(false);
+            }
         }
     }, [selectedGroup?.id, isRoamingMode, updateLiveScan]);
 

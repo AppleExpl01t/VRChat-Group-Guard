@@ -387,6 +387,11 @@ contextBridge.exposeInMainWorld('electron', {
         },
     },
 
+    // Log Scanner API
+    logScanner: {
+        scan: () => ipcRenderer.invoke('log-scanner:scan'),
+    },
+
     // Generic IPC Renderer for event listening
     ipcRenderer: {
         on: (channel: string, callback: (event: Electron.IpcRendererEvent, ...args: unknown[]) => void) => {

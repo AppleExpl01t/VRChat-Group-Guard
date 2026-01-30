@@ -108,12 +108,14 @@ class PlayerLogService {
 
     public initialize(userDataDir: string) {
         this.dbPath = path.join(userDataDir, 'player_log.jsonl');
-        this.isInitialized = true;
 
         // AUTO-FIX: Remove known corrupted entries from log history
+        // Run BEFORE enabling listeners to ensure atomic cleanup
         this.cleanupDatabase();
 
         this.loadRecentIds();
+
+        this.isInitialized = true;
         logger.info(`PlayerLogService initialized. DB Path: ${this.dbPath}`);
     }
 

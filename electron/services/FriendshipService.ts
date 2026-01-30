@@ -73,6 +73,8 @@ class FriendshipService {
         });
     }
 
+    private initPromise: Promise<void> | null = null;
+
     /**
      * Called when a user logs in.
      * Sets up the secure storage directory for THIS specific user.
@@ -86,38 +88,51 @@ class FriendshipService {
             await this.shutdown(); // Switch accounts
         }
 
-        logger.info(`Initializing FriendshipService for user: ${userId}`);
-        this.currentUserId = userId;
+        // Return existing promise if already initializing for this user
+        if (this.initPromise) return this.initPromise;
 
-        // 1. Setup Secure Storage Path: %APPDATA%/vrchat-group-guard/data/{userId}/
-        const appUserData = app.getPath('userData');
-        this.userDataDir = path.join(appUserData, 'data', userId);
-
-        // Ensure directory exists
-        if (!fs.existsSync(this.userDataDir)) {
+        this.initPromise = (async () => {
             try {
-                fs.mkdirSync(this.userDataDir, { recursive: true });
-                logger.info(`Created secure data directory: ${this.userDataDir}`);
-            } catch (error) {
-                logger.error(`Failed to create data directory for user ${userId}:`, error);
-                return; // Cannot proceed without storage
+                logger.info(`Initializing FriendshipService for user: ${userId}`);
+                this.currentUserId = userId;
+
+                // 1. Setup Secure Storage Path: %APPDATA%/vrchat-group-guard/data/{userId}/
+                const appUserData = app.getPath('userData');
+                this.userDataDir = path.join(appUserData, 'data', userId);
+
+                // Ensure directory exists
+                if (!fs.existsSync(this.userDataDir)) {
+                    try {
+                        fs.mkdirSync(this.userDataDir, { recursive: true });
+                        logger.info(`Created secure data directory: ${this.userDataDir}`);
+                    } catch (error) {
+                        logger.error(`Failed to create data directory for user ${userId}:`, error);
+                        throw error; // Cannot proceed without storage
+                    }
+                }
+
+                // 2. Initialize Sub-Services
+                logger.info('Initializing Sub-Services...');
+                gameLogService.initialize(this.userDataDir);
+                locationService.initialize(this.userDataDir);
+                socialFeedService.initialize(this.userDataDir);
+                playerLogService.initialize(this.userDataDir);
+                relationshipService.initialize(this.userDataDir);
+
+                this.isInitialized = true;
+
+                // Start background polling
+                this.startPolling();
+
+                logger.info('FriendshipService initialized successfully.');
+            } catch (err) {
+                this.initPromise = null;
+                this.isInitialized = false;
+                throw err;
             }
-        }
+        })();
 
-        // 2. Initialize Sub-Services
-        logger.info('Initializing Sub-Services...');
-        gameLogService.initialize(this.userDataDir);
-        locationService.initialize(this.userDataDir);
-        socialFeedService.initialize(this.userDataDir);
-        playerLogService.initialize(this.userDataDir);
-        relationshipService.initialize(this.userDataDir);
-
-        this.isInitialized = true;
-
-        // Start background polling
-        this.startPolling();
-
-        logger.info('FriendshipService initialized successfully.');
+        return this.initPromise;
     }
 
     /**
@@ -210,14 +225,17 @@ class FriendshipService {
         const friends = locationService.getAllFriends();
         const userIds = friends.map((f: any) => f.userId);
 
-        // Fetch stats from player log
-        const bulkStats = await playerLogService.getBulkPlayerStats(userIds);
+        // Fetch stats from NEW TimeTrackingService (Database)
+        // This is much faster and accurate than parsing JSON logs
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { timeTrackingService } = require('./TimeTrackingService');
+        const bulkStats = await timeTrackingService.getBulkFriendStats(userIds);
 
-        // Fetch relationship events to find "date known" (first 'add' event)
-        const relationshipEvents = await relationshipService.getRecentEvents(2000); // High limit to find old adds
+        // Keep relationship events for "Date Known" logic (still useful from logs? or DB relation?)
+        // For now, keep using RelationshipService events as they track "Added Friend" date accurately
+        const relationshipEvents = await relationshipService.getRecentEvents(2000);
         const firstAddedMap = new Map<string, string>();
 
-        // Reverse order (oldest first) to find the first time they were added
         [...relationshipEvents].reverse().forEach(event => {
             if (event.type === 'add' && !firstAddedMap.has(event.userId)) {
                 firstAddedMap.set(event.userId, event.timestamp);
@@ -230,16 +248,30 @@ class FriendshipService {
             const stats = bulkStats.get(friend.userId) || { encounterCount: 0, timeSpent: 0, lastSeen: '' };
             const dateKnown = firstAddedMap.get(friend.userId) || '';
 
-            // Calculate Friend Score
-            // joins * 10 
-            // minutesSpent * 1
-            // daysKnown * 5
-            let score = stats.encounterCount * 10;
-            score += Math.floor(stats.timeSpent / (1000 * 60)); // minutes spent
+            // Calculate Friend Score (0-100 Normalization)
+            // 1. Time Factor (Max 40 pts) - Goal: 100 Hours (6000 mins)
+            const timeFactor = Math.min(40, (stats.timeSpent / (1000 * 60) / 6000) * 40);
 
+            // 2. Frequency Factor (Max 40 pts) - Goal: 50 Sessions
+            const freqFactor = Math.min(40, (stats.encounterCount / 50) * 40);
+
+            // 3. Intensity Factor (Max 20 pts) - Goal: 30 Mins/Day Average
+            // Days Known = (Now - CreatedAt) / (ms * sec * min * hr)
+            // Default to 1 day if created today or missing
+            const createdAt = stats.createdAt ? new Date(stats.createdAt).getTime() : now.getTime();
+            const msKnown = Math.max(1, now.getTime() - createdAt);
+            const daysKnown = Math.max(1, msKnown / (1000 * 60 * 60 * 24));
+
+            const minutesTotal = stats.timeSpent / (1000 * 60);
+            const intensity = minutesTotal / daysKnown; // Avg mins per day
+            const intensityFactor = Math.min(20, (intensity / 30) * 20);
+
+            let score = Math.floor(timeFactor + freqFactor + intensityFactor);
+
+            // Legacy Date Known Bonus (Optional - kept for strict "date added" context if available)
             if (dateKnown) {
-                const dayDiff = Math.floor((now.getTime() - new Date(dateKnown).getTime()) / (1000 * 60 * 60 * 24));
-                score += (dayDiff * 5);
+                // We don't add points here anymore to keep 0-100 scale clean, 
+                // but we could use it as a tiebreaker or display field.
             }
 
             return {

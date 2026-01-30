@@ -13,94 +13,101 @@ class DatabaseService {
 
     constructor() { }
 
+    private initPromise: Promise<void> | null = null;
+
     public async initialize() {
         if (this.isInitialized) return;
+        if (this.initPromise) return this.initPromise;
 
-        try {
-            const dataDir = storageService.getDataDir();
-            const dbDir = path.join(dataDir, 'database');
-            const backupsDir = path.join(dbDir, 'backups');
-
-            // Ensure directories exist
-            if (!fs.existsSync(dataDir)) {
-                fs.mkdirSync(dataDir, { recursive: true });
-            }
-            if (!fs.existsSync(dbDir)) {
-                fs.mkdirSync(dbDir, { recursive: true });
-            }
-            if (!fs.existsSync(backupsDir)) {
-                fs.mkdirSync(backupsDir, { recursive: true });
-            }
-
-            // MIGRATION: Move DB from root to database/ folder
-            const oldDbPath = path.join(dataDir, 'database.sqlite');
-            const newDbPath = path.join(dbDir, 'database.sqlite');
-
-            if (fs.existsSync(oldDbPath) && !fs.existsSync(newDbPath)) {
-                try {
-                    fs.renameSync(oldDbPath, newDbPath);
-                    logger.info('Migrated database.sqlite to database/ subfolder.');
-                } catch (e) {
-                    logger.error('Failed to migrate database file:', e);
-                }
-            }
-
-            // MIGRATION: Move old backups from root to database/backups/ folder
+        this.initPromise = (async () => {
             try {
-                const files = fs.readdirSync(dataDir);
-                for (const file of files) {
-                    if (file.startsWith('database.sqlite.backup-')) {
-                        const oldBackupPath = path.join(dataDir, file);
-                        const newBackupPath = path.join(backupsDir, file);
-                        fs.renameSync(oldBackupPath, newBackupPath);
-                        logger.info(`Migrated backup ${file} to database/backups/`);
+                const dataDir = storageService.getDataDir();
+                const dbDir = path.join(dataDir, 'database');
+                const backupsDir = path.join(dbDir, 'backups');
+
+                // Ensure directories exist
+                if (!fs.existsSync(dataDir)) {
+                    fs.mkdirSync(dataDir, { recursive: true });
+                }
+                if (!fs.existsSync(dbDir)) {
+                    fs.mkdirSync(dbDir, { recursive: true });
+                }
+                if (!fs.existsSync(backupsDir)) {
+                    fs.mkdirSync(backupsDir, { recursive: true });
+                }
+
+                // MIGRATION: Move DB from root to database/ folder
+                const oldDbPath = path.join(dataDir, 'database.sqlite');
+                const newDbPath = path.join(dbDir, 'database.sqlite');
+
+                if (fs.existsSync(oldDbPath) && !fs.existsSync(newDbPath)) {
+                    try {
+                        fs.renameSync(oldDbPath, newDbPath);
+                        logger.info('Migrated database.sqlite to database/ subfolder.');
+                    } catch (e) {
+                        logger.error('Failed to migrate database file:', e);
                     }
                 }
-            } catch (e) {
-                logger.warn('Failed to migrate old backups:', e);
-            }
 
-            // Use the new path
-            const dbPath = newDbPath;
+                // MIGRATION: Move old backups from root to database/backups/ folder
+                try {
+                    const files = fs.readdirSync(dataDir);
+                    for (const file of files) {
+                        if (file.startsWith('database.sqlite.backup-')) {
+                            const oldBackupPath = path.join(dataDir, file);
+                            const newBackupPath = path.join(backupsDir, file);
+                            fs.renameSync(oldBackupPath, newBackupPath);
+                            logger.info(`Migrated backup ${file} to database/backups/`);
+                        }
+                    }
+                } catch (e) {
+                    logger.warn('Failed to migrate old backups:', e);
+                }
 
-            // Ensure file exists to avoid some driver oddities
-            if (!fs.existsSync(dbPath)) {
-                fs.writeFileSync(dbPath, '');
-            }
+                // Use the new path
+                const dbPath = newDbPath;
 
-            const dbUrl = `file:${dbPath}`;
+                // Ensure file exists to avoid some driver oddities
+                if (!fs.existsSync(dbPath)) {
+                    fs.writeFileSync(dbPath, '');
+                }
 
-            logger.info(`Initializing database at: ${dbPath}`);
+                const dbUrl = `file:${dbPath}`;
 
-            this.prisma = new PrismaClient({
-                datasources: {
-                    db: {
-                        url: dbUrl,
+                logger.info(`Initializing database at: ${dbPath}`);
+
+                this.prisma = new PrismaClient({
+                    datasources: {
+                        db: {
+                            url: dbUrl,
+                        },
                     },
-                },
-            });
+                });
 
-            // BACKUP DATABASE (Safety First)
-            await this.backupDatabase(dbPath);
+                // BACKUP DATABASE (Safety First)
+                await this.backupDatabase(dbPath);
 
-            // Connect explicitly
-            await this.prisma.$connect();
+                // Connect explicitly
+                await this.prisma.$connect();
 
-            // AUTO-MIGRATION: Ensure 'flags' column exists (fix for mismatch)
-            try {
-                await this.prisma.$executeRaw`ALTER TABLE ScannedUser ADD COLUMN flags TEXT`;
-                logger.info('Applied auto-migration: Added flags column to ScannedUser');
-            } catch (e) {
-                // Ignore if column already exists
+                // AUTO-MIGRATION: Ensure 'flags' column exists (fix for mismatch)
+                try {
+                    await this.prisma.$executeRaw`ALTER TABLE ScannedUser ADD COLUMN flags TEXT`;
+                    logger.info('Applied auto-migration: Added flags column to ScannedUser');
+                } catch (e) {
+                    // Ignore if column already exists
+                }
+
+                this.isInitialized = true;
+                logger.info('Database initialized successfully.');
+            } catch (error) {
+                this.initPromise = null; // Allow retry on failure
+                logger.error('Failed to initialize database:', error);
+                throw error;
             }
+        })();
 
-            this.isInitialized = true;
-            logger.info('Database initialized successfully.');
-
-        } catch (error) {
-            logger.error('Failed to initialize database:', error);
-            throw error;
-        }
+        return this.initPromise;
     }
 
     private async backupDatabase(dbPath: string) {

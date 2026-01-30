@@ -141,10 +141,19 @@ export function setupGroupHandlers() {
             });
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const allInstances = (response.data || response) as any[];
+            let allInstances = (response.data || response) as any;
+
+            // Handle { instances: [...] } wrapper commonly returned by VRChat API
+            if (!Array.isArray(allInstances) && allInstances && Array.isArray(allInstances.instances)) {
+                logger.info(`[GroupService] Extracting instances from wrapped response for unified fetch`);
+                allInstances = allInstances.instances;
+            }
 
             if (!Array.isArray(allInstances)) {
-                logger.warn('[GroupService] getAllActiveInstances returned non-array:', allInstances);
+                // Safe logging for BigInt
+                logger.warn('[GroupService] getAllActiveInstances returned non-array:',
+                    JSON.stringify(allInstances, (key, value) => typeof value === 'bigint' ? value.toString() : value)
+                );
                 return { instances: [] };
             }
 

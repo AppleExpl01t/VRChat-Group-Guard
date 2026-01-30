@@ -27,6 +27,8 @@ export interface LogEvent {
   data: Record<string, string>;
 }
 
+// ... existing types ...
+
 export interface PlayerJoinedEvent {
   displayName: string;
   userId?: string;
@@ -106,10 +108,32 @@ class LogWatcherService extends EventEmitter {
   }
 
   /**
+   * DEDUPLICATION: Returns set of filenames that have been processed/tracked.
+   */
+  public getProcessedFiles(): Set<string> {
+    const list = store.get('processed_logs', []) as string[];
+    return new Set(list);
+  }
+
+  /**
+   * DEDUPLICATION: Marks a file as processed.
+   */
+  public markFileAsProcessed(filename: string) {
+    const list = store.get('processed_logs', []) as string[];
+    if (!list.includes(filename)) {
+      list.push(filename);
+      // Limit size to prevent infinite growth (keep last 5000 logs ~150KB)
+      if (list.length > 5000) list.shift();
+      store.set('processed_logs', list);
+    }
+  }
+
+  /**
    * Start watching. Validates directory, finds latest log, and starts trailing.
    * If callerWindow is provided, syncs current state to it immediately.
    */
   start(callerWindow?: BrowserWindow) {
+    // ... existing start logic ...
     if (callerWindow && !callerWindow.isDestroyed()) {
       this.emitStateToWindow(callerWindow);
     }
@@ -295,6 +319,12 @@ class LogWatcherService extends EventEmitter {
   }
 
   private emitStateToWindow(window: BrowserWindow) {
+    // Prevent partial syncs during hydration which cause UI duplicates
+    if (this.isHydrating) {
+      log.info('[LogWatcher] Skipping state sync - Hydration in progress');
+      return;
+    }
+
     log.info('[LogWatcher] Syncing state to renderer...');
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19).replace(/-/g, '.');
 
@@ -348,6 +378,9 @@ class LogWatcherService extends EventEmitter {
           this.currentLogPath = latest.path;
           this.currentFileSize = 0;
           this.state = { currentWorldId: null, currentWorldName: null, currentLocation: null, players: new Map(), pendingJoins: new Map() };
+
+          // DEDUPLICATION: Mark this new live file as processed so Scanner ignores it
+          this.markFileAsProcessed(latest.name);
         }
       }
     } catch (error) {
@@ -440,6 +473,12 @@ class LogWatcherService extends EventEmitter {
     log.info(`[LogWatcher] Reconciling players for ${location} via API...`);
     const apiPlayers = await fetchInstancePlayers(location);
 
+    // CONCURRENCY CHECK: Ensure we are still in the same world
+    if (this.state.currentLocation !== location) {
+      log.warn(`[LogWatcher] Reconcile aborted: Context changed during fetch (Req: ${location}, Curr: ${this.state.currentLocation})`);
+      return;
+    }
+
     let added = 0;
     for (const p of apiPlayers) {
       // Check by userId (preferred) or Display Name
@@ -460,6 +499,12 @@ class LogWatcherService extends EventEmitter {
         this.state.pendingJoins.delete(p.displayName); // Clear any pending raw join
         this.emitToRenderer('log:player-joined', event);
         serviceEventBus.emit('player-joined', event);
+
+        // SCORE CALIBRATION: Record Encounter (Reconciled from API)
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { timeTrackingService } = require('./TimeTrackingService');
+        timeTrackingService.recordEncounter(p.id);
+
         added++;
       }
     }
@@ -648,7 +693,10 @@ class LogWatcherService extends EventEmitter {
         }
 
         if (displayName) {
-          log.info(`[LogWatcher] MATCH Player Joined: ${displayName} (${userId || 'No ID'})`);
+          // Suppress historical logs during startup
+          if (!this.isHydrating) {
+            log.info(`[LogWatcher] MATCH Player Joined: ${displayName} (${userId || 'No ID'})`);
+          }
 
           const playerEvent: PlayerJoinedEvent = { displayName, userId, timestamp, isBackfill };
 
@@ -666,6 +714,11 @@ class LogWatcherService extends EventEmitter {
             this.state.players.set(displayName, playerEvent);
             this.emitToRenderer('log:player-joined', playerEvent);
             serviceEventBus.emit('player-joined', playerEvent);
+
+            // SCORE CALIBRATION: Record Encounter
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { timeTrackingService } = require('./TimeTrackingService');
+            timeTrackingService.recordEncounter(userId);
 
             if (this.state.currentLocation && this.state.currentLocation.includes('~group(')) {
               discordBroadcastService.updateGroupStatus(this.state.currentWorldName || 'Group Instance', this.state.players.size);
@@ -733,7 +786,10 @@ class LogWatcherService extends EventEmitter {
         }
 
         if (displayName) {
-          log.info(`[LogWatcher] MATCH Player Left: ${displayName} (${userId || 'No ID'})`);
+          // Suppress historical logs during startup
+          if (!this.isHydrating) {
+            log.info(`[LogWatcher] MATCH Player Left: ${displayName} (${userId || 'No ID'})`);
+          }
 
           if (this.state.players.has(displayName)) {
             const entry = this.state.players.get(displayName)!;
@@ -827,7 +883,13 @@ class LogWatcherService extends EventEmitter {
   }
 
   private emitToRenderer(channel: string, data: unknown) {
-    if (this.isHydrating) return;
+    // Prevent partial syncs during hydration which cause UI duplicates
+    // CRITICAL: We MUST allow location updates through so the Roaming Mode card appears immediately.
+    const ALWAYS_ALLOWED_CHANNELS = ['log:location', 'log:world-name', 'log:game-closed', 'log:cam-adjust', 'log:avatar', 'log:avatar-switch'];
+
+    if (this.isHydrating && !ALWAYS_ALLOWED_CHANNELS.includes(channel)) {
+      return;
+    }
     windowService.broadcast(channel, data);
   }
 }

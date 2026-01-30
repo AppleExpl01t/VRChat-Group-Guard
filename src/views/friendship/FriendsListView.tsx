@@ -178,8 +178,9 @@ export const FriendsListView: React.FC = () => {
                 onRefresh={handleRefresh}
                 refreshing={refreshing}
             >
+
                 {/* Status Filters */}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     {([
                         { value: 'all', label: 'All' },
                         { value: 'online', label: '🟢 Online' },
@@ -202,6 +203,32 @@ export const FriendsListView: React.FC = () => {
                             {f.label}
                         </button>
                     ))}
+
+                    <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 0.5rem' }} />
+
+                    {/* Retro Scan Button */}
+                    <NeonButton
+                        variant="secondary"
+                        size="sm"
+                        onClick={async () => {
+                            if (confirm('Scan all old VRChat logs for missed time headers? This might take a moment.')) {
+                                setLoading(true);
+                                try {
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const result = await (window.electron as any).logScanner.scan();
+                                    alert(`Scanned ${result.processedFiles} files. Added ${result.totalMinutesAdded} minutes of history!`);
+                                    handleRefresh();
+                                } catch (e) {
+                                    alert('Scan failed check console.');
+                                    console.error(e);
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }
+                        }}
+                    >
+                        📚 Scan Old Logs
+                    </NeonButton>
                 </div>
             </LogFilterBar>
 
@@ -346,7 +373,23 @@ export const FriendsListView: React.FC = () => {
 
                                     {/* Time */}
                                     <td style={{ padding: '0.65rem 0.5rem', textAlign: 'center', color: 'var(--color-text-dim)', fontSize: '0.75rem' }}>
-                                        {formatDuration(friend.timeSpent)}
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                            {formatDuration(friend.timeSpent)}
+                                            {/* Active Pulse Indicator */}
+                                            {friend.status?.toLowerCase() !== 'offline' && (
+                                                <div
+                                                    title="Tracking active time..."
+                                                    style={{
+                                                        width: '6px',
+                                                        height: '6px',
+                                                        borderRadius: '50%',
+                                                        background: '#22c55e',
+                                                        boxShadow: '0 0 5px #22c55e',
+                                                        animation: 'pulse 2s infinite'
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* Known Since */}

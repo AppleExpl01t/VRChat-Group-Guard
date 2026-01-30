@@ -313,6 +313,12 @@ setupBulkFriendHandlers();
 setupFriendshipHandlers();
 playerFlagService.setupHandlers();
 
+// Log Scanner API
+import { logScannerService } from './services/LogScannerService';
+ipcMain.handle('log-scanner:scan', () => {
+  return logScannerService.scanAndImportHistory();
+});
+
 // Start Background Workers
 logWatcherService.start(); // Start robust watching immediately
 startAutoModService(); // Start the periodic join request processing loop

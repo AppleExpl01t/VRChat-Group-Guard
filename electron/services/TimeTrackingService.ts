@@ -15,6 +15,9 @@ class TimeTrackingService {
     private heartbeatInterval: NodeJS.Timeout | null = null;
     private readonly HEARTBEAT_MS = 60 * 1000; // 1 Minute
 
+    private encounterQueue: string[] = [];
+    private isProcessingQueue = false;
+
     constructor() { }
 
     public initialize() {
@@ -88,39 +91,93 @@ class TimeTrackingService {
             // Wait, `LiveView` polls? No, it's event driven.
             // BUT, `LogWatcher` receives player location updates? No, only self.
 
-            // HYBRID LOGIC REFINEMENT:
-            // Valid "Time Spent" requires the user to be in the same instance.
-            // The app KNOWS who is in the instance via `currentInstanceEntities` in the renderer.
-            // The Main Process might not have this state perfectly synced unless we explicitly send it.
+            // FIXED LOGIC: Source of truth is LogWatcher's local instance list.
+            // This works even if the API reports "private" or location tags mismatch.
+            const { logWatcherService } = require('./LogWatcherService');
+            const activePlayers = logWatcherService.getPlayers();
 
-            // ALTERNATIVE: Use `LocationService` for "Friends in same world".
-            // If `currentUserLocation` == `friendLocation`.
+            // Filter for valid friends with User IDs
+            const trackableUserIds = activePlayers
+                .filter((p: any) => p.userId && locationService.getFriend(p.userId)) // Must be a friend and have ID
+                .map((p: any) => p.userId as string);
 
-            const myLocation = locationService.getSelfLocation(); // We'll need to implement this
-            if (!myLocation || !myLocation.instanceId) return;
+            if (trackableUserIds.length === 0) return;
 
-            const friends = locationService.getAllFriends();
-            const friendsWithMe = friends.filter(f =>
-                f.location === 'private' ? false : // Can't track private
-                    f.location === myLocation.location // String match (world:instance)
-            );
-
-            if (friendsWithMe.length === 0) return;
-
-            logger.debug(`[Heartbeat] Tracking time for ${friendsWithMe.length} friends...`);
+            logger.debug(`[Heartbeat] Tracking time for ${trackableUserIds.length} friends (Source: LogWatcher)...`);
 
             // Batch update DB
-            await this.incrementTime(friendsWithMe.map(f => f.userId));
+            await this.incrementTime(trackableUserIds);
 
             // Emit live update event for UI
             serviceEventBus.emit('friend-stats-updated', {
-                userIds: friendsWithMe.map(f => f.userId),
+                userIds: trackableUserIds,
                 addedMinutes: 1
             });
 
         } catch (e) {
             logger.error('[Heartbeat] Failed:', e);
         }
+    }
+
+    /**
+     * Records a new "Encounter" (Session) for a user.
+     * Called by LogWatcher when a player joins the instance.
+     * Uses a queue to prevent SQLite locking/timeout issues during high traffic.
+     */
+    public recordEncounter(userId: string) {
+        if (!this.isInitialized) return;
+
+        this.encounterQueue.push(userId);
+        this.processEncounterQueue();
+    }
+
+    private async processEncounterQueue() {
+        if (this.isProcessingQueue) return;
+        this.isProcessingQueue = true;
+
+        while (this.encounterQueue.length > 0) {
+            const userId = this.encounterQueue.shift();
+            if (!userId) continue;
+
+            try {
+                const client = databaseService.getClient();
+                const now = new Date();
+
+                // @ts-ignore
+                await client.friendStats.upsert({
+                    where: { userId },
+                    create: {
+                        userId,
+                        displayName: 'Unknown', // Will be updated by enricher
+                        timeSpentMinutes: 0,
+                        encounterCount: 1,
+                        lastSeen: now,
+                        lastHeartbeat: new Date(0),
+                        createdAt: now
+                    },
+                    update: {
+                        encounterCount: { increment: 1 },
+                        lastSeen: now
+                    }
+                });
+                // logger.info(`[TimeTracking] Recorded encounter for ${userId}`);
+
+                // Emit event so UI updates immediately (score change)
+                serviceEventBus.emit('friend-stats-updated', {
+                    userIds: [userId],
+                    addedMinutes: 0
+                });
+
+                // Small delay to let other DB ops breathe?
+                // await new Promise(resolve => setTimeout(resolve, 10));
+
+            } catch (e) {
+                logger.error(`[TimeTracking] Failed to record encounter for ${userId}:`, e);
+                // Put back in queue? No, just drop it to avoid infinite loops on bad data
+            }
+        }
+
+        this.isProcessingQueue = false;
     }
 
     private async incrementTime(userIds: string[]) {
@@ -139,7 +196,8 @@ class TimeTrackingService {
                         timeSpentMinutes: 1,
                         encounterCount: 1,
                         lastSeen: now,
-                        lastHeartbeat: now
+                        lastHeartbeat: now,
+                        createdAt: now
                     },
                     update: {
                         timeSpentMinutes: { increment: 1 },
@@ -168,6 +226,36 @@ class TimeTrackingService {
             logger.error(`Failed to get stats for ${userId}:`, e);
             return null;
         }
+    }
+
+    /**
+     * Bulk fetch for Friend List View.
+     */
+    public async getBulkFriendStats(userIds: string[]): Promise<Map<string, { timeSpent: number; encounterCount: number; lastSeen: Date; createdAt: Date }>> {
+        if (!this.isInitialized || userIds.length === 0) return new Map();
+
+        const map = new Map();
+        try {
+            const client = databaseService.getClient();
+            // @ts-ignore
+            const results = await (client as any).friendStats.findMany({
+                where: {
+                    userId: { in: userIds }
+                }
+            });
+
+            for (const row of results) {
+                map.set(row.userId, {
+                    timeSpent: row.timeSpentMinutes * 60 * 1000, // Convert minutes to ms for frontend compatibility
+                    encounterCount: row.encounterCount,
+                    lastSeen: row.lastSeen,
+                    createdAt: row.createdAt || new Date() // Fallback if old data is null
+                });
+            }
+        } catch (e) {
+            logger.error('Failed to fetch bulk stats:', e);
+        }
+        return map;
     }
 }
 

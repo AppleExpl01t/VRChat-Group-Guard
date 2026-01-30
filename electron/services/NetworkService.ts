@@ -15,6 +15,9 @@ export class TokenBucket {
     private readonly capacity: number;
     private readonly refillRate: number; // tokens per ms
 
+    private queue: Array<{ count: number; resolve: () => void }> = [];
+    private timer: NodeJS.Timeout | null = null;
+
     /**
      * @param capacity Max burst size (e.g. 60)
      * @param refillRate Tokens per second (e.g. 1 for 60/min)
@@ -37,22 +40,37 @@ export class TokenBucket {
         }
     }
 
-    async consume(count: number = 1): Promise<void> {
+    private processQueue() {
         this.refill();
 
-        if (this.tokens >= count) {
-            this.tokens -= count;
-            return;
+        while (this.queue.length > 0) {
+            const next = this.queue[0]; // Peek
+            if (this.tokens >= next.count) {
+                this.tokens -= next.count;
+                this.queue.shift(); // Dequeue
+                next.resolve();
+            } else {
+                // Not enough tokens yet. Schedule retry.
+                const missing = next.count - this.tokens;
+                const waitMs = Math.ceil(missing / this.refillRate);
+
+                if (this.timer) clearTimeout(this.timer);
+
+                this.timer = setTimeout(() => {
+                    this.timer = null;
+                    this.processQueue();
+                }, waitMs);
+
+                return; // Stop processing
+            }
         }
+    }
 
-        // Calculate wait time
-        const missingTokens = count - this.tokens;
-        const waitMs = Math.ceil(missingTokens / this.refillRate);
-
-        // logger.debug(`[TokenBucket] Rate limit hit. Waiting ${waitMs}ms...`);
-        return new Promise(resolve => setTimeout(() => {
-            this.consume(count).then(resolve);
-        }, waitMs));
+    async consume(count: number = 1): Promise<void> {
+        return new Promise<void>((resolve) => {
+            this.queue.push({ count, resolve });
+            this.processQueue();
+        });
     }
 }
 
