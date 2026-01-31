@@ -428,7 +428,7 @@ export const FeedView: React.FC = () => {
                                                             ...clickableStyle,
                                                             color: 'var(--color-text-dim)'
                                                         }}
-                                                        onClick={() => openAvatarProfile((entry.data as any).currentAvatarId)}
+                                                        onClick={() => openAvatarProfile((entry.data as any).currentAvatarId, (entry.data as any).avatarName)}
                                                         onMouseEnter={(e) => {
                                                             e.currentTarget.style.color = 'var(--color-primary)';
                                                             e.currentTarget.style.textDecorationColor = 'var(--color-primary)';

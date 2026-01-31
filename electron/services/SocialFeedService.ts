@@ -26,6 +26,7 @@ class SocialFeedService {
     // Cache for last status to avoid spamming "Location" updates if they are identical
     // or to ignore rapid online/offline toggles
     private lastStatus = new Map<string, string>();
+    private lastAvatarId = new Map<string, string>();
 
     constructor() {
         this.setupListeners();
@@ -95,10 +96,20 @@ class SocialFeedService {
             feedType = 'status';
             details = `Now representing: ${friend.representedGroup || 'No Group'}`;
         } else if (change.avatar && friend.status !== 'offline') {
+            const avatarId = (friend as any).currentAvatarId;
+            const avatarName = (friend as any).avatarName;
+
+            // DEDUPLICATION: Avoid logging the same avatar twice in a row 
+            // (e.g. if LogWatcher and WebSocket both report it)
+            if (avatarId && this.lastAvatarId.get(userId) === avatarId) {
+                return;
+            }
+            if (avatarId) {
+                this.lastAvatarId.set(userId, avatarId);
+            }
+
             feedType = 'avatar';
-            // We use the ID for the modal, but the text is generic unless we fetch the name (which is async/expensive here).
-            // The frontend will make "Avatar Changed" clickable if data.currentAvatarId exists.
-            details = 'Avatar Changed';
+            details = avatarName ? `Switched to ${avatarName}` : 'Avatar Changed';
         }
 
         // Location change (only if not newly offline)

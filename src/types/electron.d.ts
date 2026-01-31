@@ -28,6 +28,7 @@ export interface VRChatUser {
   ageVerified?: boolean;
   ageVerificationStatus?: string;
   pronouns?: string;
+  currentAvatarId?: string;
   // Add additional fields as needed
 }
 
@@ -344,6 +345,8 @@ export interface FriendLocation {
   userIcon?: string;
   profilePicOverride?: string;
   currentAvatarThumbnailImageUrl?: string;
+  currentAvatarId?: string;
+  avatarName?: string;
 }
 
 export interface SocialFeedEntry {

@@ -13,6 +13,7 @@ import { processService } from './ProcessService';
 // Pure parsing utilities available in LogParserService for testing
 
 import { serviceEventBus } from './ServiceEventBus';
+import { locationService } from './LocationService';
 
 const store = new Store();
 
@@ -91,6 +92,9 @@ class LogWatcherService extends EventEmitter {
   // Context Sync
   private seekingInstanceId: string | null = null;
   private seekingStartTime: number = 0;
+
+  // Heuristic for associating avatar switches (displayName) with avatar loading (avtr_id)
+  private pendingAvatarSwitches = new Map<string, { avatarName: string; timestamp: number }>();
 
   private state: WatcherState = {
     currentWorldId: null,
@@ -435,6 +439,11 @@ class LogWatcherService extends EventEmitter {
 
         this.currentFileSize = stat.size;
 
+        // persist latest timestamp after bulk read to improve performance
+        if (this.lastProcessedTimestamp > 0) {
+          store.set('lastLogTimestamp', this.lastProcessedTimestamp);
+        }
+
         if (this.isHydrating) {
           this.isHydrating = false;
           log.debug(`[LogWatcher] Initial hydration complete. Processed ${lineCount} lines.`);
@@ -593,10 +602,9 @@ class LogWatcherService extends EventEmitter {
     // isBackfill check for Notifications
     const isBackfill = this.lastActivityTime < this.lastProcessedTimestamp;
 
-    // Actually update processed timestamp if this is newer
+    // actually update processed timestamp if this is newer
     if (parsedTime > this.lastProcessedTimestamp) {
       this.lastProcessedTimestamp = parsedTime;
-      store.set('lastLogTimestamp', parsedTime); // persist
     }
 
     // 1. World Location
@@ -610,7 +618,7 @@ class LogWatcherService extends EventEmitter {
       log.debug(`[LogWatcher] Joining World: ${location}`);
 
       // DEBUG: Fetch API location to compare (Only when not hydrating)
-      if (!this.isHydrating) {
+      if (!this.isHydrating && !isBackfill) {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { fetchCurrentLocationFromApi } = require('./AuthService');
         fetchCurrentLocationFromApi().catch(() => { }); // Fallback silently
@@ -627,11 +635,14 @@ class LogWatcherService extends EventEmitter {
 
         // Inform UI to clear its local player list and update world
         this.emitToRenderer('log:location', { worldId, instanceId, location, timestamp });
-        this.emit('location', { worldId, instanceId, location, timestamp });
-        serviceEventBus.emit('location', { worldId, instanceId, location, timestamp });
+
+        if (!isBackfill) {
+          this.emit('location', { worldId, instanceId, location, timestamp });
+          serviceEventBus.emit('location', { worldId, instanceId, location, timestamp });
+        }
 
         // INSTANT RECONCILE: Immediately pull the fresh user list (Only when not hydrating)
-        if (!this.isHydrating) {
+        if (!this.isHydrating && !isBackfill) {
           this.reconcileWithApi(location);
         }
 
@@ -646,8 +657,38 @@ class LogWatcherService extends EventEmitter {
     // 2. Avatar
     const avatarMatch = line.match(reAvatar);
     if (avatarMatch) {
-      this.emitToRenderer('log:avatar', { avatarId: avatarMatch[1], timestamp });
-      this.emit('avatar', { avatarId: avatarMatch[1], timestamp });
+      const avatarId = avatarMatch[1];
+      this.emitToRenderer('log:avatar', { avatarId, timestamp });
+      if (!isBackfill) {
+        this.emit('avatar', { avatarId, timestamp });
+
+        // HEURISTIC: Find the most recent "Switching" event to associate with this ID
+        let bestMatch: { displayName: string; avatarName: string; timestamp: number } | null = null;
+        for (const [displayName, data] of this.pendingAvatarSwitches.entries()) {
+          if (!bestMatch || data.timestamp > bestMatch.timestamp) {
+            bestMatch = { displayName, ...data };
+          }
+        }
+
+        // Only associate if the switch happened within 10 seconds of this load log
+        if (bestMatch && this.lastActivityTime - bestMatch.timestamp < 10000) {
+          const { displayName, avatarName } = bestMatch;
+          const player = this.state.players.get(displayName);
+          if (player && player.userId) {
+            log.info(`[LogWatcher] Associated avatar ${avatarId} (${avatarName}) with user ${displayName} (${player.userId})`);
+
+            // Update LocationService - this will trigger a SocialFeed entry via 'friend-state-changed'
+            locationService.updateFriend({
+              userId: player.userId,
+              currentAvatarId: avatarId,
+              avatarName: avatarName
+            });
+
+            // Remove from pending so we don't re-associate with the next loading log (e.g. if someone else joins)
+            this.pendingAvatarSwitches.delete(displayName);
+          }
+        }
+      }
     }
 
     // 3. Entering Room (Name)
@@ -656,7 +697,9 @@ class LogWatcherService extends EventEmitter {
       const worldName = enterMatch[1].trim();
       this.state.currentWorldName = worldName;
       this.emitToRenderer('log:world-name', { name: worldName, timestamp });
-      this.emit('world-name', { name: worldName, timestamp });
+      if (!isBackfill) {
+        this.emit('world-name', { name: worldName, timestamp });
+      }
       if (this.state.currentLocation && this.state.currentLocation.includes('~group(')) {
         discordBroadcastService.updateGroupStatus(worldName, this.state.players.size);
       }
@@ -719,12 +762,15 @@ class LogWatcherService extends EventEmitter {
 
             this.state.players.set(displayName, playerEvent);
             this.emitToRenderer('log:player-joined', playerEvent);
-            serviceEventBus.emit('player-joined', playerEvent);
 
-            // SCORE CALIBRATION: Record Encounter
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const { timeTrackingService } = require('./TimeTrackingService');
-            timeTrackingService.recordEncounter(userId);
+            if (!isBackfill) {
+              serviceEventBus.emit('player-joined', playerEvent);
+
+              // SCORE CALIBRATION: Record Encounter
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              const { timeTrackingService } = require('./TimeTrackingService');
+              timeTrackingService.recordEncounter(userId);
+            }
 
             if (this.state.currentLocation && this.state.currentLocation.includes('~group(')) {
               discordBroadcastService.updateGroupStatus(this.state.currentWorldName || 'Group Instance', this.state.players.size);
@@ -741,7 +787,9 @@ class LogWatcherService extends EventEmitter {
               if (!this.state.players.has(displayName)) {
                 this.state.players.set(displayName, playerEvent);
                 this.emitToRenderer('log:player-joined', playerEvent);
-                serviceEventBus.emit('player-joined', playerEvent);
+                if (!isBackfill) {
+                  serviceEventBus.emit('player-joined', playerEvent);
+                }
 
                 if (this.state.currentLocation && this.state.currentLocation.includes('~group(')) {
                   discordBroadcastService.updateGroupStatus(this.state.currentWorldName || 'Group Instance', this.state.players.size);
@@ -819,7 +867,9 @@ class LogWatcherService extends EventEmitter {
     if (voteMatch) {
       const event: VoteKickEvent = { target: voteMatch[1].trim(), initiator: voteMatch[2].trim(), timestamp, isBackfill };
       this.emitToRenderer('log:vote-kick', event);
-      this.emit('vote-kick', event);
+      if (!isBackfill) {
+        this.emit('vote-kick', event);
+      }
     }
 
     // 7. Video Play
@@ -827,7 +877,9 @@ class LogWatcherService extends EventEmitter {
     if (videoMatch) {
       const event: VideoPlayEvent = { url: videoMatch[1].trim(), requestedBy: videoMatch[2] ? videoMatch[2].trim() : 'Unknown', timestamp, isBackfill };
       this.emitToRenderer('log:video-play', event);
-      this.emit('video-play', event);
+      if (!isBackfill) {
+        this.emit('video-play', event);
+      }
     }
 
     // 8. Notifications
@@ -848,7 +900,9 @@ class LogWatcherService extends EventEmitter {
           isBackfill
         };
         this.emitToRenderer('log:notification', event);
-        this.emit('notification', event);
+        if (!isBackfill) {
+          this.emit('notification', event);
+        }
       }
     }
 
@@ -858,14 +912,33 @@ class LogWatcherService extends EventEmitter {
       const reSwitch = /\[Behaviour\] Switching\s+(.+?)\s+to avatar\s+(.+)/;
       const match = line.match(reSwitch);
       if (match) {
+        const displayName = match[1];
+        const avatarName = match[2];
+
+        // Store for heuristic association
+        this.pendingAvatarSwitches.set(displayName, {
+          avatarName,
+          timestamp: this.lastActivityTime
+        });
+
+        // Cleanup old ones (>1 min)
+        const now = this.lastActivityTime;
+        for (const [key, val] of this.pendingAvatarSwitches.entries()) {
+          if (now - val.timestamp > 60000) {
+            this.pendingAvatarSwitches.delete(key);
+          }
+        }
+
         const event = {
-          displayName: match[1],
-          avatarName: match[2],
+          displayName,
+          avatarName,
           timestamp,
           isBackfill
         };
         this.emitToRenderer('log:avatar-switch', event);
-        this.emit('avatar-switch', event);
+        if (!isBackfill) {
+          this.emit('avatar-switch', event);
+        }
       }
     }
 
@@ -883,7 +956,9 @@ class LogWatcherService extends EventEmitter {
           isBackfill
         };
         this.emitToRenderer('log:sticker-spawn', event);
-        this.emit('sticker-spawn', event);
+        if (!isBackfill) {
+          this.emit('sticker-spawn', event);
+        }
       }
     }
   }

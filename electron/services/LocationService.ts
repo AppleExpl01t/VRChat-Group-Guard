@@ -18,6 +18,7 @@ export interface FriendLocation {
     profilePicOverride?: string;
     currentAvatarThumbnailImageUrl?: string;
     currentAvatarId?: string;
+    avatarName?: string;
     statusDescription?: string;
     representedGroup?: string;
 }
@@ -80,7 +81,8 @@ class LocationService {
         const descriptionChanged = data.statusDescription !== undefined && data.statusDescription !== existing.statusDescription;
         const groupChanged = data.representedGroup !== undefined && data.representedGroup !== existing.representedGroup;
         const avatarChanged = (data.currentAvatarThumbnailImageUrl !== undefined && data.currentAvatarThumbnailImageUrl !== existing.currentAvatarThumbnailImageUrl) ||
-            (data.currentAvatarId !== undefined && data.currentAvatarId !== existing.currentAvatarId);
+            (data.currentAvatarId !== undefined && data.currentAvatarId !== existing.currentAvatarId) ||
+            (data.avatarName !== undefined && data.avatarName !== existing.avatarName);
 
         const updated: FriendLocation = {
             ...existing,
@@ -92,6 +94,7 @@ class LocationService {
             profilePicOverride: data.profilePicOverride || existing.profilePicOverride,
             currentAvatarThumbnailImageUrl: data.currentAvatarThumbnailImageUrl || existing.currentAvatarThumbnailImageUrl,
             currentAvatarId: data.currentAvatarId || existing.currentAvatarId,
+            avatarName: data.avatarName || existing.avatarName,
             representedGroup: data.representedGroup || existing.representedGroup,
             lastUpdated: new Date().toISOString()
         };

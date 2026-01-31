@@ -193,6 +193,7 @@ const LANGUAGE_MAP: Record<string, string> = {
 // Trust class mapping for CSS
 const TRUST_CLASS_MAP: Record<TrustRank, string> = {
     'Visitor': 'x-tag-untrusted',
+    'New User': 'x-tag-basic',
     'User': 'x-tag-basic',
     'Known': 'x-tag-known',
     'Trusted': 'x-tag-trusted',
