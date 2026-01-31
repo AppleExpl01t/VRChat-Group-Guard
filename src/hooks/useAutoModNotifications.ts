@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useNotificationStore } from '../stores/notificationStore';
 import { useAutoModAlertStore } from '../stores/autoModAlertStore';
 
-import notificationSound from '../assets/sounds/notification.mp3';
+const notificationSound = '/sounds/notification.mp3';
 
 export const useAutoModNotifications = () => {
     const addNotification = useNotificationStore(state => state.addNotification);

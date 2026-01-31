@@ -7,7 +7,7 @@ import { useAutoModAlertStore } from '../../../stores/autoModAlertStore';
 import { useGroupStore } from '../../../stores/groupStore';
 import { useConfirm } from '../../../context/ConfirmationContext';
 import { useNotificationStore } from '../../../stores/notificationStore';
-import notificationSound from '../../../assets/sounds/notification.mp3';
+const notificationSound = '/sounds/notification.mp3';
 
 // Helper for sound
 // Helper for sound
@@ -22,7 +22,7 @@ const playNotificationSound = async () => {
             try {
                 const settings = await window.electron.settings.get();
                 volume = settings.audio.volume;
-                
+
                 if (settings.audio.notificationSoundPath) {
                     const customData = await window.electron.settings.getAudioData(settings.audio.notificationSoundPath);
                     if (customData) {
@@ -46,17 +46,17 @@ const playNotificationSound = async () => {
 export const AutoModAlertOverlay: React.FC = () => {
     const { alerts, removeAlert, addAlert, isEnabled, dismissAlert } = useAutoModAlertStore();
     const { selectedGroup } = useGroupStore();
-    
+
     const { confirm } = useConfirm();
     const { addNotification } = useNotificationStore();
-    
+
     // Listen for events
     useEffect(() => {
         if (!window.electron?.automod?.onViolation) return;
-        
+
         const unsubscribe = window.electron.automod.onViolation((data: { displayName: string; userId: string; action: string; reason: string; skipped?: boolean; ruleId?: number; detectedGroupId?: string }) => {
             if (!isEnabled) return;
-            
+
             addAlert({
                 userId: data.userId,
                 displayName: data.displayName,
@@ -70,13 +70,13 @@ export const AutoModAlertOverlay: React.FC = () => {
             // Better here to ensure only plays on new event
             playNotificationSound();
         });
-        
+
         return () => unsubscribe();
     }, [isEnabled, addAlert]);
 
     const handleWhitelist = async (groupId: string | undefined, alertId: string, ruleId: number, target: { userId?: string; groupId?: string }) => {
         if (!groupId) {
-             addNotification({
+            addNotification({
                 type: 'error',
                 title: 'Operation Failed',
                 message: 'Missing group context for this alert.'
@@ -93,7 +93,7 @@ export const AutoModAlertOverlay: React.FC = () => {
                     message: target.userId ? `User ${target.userId} whitelisted` : `Group ${target.groupId} whitelisted`
                 });
             } else {
-                 addNotification({
+                addNotification({
                     type: 'error',
                     title: 'Whitelist Failed',
                     message: 'Could not update rule. Rule might not exist or be disabled.'
@@ -101,7 +101,7 @@ export const AutoModAlertOverlay: React.FC = () => {
             }
         } catch (e) {
             console.error("Failed to whitelist", e);
-             addNotification({
+            addNotification({
                 type: 'error',
                 title: 'Error',
                 message: 'Failed to whitelist. Check console.'
@@ -111,14 +111,14 @@ export const AutoModAlertOverlay: React.FC = () => {
 
     const handleBan = async (alertId: string, userId: string, displayName: string) => {
         if (!selectedGroup) return;
-        
+
         const confirmed = await confirm({
             title: 'Confirm Ban',
             message: `Are you sure you want to BAN ${displayName} from the group?`,
             confirmLabel: 'Ban User',
             variant: 'danger'
         });
-        
+
         if (!confirmed) return;
 
         try {
@@ -139,7 +139,7 @@ export const AutoModAlertOverlay: React.FC = () => {
             });
         }
     };
-    
+
     // Auto-scroll logic if list gets long? Using simple stack for now.
 
     if (alerts.length === 0) return null;
@@ -164,15 +164,15 @@ export const AutoModAlertOverlay: React.FC = () => {
                         exit={{ opacity: 0, x: 50, scale: 0.9 }}
                         style={{ pointerEvents: 'auto', width: '320px' }}
                     >
-                        <GlassPanel style={{ 
-                            padding: '0', 
+                        <GlassPanel style={{
+                            padding: '0',
                             borderLeft: '4px solid #ef4444',
                             background: 'rgba(20, 0, 0, 0.9)',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
                         }}>
                             {/* Header */}
-                            <div style={{ 
-                                padding: '12px 16px', 
+                            <div style={{
+                                padding: '12px 16px',
                                 borderBottom: '1px solid rgba(255,255,255,0.08)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                 background: alert.action === 'REJECT' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(234, 179, 8, 0.15)'
@@ -181,7 +181,7 @@ export const AutoModAlertOverlay: React.FC = () => {
                                     <ShieldAlert size={18} />
                                     <span>{alert.action === 'REJECT' ? 'AutoMod Block' : 'AutoMod Warning'}</span>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => dismissAlert(alert.id)}
                                     title="Dismiss (Save to History)"
                                     style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '4px', transition: 'color 0.2s' }}
@@ -203,10 +203,10 @@ export const AutoModAlertOverlay: React.FC = () => {
                                         {alert.userId}
                                     </div>
                                 </div>
-                                
-                                <div style={{ 
-                                    background: 'rgba(0,0,0,0.4)', 
-                                    padding: '12px', borderRadius: '8px', 
+
+                                <div style={{
+                                    background: 'rgba(0,0,0,0.4)',
+                                    padding: '12px', borderRadius: '8px',
                                     borderLeft: `3px solid ${alert.action === 'REJECT' ? '#ef4444' : '#eab308'}`,
                                     marginBottom: '16px'
                                 }}>
@@ -218,8 +218,8 @@ export const AutoModAlertOverlay: React.FC = () => {
 
                                 {/* Actions */}
                                 <div style={{ display: 'flex', gap: '8px', marginBottom: alert.ruleId ? '12px' : '0' }}>
-                                    <NeonButton 
-                                        variant="danger" 
+                                    <NeonButton
+                                        variant="danger"
                                         size="sm"
                                         style={{ flex: 2, fontSize: '0.8rem', justifyContent: 'center' }}
                                         onClick={() => handleBan(alert.id, alert.userId, alert.displayName)}
@@ -227,8 +227,8 @@ export const AutoModAlertOverlay: React.FC = () => {
                                         <Gavel size={16} style={{ marginRight: '8px' }} />
                                         BAN USER
                                     </NeonButton>
-                                    <NeonButton 
-                                        variant="secondary" 
+                                    <NeonButton
+                                        variant="secondary"
                                         size="sm"
                                         style={{ flex: 1, fontSize: '0.8rem', justifyContent: 'center' }}
                                         onClick={() => {
@@ -238,7 +238,7 @@ export const AutoModAlertOverlay: React.FC = () => {
                                         <User size={16} />
                                     </NeonButton>
                                 </div>
-                                
+
                                 {/* Whitelist Actions */}
                                 {alert.ruleId && (
                                     <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
@@ -250,12 +250,12 @@ export const AutoModAlertOverlay: React.FC = () => {
                                         >
                                             Whitelist User
                                         </NeonButton>
-                                        
+
                                         {alert.detectedGroupId && (
                                             <NeonButton
                                                 variant="primary"
                                                 size="sm"
-                                                 style={{ flex: 1, fontSize: '0.75rem', background: 'rgba(168, 85, 247, 0.15)', color: '#d8b4fe', borderColor: 'rgba(168, 85, 247, 0.3)', justifyContent: 'center' }}
+                                                style={{ flex: 1, fontSize: '0.75rem', background: 'rgba(168, 85, 247, 0.15)', color: '#d8b4fe', borderColor: 'rgba(168, 85, 247, 0.3)', justifyContent: 'center' }}
                                                 onClick={() => handleWhitelist(alert.detectedGroupId, alert.id, alert.ruleId!, { groupId: alert.detectedGroupId })}
                                             >
                                                 Whitelist Group
