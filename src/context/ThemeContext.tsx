@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 // Theme mode type
-export type ThemeMode = 'dark' | 'light' | 'midnight' | 'sunset';
+export type ThemeMode = 'dark' | 'light' | 'midnight' | 'sunset' | 'ocean' | 'forest' | 'crimson' | 'synthwave';
 
 // Particle settings interface
 export interface ParticleSettings {
@@ -54,6 +54,10 @@ interface ThemeState {
   borderRadius: number;
   setBorderRadius: (radius: number) => void;
 
+  // Custom Background
+  customBackgroundImage: string | null;
+  setCustomBackgroundImage: (image: string | null) => void;
+
   // Reset
   resetTheme: () => void;
 }
@@ -80,6 +84,7 @@ const DEFAULTS = {
     colorShift: false,
     mouseReactive: false,
   },
+  customBackgroundImage: null,
 };
 
 // Theme mode presets - comprehensive style changes for distinct looks
@@ -104,6 +109,7 @@ const THEME_PRESETS: Record<ThemeMode, typeof DEFAULTS> = {
       colorShift: false,
       mouseReactive: false,
     },
+    customBackgroundImage: null,
   },
   light: {
     // Clean, bright professional theme
@@ -125,6 +131,7 @@ const THEME_PRESETS: Record<ThemeMode, typeof DEFAULTS> = {
       colorShift: false,
       mouseReactive: false,
     },
+    customBackgroundImage: null,
   },
   midnight: {
     // Deep space, ultra dark with glowing accents
@@ -146,6 +153,7 @@ const THEME_PRESETS: Record<ThemeMode, typeof DEFAULTS> = {
       colorShift: true,
       mouseReactive: true,
     },
+    customBackgroundImage: null,
   },
   sunset: {
     // Warm, cozy orange/pink vibes
@@ -167,6 +175,95 @@ const THEME_PRESETS: Record<ThemeMode, typeof DEFAULTS> = {
       colorShift: false,
       mouseReactive: false,
     },
+    customBackgroundImage: null,
+  },
+  ocean: {
+    // Deep underwater blues and teals
+    primaryHue: 190,        // Cyan
+    accentHue: 210,         // Blue
+    backgroundHue: 200,     // Deep Ocean
+    backgroundSaturation: 40,
+    backgroundLightness: 5,
+    themeMode: 'ocean' as ThemeMode,
+    glassBlur: 20,
+    glassOpacity: 40,
+    borderRadius: 16,
+    headerGradientEnabled: true,
+    uiScale: 1,
+    particleSettings: {
+      enabled: true,
+      count: 20,
+      showOrbs: true,
+      colorShift: true,
+      mouseReactive: true,
+    },
+    customBackgroundImage: null,
+  },
+  forest: {
+    // Emerald / Nature
+    primaryHue: 150,        // Green/Emerald
+    accentHue: 40,          // Warm Gold
+    backgroundHue: 160,     // Dark Green
+    backgroundSaturation: 30,
+    backgroundLightness: 4,
+    themeMode: 'forest' as ThemeMode,
+    glassBlur: 16,
+    glassOpacity: 50,
+    borderRadius: 8,
+    headerGradientEnabled: true,
+    uiScale: 1,
+    particleSettings: {
+      enabled: true,
+      count: 15,
+      showOrbs: false,
+      colorShift: false,
+      mouseReactive: false,
+    },
+    customBackgroundImage: null,
+  },
+  crimson: {
+    // Intense Red / Dark
+    primaryHue: 0,          // Red
+    accentHue: 30,          // Orange
+    backgroundHue: 0,       // Dark Red/Black
+    backgroundSaturation: 20,
+    backgroundLightness: 3,
+    themeMode: 'crimson' as ThemeMode,
+    glassBlur: 24,
+    glassOpacity: 30,
+    borderRadius: 4,
+    headerGradientEnabled: true,
+    uiScale: 1,
+    particleSettings: {
+      enabled: true,
+      count: 25,
+      showOrbs: true,
+      colorShift: true,
+      mouseReactive: true,
+    },
+    customBackgroundImage: null,
+  },
+  synthwave: {
+    // Pink / Cyan Grid
+    primaryHue: 320,        // Hot Pink
+    accentHue: 180,         // Cyan
+    backgroundHue: 270,     // Deep Purple
+    backgroundSaturation: 40,
+    backgroundLightness: 6,
+    themeMode: 'synthwave' as ThemeMode,
+    glassBlur: 10,
+    glassOpacity: 40,
+    borderRadius: 0,
+    headerGradientEnabled: true,
+    uiScale: 1,
+    particleSettings: {
+      enabled: true,
+      count: 30,
+      showOrbs: true,
+      colorShift: true,
+      mouseReactive: true,
+    },
+    customBackgroundImage: null,
   },
 };
 
@@ -198,6 +295,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const stored = localStorage.getItem('theme_particleSettings');
     return stored ? JSON.parse(stored) : DEFAULTS.particleSettings;
   });
+  const [customBackgroundImage, setCustomBackgroundImage] = useState<string | null>(() =>
+    localStorage.getItem('theme_customBackgroundImage'));
 
   // Set theme mode with presets - applies all preset values for a complete theme change
   const setThemeMode = (mode: ThemeMode) => {
@@ -340,6 +439,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('theme_particleSettings', JSON.stringify(particleSettings));
   }, [particleSettings]);
 
+  useEffect(() => {
+    if (customBackgroundImage) {
+      localStorage.setItem('theme_customBackgroundImage', customBackgroundImage);
+    } else {
+      localStorage.removeItem('theme_customBackgroundImage');
+    }
+  }, [customBackgroundImage]);
+
   const resetTheme = () => {
     setPrimaryHue(DEFAULTS.primaryHue);
     setAccentHue(DEFAULTS.accentHue);
@@ -353,6 +460,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setBorderRadius(DEFAULTS.borderRadius);
     setHeaderGradientEnabled(DEFAULTS.headerGradientEnabled);
     setParticleSettingsState(DEFAULTS.particleSettings);
+    // Intentional: Do not reset custom background image on theme reset, only on manual clear
   };
 
   return (
@@ -369,6 +477,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       headerGradientEnabled, setHeaderGradientEnabled,
       uiScale, setUiScale,
       borderRadius, setBorderRadius,
+      customBackgroundImage, setCustomBackgroundImage,
       resetTheme
     }}>
       {children}
@@ -384,4 +493,3 @@ export const useTheme = () => {
   }
   return context;
 };
-

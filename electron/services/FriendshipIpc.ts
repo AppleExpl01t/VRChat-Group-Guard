@@ -90,7 +90,10 @@ export function setupFriendshipHandlers() {
                             lastUpdated: new Date().toISOString(),
                             userIcon: f.userIcon as string,
                             profilePicOverride: f.profilePicOverride as string,
-                            currentAvatarThumbnailImageUrl: f.currentAvatarThumbnailImageUrl as string
+                            currentAvatarThumbnailImageUrl: f.currentAvatarThumbnailImageUrl as string,
+                            statusDescription: f.statusDescription as string,
+                            representedGroup: (f as any).representedGroup as string,
+                            currentAvatarId: (f as any).currentAvatarRequestId || (f as any).currentAvatarId as string
                         }));
 
                         // Update LocationService with fetched data
@@ -164,7 +167,10 @@ export function setupFriendshipHandlers() {
                     lastUpdated: new Date().toISOString(),
                     userIcon: f.userIcon as string,
                     profilePicOverride: f.profilePicOverride as string,
-                    currentAvatarThumbnailImageUrl: f.currentAvatarThumbnailImageUrl as string
+                    currentAvatarThumbnailImageUrl: f.currentAvatarThumbnailImageUrl as string,
+                    statusDescription: f.statusDescription as string,
+                    representedGroup: (f as any).representedGroup as string,
+                    currentAvatarId: (f as any).currentAvatarRequestId || (f as any).currentAvatarId as string
                 }));
 
                 locationService.setFriends(apiFriends);

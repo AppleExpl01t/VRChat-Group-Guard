@@ -10,10 +10,26 @@ interface AppLayoutProps {
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const modalCount = useUIStore(state => state.modalCount);
-  const { particleSettings } = useTheme();
+  const { particleSettings, customBackgroundImage } = useTheme();
 
   return (
     <div className={styles.container}>
+
+      {/* Custom Background Image - Rendered behind particles */}
+      {customBackgroundImage && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${customBackgroundImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            zIndex: 0,
+            opacity: 1,
+            pointerEvents: 'none'
+          }}
+        />
+      )}
 
       {/* Animated Particle Background - controlled by theme settings */}
       {particleSettings.enabled && (
@@ -24,16 +40,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           mouseReactive={particleSettings.mouseReactive}
         />
       )}
-      
+
       {/* Main Content Area - blurred when modal is open */}
-      <main 
+      <main
         className={styles.main}
         style={{
-            transition: 'filter 0.2s ease-out',
-            filter: modalCount > 0 ? 'blur(6px) brightness(0.8)' : 'none',
-            pointerEvents: modalCount > 0 ? 'none' : 'auto',
-            willChange: modalCount > 0 ? 'filter' : 'auto',
-            transform: 'translateZ(0)', // Force GPU layer
+          transition: 'filter 0.2s ease-out',
+          filter: modalCount > 0 ? 'blur(6px) brightness(0.8)' : 'none',
+          pointerEvents: modalCount > 0 ? 'none' : 'auto',
+          willChange: modalCount > 0 ? 'filter' : 'auto',
+          transform: 'translateZ(0)', // Force GPU layer
         }}
       >
         {/* <div className={styles.dragRegion} /> - Removed to prevent overlapping header controls */}
