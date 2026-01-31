@@ -117,7 +117,7 @@ export const IntegrationsView: React.FC = () => {
                                     <ExternalLink size={32} style={{ marginBottom: '1.5rem', opacity: 0.5, color: 'var(--color-primary)' }} />
                                     <div style={{ color: 'var(--color-text-main)', fontWeight: 700, fontSize: '1.2rem', marginBottom: '0.5rem' }}>More integrations on the horizon</div>
                                     <div style={{ color: 'var(--color-text-dim)', fontSize: '0.95rem', maxWidth: '400px', margin: '0 auto' }}>
-                                        We're working on bringing OBS, StreamElements, and Twitch integration to Group Guard. Stay tuned for updates!
+                                        We're working on expanding our integration ecosystem to bring even more power to your VRChat group management. Stay tuned for updates!
                                     </div>
                                 </div>
                             </section>
