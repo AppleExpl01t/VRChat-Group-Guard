@@ -607,7 +607,7 @@ class LogWatcherService extends EventEmitter {
       const instanceId = fullInstanceString;
       const location = `${worldId}:${fullInstanceString}`;
 
-      log.debug(`[LogWatcher] MATCH Joining: ${location}`);
+      log.debug(`[LogWatcher] Joining World: ${location}`);
 
       // DEBUG: Fetch API location to compare (Only when not hydrating)
       if (!this.isHydrating) {
@@ -701,7 +701,7 @@ class LogWatcherService extends EventEmitter {
         if (displayName) {
           // Suppress historical logs during startup
           if (!this.isHydrating) {
-            log.info(`[LogWatcher] MATCH Player Joined: ${displayName} (${userId || 'No ID'})`);
+            log.info(`[LogWatcher] Player Joined: ${displayName}${userId ? ` (${userId})` : ''}`);
           }
 
           const playerEvent: PlayerJoinedEvent = { displayName, userId, timestamp, isBackfill };
@@ -794,7 +794,7 @@ class LogWatcherService extends EventEmitter {
         if (displayName) {
           // Suppress historical logs during startup
           if (!this.isHydrating) {
-            log.info(`[LogWatcher] MATCH Player Left: ${displayName} (${userId || 'No ID'})`);
+            log.info(`[LogWatcher] Player Left: ${displayName}${userId ? ` (${userId})` : ''}`);
           }
 
           if (this.state.players.has(displayName)) {
