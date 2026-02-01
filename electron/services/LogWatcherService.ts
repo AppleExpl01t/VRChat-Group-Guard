@@ -693,8 +693,8 @@ class LogWatcherService extends EventEmitter {
       if (this.isHydrating) {
         const timestampMs = this.lastActivityTime;
         const now = Date.now();
-        const twoHours = 2 * 60 * 60 * 1000;
-        const isOld = (now - timestampMs) > twoHours;
+        const thirtyMinutes = 30 * 60 * 1000;
+        const isOld = (now - timestampMs) > thirtyMinutes;
 
         if (isOld && !processService.isRunning) {
           log.debug(`[LogWatcher] Hydration Guard: Rejecting stale location event (${timestamp}) as game is not running.`);
