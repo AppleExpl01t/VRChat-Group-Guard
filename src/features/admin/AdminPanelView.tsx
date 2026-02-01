@@ -510,9 +510,30 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
                 </div>
 
                 {/* Footer / Logout */}
-                <div className={dashStyles.footer}>
+                <div className={dashStyles.footer} style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
                   <button onClick={handleLogout} className={dashStyles.footerButton}>
                     TERMINATE SESSION
+                  </button>
+                  <button 
+                    onClick={handleEnvToggle}
+                    title="Toggle Backend Environment"
+                    style={{
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: env === 'prod' ? '#ef4444' : '#22c55e',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '0.7rem',
+                      cursor: 'pointer',
+                      fontFamily: 'monospace',
+                      textTransform: 'uppercase',
+                      backdropFilter: 'blur(4px)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                  >
+                    ENV: {env}
                   </button>
                 </div>
               </div>

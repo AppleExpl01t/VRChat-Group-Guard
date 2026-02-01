@@ -3,8 +3,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { NeonButton } from '../../components/ui/NeonButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './LoginView.module.css';
-import { getBackendEnv, setBackendEnv } from '../../config';
-import type { BackendEnv } from '../../config';
 
 export const LoginView: React.FC = () => {
   const { login, verify2FA, requires2FA, isLoading, error, rememberMe, setRememberMe } = useAuthStore();
@@ -13,13 +11,6 @@ export const LoginView: React.FC = () => {
   const [code, setCode] = useState('');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
-  const initialEnv = getBackendEnv();
-  const [env] = useState<BackendEnv>(initialEnv);
-
-  const handleEnvToggle = () => {
-    const newEnv = env === 'local' ? 'prod' : 'local';
-    setBackendEnv(newEnv); // This triggers reload
-  };
 
   // Load saved username if available (optional optimization)
   React.useEffect(() => {
@@ -423,30 +414,6 @@ export const LoginView: React.FC = () => {
         </button>
       </div>
 
-      {/* Backend Env Toggle (Dev Tool) */}
-      <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', zIndex: 50 }}>
-        <button 
-          onClick={handleEnvToggle}
-          title="Toggle Backend Environment"
-          style={{
-            background: 'rgba(0,0,0,0.3)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: env === 'prod' ? '#ef4444' : '#22c55e',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '0.65rem',
-            cursor: 'pointer',
-            fontFamily: 'monospace',
-            textTransform: 'uppercase',
-            backdropFilter: 'blur(4px)',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'}
-          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
-        >
-          ENV: {env}
-        </button>
-      </div>
     </div>
   );
 };

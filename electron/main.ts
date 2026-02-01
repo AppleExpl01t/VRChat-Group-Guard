@@ -201,7 +201,7 @@ try {
 // Force electron-log to use our specific path and filename
 log.transports.file.resolvePathFn = () => logFile;
 log.transports.file.fileName = 'latest.log'; // Redundant with resolvePathFn but safer
-log.transports.file.archiveLogFn = (oldLogFile) => {
+log.transports.file.archiveLogFn = () => {
   // Disable built-in rotation since we handle it manually on startup
   // This empty function prevents electron-log from renaming 'latest.log'
 };
@@ -427,7 +427,7 @@ import { watchlistService } from './services/WatchlistService';
 watchlistService.initialize();
 progress.update('Watchlist');
 
-import { timeTrackingService } from './services/TimeTrackingService';
+import './services/TimeTrackingService';
 // timeTrackingService is now initialized by FriendshipService once a user logs in, 
 // as it requires a userDataDir context for legacy migrations.
 progress.update('Time Tracking');
