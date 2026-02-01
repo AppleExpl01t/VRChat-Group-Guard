@@ -2,7 +2,7 @@ import { ipcMain } from 'electron';
 import log from 'electron-log';
 const logger = log.scope('GroupService');
 import { getVRChatClient, getCurrentUserId, getAuthCookieStringAsync } from './AuthService';
-import { vrchatApiService } from './VRChatApiService';
+import { vrchatApiService, VRCGroup } from './VRChatApiService';
 import { databaseService } from './DatabaseService';
 import { groupAuthorizationService } from './GroupAuthorizationService';
 import { networkService } from './NetworkService';
@@ -103,7 +103,7 @@ export function setupGroupHandlers() {
             const groups = response.data || [];
 
             // Map and Normalize
-            const mappedGroups = (groups as any[]).map((g) => {
+            const mappedGroups = (groups as VRCGroup[]).map((g) => {
                 if (g.groupId && typeof g.groupId === 'string' && g.groupId.startsWith('grp_')) {
                     return { ...g, id: g.groupId };
                 }
@@ -261,32 +261,21 @@ export function setupGroupHandlers() {
     // Get group join requests
     ipcMain.handle('groups:get-requests', async (_event, { groupId }: { groupId: string }) => {
         try {
-            // SECURITY: Validate group access
+            // SECURITY: Validate group access check internally in service or here? service doesn't do it yet for read
+            // But we keep the check here
             groupAuthorizationService.validateAccess(groupId, 'groups:get-requests');
 
-            const client = getVRChatClient();
-            logger.info(`Fetching requests for group ${groupId}`);
-            if (!client) throw new Error("Not authenticated");
-
-            // Revert to Object Syntax
-            const response = await client.getGroupRequests({
-                path: { groupId },
-                query: { n: 100, offset: 0 }
-            });
-
-            const requests = extractArray(response.data);
-            logger.info(`Requests fetch detected ${requests.length} items for ${groupId}`);
-
-            if (response.error) {
-                logger.error('API Error in getGroupRequests:', response.error);
-                throw response.error;
+            const result = await vrchatApiService.getGroupRequests(groupId);
+            if (result.success) {
+                logger.info(`Requests fetch detected ${result.data?.length || 0} items for ${groupId}`);
+                return { success: true, requests: result.data };
             }
-            return { success: true, requests };
+            return { success: false, error: result.error };
 
         } catch (error: unknown) {
-            const err = error as { message?: string };
-            logger.error('Failed to fetch join requests:', error);
-            return { success: false, error: err.message || 'Failed to fetch requests' };
+             const err = error as { message?: string };
+             logger.error('Failed to fetch join requests:', error);
+             return { success: false, error: err.message || 'Failed to fetch requests' };
         }
     });
 
@@ -296,24 +285,12 @@ export function setupGroupHandlers() {
             // SECURITY: Validate group access
             groupAuthorizationService.validateAccess(groupId, 'groups:get-bans');
 
-            const client = getVRChatClient();
-            logger.info(`Fetching bans for group ${groupId}`);
-            if (!client) throw new Error("Not authenticated");
-
-            // Revert to Object Syntax
-            const response = await client.getGroupBans({
-                path: { groupId },
-                query: { n: 100, offset: 0 }
-            });
-
-            const bans = extractArray(response.data);
-            logger.info(`Bans fetch detected ${bans.length} items for ${groupId}`);
-
-            if (response.error) {
-                logger.error('API Error in getGroupBans:', response.error);
-                throw response.error;
+            const result = await vrchatApiService.getGroupBans(groupId);
+            if (result.success) {
+                logger.info(`Bans fetch detected ${result.data?.length || 0} items for ${groupId}`);
+                return { success: true, bans: result.data };
             }
-            return { success: true, bans };
+            return { success: false, error: result.error };
 
         } catch (error: unknown) {
             const err = error as { message?: string };

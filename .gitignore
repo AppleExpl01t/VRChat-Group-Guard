@@ -49,3 +49,9 @@ reference repos/
 
 # Development Debug Files
 .dev/
+
+# OCI Infrastructure
+oci_infra/
+
+# Cloud Backend (separate repo: AppleExpl01t/GroupGuard4VRC-Cloud-backend)
+cloud-backend/

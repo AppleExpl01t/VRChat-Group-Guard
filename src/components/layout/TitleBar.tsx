@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserProfileWidget } from '../../features/auth/UserProfileWidget';
 import { useAuthStore } from '../../stores/authStore';
@@ -8,7 +9,9 @@ import { NotificationPanel } from '../../features/notifications/NotificationPane
 import { useGroupStore } from '../../stores/groupStore';
 import styles from './TitleBar.module.css';
 import { WindowControls } from './WindowControls';
-import { Settings, LogOut, Bell, Users, Globe, Puzzle } from 'lucide-react';
+import { Settings, LogOut, Bell, Users, Globe, Puzzle, Shield } from 'lucide-react';
+import { useAdminStore } from '../../stores/adminStore';
+import { AdminPanelView } from '../../features/admin/AdminPanelView';
 
 interface TitleBarProps {
   onSettingsClick: () => void;
@@ -19,8 +22,10 @@ interface TitleBarProps {
 export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick, onIntegrationsClick, onLogoutClick }) => {
   const { user } = useAuthStore();
   const { history } = useAutoModAlertStore();
+  const { isAdminUnlocked } = useAdminStore();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +88,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick, onIntegrati
             onClick={() => {
               setIsProfileOpen(!isProfileOpen);
               setIsNotificationsOpen(false); // Close notifications when opening profile
+              // Ritual Step 1: Profile click
+              useAdminStore.getState().incrementShieldClick();
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -195,6 +202,29 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick, onIntegrati
       {/* Right Section: Notifications & Window Controls */}
       <div className={styles.rightSection}>
 
+        {/* Admin Panel Button (Only visible when unlocked) */}
+        {isAdminUnlocked && (
+          <motion.button
+            onClick={() => setIsAdminPanelOpen(true)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            title="Admin Panel"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-primary)',
+              cursor: 'pointer',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              marginTop: '20px',
+              marginRight: '4px',
+            }}
+          >
+            <Shield size={20} />
+          </motion.button>
+        )}
+
         {/* Notification Trigger */}
         <div style={{ position: 'relative', marginTop: '20px', marginRight: '8px' }} ref={notifRef}>
           <motion.button
@@ -231,6 +261,15 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick, onIntegrati
         {/* Window Controls */}
         <WindowControls />
       </div>
+
+      {/* Admin Panel Modal - Portal to escape titleBar pointer-events: none */}
+      {createPortal(
+        <AdminPanelView
+          isOpen={isAdminPanelOpen}
+          onClose={() => setIsAdminPanelOpen(false)}
+        />,
+        document.body
+      )}
     </header>
   );
 };

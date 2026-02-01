@@ -1,0 +1,385 @@
+/* Admin Dashboard - Console-Like God's View UI */
+
+/* Admin-specific accent color (green for system access) */
+.adminContainer {
+  --admin-accent: #22c55e;
+  --admin-accent-glow: rgba(34, 197, 94, 0.4);
+  --admin-accent-dim: rgba(34, 197, 94, 0.6);
+  --terminal-bg: rgba(0, 0, 0, 0.6);
+  --terminal-border: rgba(34, 197, 94, 0.3);
+
+  width: 100%;
+  max-width: 900px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+/* Header with admin branding */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--terminal-border);
+  margin-bottom: 1.5rem;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.adminIcon {
+  color: var(--admin-accent);
+  filter: drop-shadow(0 0 8px var(--admin-accent-glow));
+}
+
+.headerTitle {
+  font-family: "Courier New", monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  color: var(--admin-accent);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.headerSubtitle {
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+  margin: 0;
+  font-family: "Courier New", monospace;
+}
+
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid var(--terminal-border);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-family: "Courier New", monospace;
+  color: var(--admin-accent);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  background: var(--admin-accent);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Stat Cards Grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.statCard {
+  background: var(--terminal-bg);
+  border: 1px solid var(--terminal-border);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.statCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--admin-accent),
+    transparent
+  );
+  opacity: 0.5;
+}
+
+.statLabel {
+  font-family: "Courier New", monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.statValue {
+  font-family: "Courier New", monospace;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--admin-accent);
+  text-shadow: 0 0 10px var(--admin-accent-glow);
+}
+
+.statIcon {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  color: var(--admin-accent);
+  opacity: 0.3;
+}
+
+/* Panels Grid */
+.panelsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Terminal Panel */
+.terminalPanel {
+  background: var(--terminal-bg);
+  border: 1px solid var(--terminal-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.terminalHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: rgba(34, 197, 94, 0.1);
+  border-bottom: 1px solid var(--terminal-border);
+}
+
+.terminalDots {
+  display: flex;
+  gap: 4px;
+}
+
+.terminalDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--terminal-border);
+}
+
+.terminalDot:first-child {
+  background: #ef4444;
+}
+
+.terminalDot:nth-child(2) {
+  background: #f59e0b;
+}
+
+.terminalDot:nth-child(3) {
+  background: #22c55e;
+}
+
+.terminalTitle {
+  font-family: "Courier New", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--admin-accent);
+  text-transform: uppercase;
+  margin-left: auto;
+}
+
+.terminalContent {
+  padding: 1rem;
+  height: 180px;
+  overflow-y: auto;
+  font-family: "Courier New", monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+/* Activity Feed */
+.activityItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-dim);
+}
+
+.activityPrompt {
+  color: var(--admin-accent);
+  flex-shrink: 0;
+}
+
+.activityText {
+  word-break: break-word;
+}
+
+/* Log Entries */
+.logEntry {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.logTime {
+  color: var(--color-text-dim);
+  flex-shrink: 0;
+}
+
+.logLevel {
+  flex-shrink: 0;
+  min-width: 40px;
+  font-weight: bold;
+}
+
+.logLevel.info {
+  color: #4cc9f0;
+}
+
+.logLevel.auth {
+  color: var(--admin-accent);
+}
+
+.logLevel.warn {
+  color: #f59e0b;
+}
+
+.logLevel.debug {
+  color: #a855f7;
+}
+
+.logLevel.error {
+  color: #ef4444;
+}
+
+.logMessage {
+  color: var(--color-text-main);
+}
+
+/* Quick Actions */
+.quickActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 1rem;
+  border-top: 1px solid var(--terminal-border);
+}
+
+.actionButton {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.75rem 1rem;
+  background: var(--terminal-bg);
+  border: 1px solid var(--terminal-border);
+  border-radius: 6px;
+  color: var(--admin-accent);
+  font-family: "Courier New", monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.actionButton:hover {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 15px var(--admin-accent-glow);
+}
+
+.actionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Footer */
+.footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--terminal-border);
+  text-align: center;
+}
+
+.footerButton {
+  background: none;
+  border: 1px solid var(--terminal-border);
+  color: var(--color-text-dim);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-family: "Courier New", monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.footerButton:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Blinking cursor animation */
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: var(--admin-accent);
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Scrollbar styling */
+.terminalContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminalContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminalContent::-webkit-scrollbar-thumb {
+  background: var(--terminal-border);
+  border-radius: 3px;
+}
+
+.terminalContent::-webkit-scrollbar-thumb:hover {
+  background: var(--admin-accent-dim);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .panelsGrid {
+    grid-template-columns: 1fr;
+  }
+}

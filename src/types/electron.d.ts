@@ -607,6 +607,7 @@ export interface ElectronAPI {
     scanGroupMembers: (groupId: string) => Promise<{ success: boolean; results?: ScanResult[]; error?: string }>;
     fetchMembers: (groupId: string) => Promise<{ success: boolean; members: { user: VRChatUser }[]; error?: string }>;
     evaluateMember: (args: { groupId: string; member: { user: VRChatUser } }) => Promise<ScanResult>;
+    scanUsersBatch: (args: { users: VRChatUser[]; groupId: string }) => Promise<{ success: boolean; results: ScanResult[]; error?: string }>;
   };
 
   // Instance Guard API

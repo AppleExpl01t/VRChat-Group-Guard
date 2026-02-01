@@ -22,36 +22,36 @@ Automate your instance security to keep trolls and bad actors out.
 - **Rule Engine**: Create custom rules based on Trust Rank, Account Age, Keywords based on bio/status, and more.
 - **Actions**: Automatically Notify, Warn, or Kick when a rule is triggered.
 - **Staff Whitelist**: **New!** Exempt trusted friends and moderators from strict rules.
-    - **User Whitelist**: Allow specific users by name.
-    - **Group Whitelist**: Allow entire ranks (e.g., "Moderator") from your group to bypass checks.
+  - **User Whitelist**: Allow specific users by name.
+  - **Group Whitelist**: Allow entire ranks (e.g., "Moderator") from your group to bypass checks.
 
 ### ⚡ Performance & Stability (New)
 
 We've completely overhauled the backend with **monumental performance improvements** that transform loading times.
 
 - **🚀 Lightning-Fast Cache Strategy**:
-    - **90% Faster Initial Load**: Groups display in <1 second instead of 15-30 seconds
-    - **Full Object Caching**: Stores complete group data including images for instant UI display
-    - **Startup Optimization**: Pre-cached groups appear immediately on app launch
-    - **Persistent Storage**: Cache survives restarts for instant subsequent launches
+  - **90% Faster Initial Load**: Groups display in <1 second instead of 15-30 seconds
+  - **Full Object Caching**: Stores complete group data including images for instant UI display
+  - **Startup Optimization**: Pre-cached groups appear immediately on app launch
+  - **Persistent Storage**: Cache survives restarts for instant subsequent launches
 
 - **🔄 Smart Batch API System**:
-    - **Intelligent Batching**: Processes groups in batches of 10 with 250ms delays
-    - **80% Fewer API Denials**: Dramatically reduces 429 rate limit errors
-    - **Owner Priority**: Owner groups loaded instantly (no API calls needed)
-    - **Exponential Backoff**: 5-attempt retry with smart delay progression
+  - **Intelligent Batching**: Processes groups in batches of 10 with 250ms delays
+  - **80% Fewer API Denials**: Dramatically reduces 429 rate limit errors
+  - **Owner Priority**: Owner groups loaded instantly (no API calls needed)
+  - **Exponential Backoff**: 5-attempt retry with smart delay progression
 
 - **🛡️ Advanced Rate Limit Protection**:
-    - **Predictive Delays**: Calculates optimal timing between API calls
-    - **Type Guards**: Handles VRChat API inconsistencies and garbage responses
-    - **Retry Logic**: Automatic recovery from temporary API failures
-    - **Rate Limit Detection**: Identifies and adapts to API throttling
+  - **Predictive Delays**: Calculates optimal timing between API calls
+  - **Type Guards**: Handles VRChat API inconsistencies and garbage responses
+  - **Retry Logic**: Automatic recovery from temporary API failures
+  - **Rate Limit Detection**: Identifies and adapts to API throttling
 
 - **📊 Real-Time Streaming Updates**:
-    - **Live Data Streaming**: Replaces "Loading..." placeholders instantly
-    - **Two-Stage Pipeline**: Stage 1 = instant cache, Stage 2 = background verification
-    - **Progressive Enhancement**: UI improves as fresh data arrives
-    - **Seamless Experience**: No blocking operations or frozen interfaces
+  - **Live Data Streaming**: Replaces "Loading..." placeholders instantly
+  - **Two-Stage Pipeline**: Stage 1 = instant cache, Stage 2 = background verification
+  - **Progressive Enhancement**: UI improves as fresh data arrives
+  - **Seamless Experience**: No blocking operations or frozen interfaces
 
 ### 🔞 Instance Guard
 
@@ -78,10 +78,10 @@ Direct integration with your VRChat Groups.
 - **Bans & Kicks**: Quickly ban or kick users from group directly from the UI.
 - **Instance Browser**: View all active instances for your groups and join them instantly.
 - **🎯 Staff Management** (**NEW!**): Complete staff protection system
-    - **Staff Whitelist**: Add moderators and trusted members to AutoMod exemptions
-    - **Protection Settings**: Configure what staff are protected from (scans, kicks, bans)
-    - **Global Protection**: Staff exemptions apply across ALL AutoMod rules
-    - **Instant Recognition**: Staff are checked first before any rule evaluation
+  - **Staff Whitelist**: Add moderators and trusted members to AutoMod exemptions
+  - **Protection Settings**: Configure what staff are protected from (scans, kicks, bans)
+  - **Global Protection**: Staff exemptions apply across ALL AutoMod rules
+  - **Instant Recognition**: Staff are checked first before any rule evaluation
 
 ### 🤝 Friendship Manager
 
@@ -140,6 +140,10 @@ Personalize your experience with comprehensive visual customization.
     ```
     This will start both the Electron backend and the React frontend in hot-reload mode.
 
+### ☁️ Cloud Integration Setup
+
+If you are working on the **Alpha GCP Branch**, please read [SETUP.md](./SETUP.md) to configure your connection to the Production Backend.
+
 ### Usage Guide
 
 1.  **Login**: Launch the app and log in with your VRChat credentials. (Supports 2FA).
@@ -156,13 +160,13 @@ Personalize your experience with comprehensive visual customization.
 If you encounter issues, we have a new **Persistent Logging System** to help debug.
 
 - **Log Location**: `%APPDATA%\vrchat-group-guard\logs`
-    - (Type `%APPDATA%` in Windows Run dialog or File Explorer address bar).
+  - (Type `%APPDATA%` in Windows Run dialog or File Explorer address bar).
 - **Log Files**:
-    - `latest.log`: The log for the *current* active session.
-    - `log_YYYY-MM-DD_...txt`: Archived logs from previous sessions (automatically rotated on startup).
+  - `latest.log`: The log for the _current_ active session.
+  - `log_YYYY-MM-DD_...txt`: Archived logs from previous sessions (automatically rotated on startup).
 - **What to do**:
-    - Check `latest.log` for lines starting with `[ERROR]` or `[WARN]`.
-    - Provide these logs if you open a GitHub Issue.
+  - Check `latest.log` for lines starting with `[ERROR]` or `[WARN]`.
+  - Provide these logs if you open a GitHub Issue.
 
 ## 🎨 Themes & Customization
 
@@ -172,7 +176,7 @@ Group Guard features a comprehensive theming system with real-time customization
 - **Colors**: Full HSL control for Neons, Accents, and Backgrounds.
 - **Effects**: Adjustable **Glass Blur**, **Opacity**, and **Particles** that react to your mouse.
 
-*> Go to **Settings → Appearance** to customize.*
+_> Go to **Settings → Appearance** to customize._
 
 ## ⚠️ Safety & Compliance
 

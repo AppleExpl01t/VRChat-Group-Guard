@@ -1,0 +1,79 @@
+name: Alpha Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Alpha version suffix (e.g., "1" for alpha.1)'
+        required: true
+        default: "1"
+
+jobs:
+  alpha-release:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get package version
+        id: pkg
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build application
+        run: |
+          # Build TypeScript and Vite
+          npx tsc -b
+          npx vite build
+
+          # Build Electron main and preload
+          npx esbuild electron/main.ts --bundle --platform=node --outfile=dist-electron/main.cjs --minify --external:electron --external:vrchat
+          npx esbuild electron/preload.ts --bundle --platform=node --outfile=dist-electron/preload.cjs --minify --external:electron
+
+      - name: Package with electron-builder (no publish)
+        run: npx electron-builder --win --publish never
+
+      - name: Remove latest.yml to prevent auto-update
+        run: |
+          if (Test-Path "release/latest.yml") {
+            Remove-Item "release/latest.yml" -Force
+            Write-Host "Removed latest.yml to prevent auto-update for stable users"
+          }
+
+      - name: Create Alpha Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.pkg.outputs.version }}-alpha.${{ github.event.inputs.version }}
+          name: "v${{ steps.pkg.outputs.version }} Alpha ${{ github.event.inputs.version }}"
+          body: |
+            ## ⚠️ Alpha Release
+
+            This is an **alpha release** for testing purposes only.
+
+            **Warning:** This build will NOT trigger auto-updates for stable users.
+
+            ### Installation
+            Download and run the installer manually to test this alpha version.
+
+            ---
+            *To return to stable, reinstall from the latest stable release.*
+          prerelease: true
+          files: |
+            release/*.exe
+            release/*.exe.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

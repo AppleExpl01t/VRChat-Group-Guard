@@ -11,6 +11,7 @@ import { SettingsTabBar, type SettingsTab } from './SettingsTabBar';
 import { SettingsSearch, matchesSearch } from './SettingsSearch';
 import { SearchX, Folder } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
+import { useAdminStore } from '../../stores/adminStore';
 import { BulkFriendImport } from './components/BulkFriendImport';
 import { APP_VERSION } from '../../constants/app';
 import paw from '../../assets/images/paw.png';
@@ -806,7 +807,11 @@ export const SettingsView: React.FC = () => {
                 {/* === MAIN ABOUT INFO === */}
                 <div style={{ ...innerCardStyle, marginBottom: '10px' }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <div>
+                    <div 
+                      onClick={() => useAdminStore.getState().incrementIconClick()}
+                      style={{ cursor: 'pointer' }}
+                      title="Group Guard Icon"
+                    >
                       <img
                         src={appIcon}
                         alt="Group Guard Icon"

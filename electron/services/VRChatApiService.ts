@@ -12,6 +12,7 @@ import log from 'electron-log';
 import { LRUCache } from 'lru-cache';
 import { networkService } from './NetworkService';
 import { VRChat } from 'vrchat';
+import { getVRChatClient, isAuthenticated as authIsAuthenticated, getCurrentUserId as authGetCurrentUserId, getAuthCookieStringAsync, fetchCurrentLocationFromApi as authFetchCurrentLocation, fetchInstancePlayers as authFetchInstancePlayers } from './AuthService';
 
 const logger = log.scope('VRChatApiService');
 
@@ -241,20 +242,41 @@ const mutualCountsCache = new LRUCache<string, { data: MutualCounts; timestamp: 
     ttl: 1000 * 60 * 5, // 5 minute TTL
 });
 
+const friendsCache = new LRUCache<string, { data: VRCFriend[]; timestamp: number }>({
+    max: 2, // Only need 2 keys: 'online' and 'offline'
+    ttl: 1000 * 45, // 45 seconds TTL (Absorbs the 15s polling loop, updates decently fast)
+});
+
+// ============================================
+// COALESCER - Deduplicate in-flight requests
+// ============================================
+
+class RequestCoalescer {
+    private pending = new Map<string, Promise<unknown>>();
+
+    public execute<T>(key: string, operation: () => Promise<T>): Promise<T> {
+        if (this.pending.has(key)) {
+            // logger.debug(`[Coalescer] Deduplicating request for ${key}`);
+            return this.pending.get(key) as Promise<T>;
+        }
+
+        const promise = operation().finally(() => {
+            this.pending.delete(key);
+        });
+
+        this.pending.set(key, promise);
+        return promise;
+    }
+}
+
+const coalescer = new RequestCoalescer();
+
 // ============================================
 // CLIENT ACCESSOR
 // ============================================
 
 // We import the client accessor from AuthService which owns the VRChat SDK session
 // This maintains the existing authentication flow while centralizing API calls
-import {
-    getVRChatClient,
-    isAuthenticated as authIsAuthenticated,
-    getCurrentUserId as authGetCurrentUserId,
-    getAuthCookieStringAsync,
-    fetchCurrentLocationFromApi as authFetchCurrentLocation,
-    fetchInstancePlayers as authFetchInstancePlayers
-} from './AuthService';
 
 // ============================================
 // VRChat API SERVICE - The Microservice
@@ -865,42 +887,60 @@ export const vrchatApiService = {
     /**
      * Get current user's friends list
      */
-    async getFriends(offline = false): Promise<ApiResult<VRCFriend[]>> {
-        return networkService.execute(async () => {
-            const client = getVRChatClient();
-            if (!client) throw new Error('Not authenticated');
+    async getFriends(offline = false, bypassCache = false): Promise<ApiResult<VRCFriend[]>> {
+        const cacheKey = offline ? 'offline' : 'online';
 
-            let allFriends: VRCFriend[] = [];
-            let offset = 0;
-            const n = 100;
-
-            while (true) {
-                logger.debug(`Fetching friends (offline=${offline}, offset=${offset})`);
-                const response = await client.getFriends({
-                    query: { offline, n, offset }
-                });
-
-                // Use the lower-level data or handle various SDK response formats
-                const chunk = (Array.isArray(response.data) ? response.data :
-                    (response.data && Array.isArray((response.data as any).data) ? (response.data as any).data : [])) as VRCFriend[];
-
-                if (chunk.length === 0) break;
-
-                allFriends = allFriends.concat(chunk);
-
-                // If we got fewer than requested, we're done
-                if (chunk.length < n) break;
-
-                offset += n;
-                if (offset > 1500) {
-                    logger.warn(`Friend list fetch reached sanity limit of ${offset}. Truncating.`);
-                    break;
-                }
+        // Check cache first
+        if (!bypassCache) {
+            const cached = friendsCache.get(cacheKey);
+            if (cached) {
+                // logger.debug(`Friends list (${cacheKey}) served from cache`);
+                return { success: true, data: cached.data };
             }
+        }
 
-            logger.info(`Fetched ${allFriends.length} total ${offline ? 'offline' : 'online'} friends.`);
-            return allFriends;
-        }, `getFriends:${offline ? 'offline' : 'online'}`);
+        return networkService.execute(async () => {
+            // Coalesce requests (prevent parallel fetches for same list)
+            return coalescer.execute(`getFriends:${cacheKey}`, async () => {
+                const client = getVRChatClient();
+                if (!client) throw new Error('Not authenticated');
+
+                let allFriends: VRCFriend[] = [];
+                let offset = 0;
+                const n = 100;
+
+                while (true) {
+                    logger.debug(`Fetching friends (offline=${offline}, offset=${offset})`);
+                    const response = await client.getFriends({
+                        query: { offline, n, offset }
+                    });
+
+                    // Use the lower-level data or handle various SDK response formats
+                    const chunk = (Array.isArray(response.data) ? response.data :
+                        (response.data && Array.isArray((response.data as { data: unknown[] }).data) ? (response.data as { data: unknown[] }).data : [])) as VRCFriend[];
+
+                    if (chunk.length === 0) break;
+
+                    allFriends = allFriends.concat(chunk);
+
+                    // If we got fewer than requested, we're done
+                    if (chunk.length < n) break;
+
+                    offset += n;
+                    if (offset > 1500) {
+                        logger.warn(`Friend list fetch reached sanity limit of ${offset}. Truncating.`);
+                        break;
+                    }
+                }
+
+                logger.info(`Fetched ${allFriends.length} total ${offline ? 'offline' : 'online'} friends.`);
+                
+                // Cache the result
+                friendsCache.set(cacheKey, { data: allFriends, timestamp: Date.now() });
+                
+                return allFriends;
+            });
+        }, `getFriends:${cacheKey}`);
     },
 
     // ========================================
@@ -916,6 +956,7 @@ export const vrchatApiService = {
         worldCache.clear();
         groupMembersCache.clear();
         mutualCountsCache.clear();
+        friendsCache.clear();
         logger.info('All API caches cleared');
     },
 

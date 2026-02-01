@@ -7,10 +7,12 @@ import { motion } from 'framer-motion';
 interface OperationStartDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (speed: number) => void;
+    onConfirm: (speed: number, autoModEnabled?: boolean) => void;
     title: string;
     count: number;
     type: 'recruit' | 'rally';
+    scanUsers?: boolean; // Prop to show the toggle
+    groupId?: string; // Needed for permissions check if we wanted to hide it, but simple toggle is enough for now
 }
 
 export const OperationStartDialog: React.FC<OperationStartDialogProps> = ({
@@ -18,9 +20,12 @@ export const OperationStartDialog: React.FC<OperationStartDialogProps> = ({
     onClose,
     onConfirm,
     title,
-    count
+    count,
+    type,
+    scanUsers = false
 }) => {
     const [selectedSpeed, setSelectedSpeed] = useState<number>(2); // Default to Normal (2s)
+    const [isAutoModEnabled, setIsAutoModEnabled] = useState(false); // Local state for the toggle
 
     const speeds = [
         {
@@ -59,7 +64,7 @@ export const OperationStartDialog: React.FC<OperationStartDialogProps> = ({
                 CANCEL
             </NeonButton>
             <NeonButton 
-                onClick={() => onConfirm(selectedSpeed)}
+                onClick={() => onConfirm(selectedSpeed, isAutoModEnabled)}
                 style={{ flex: 2 }}
             >
                 START SYSTEM
@@ -81,6 +86,52 @@ export const OperationStartDialog: React.FC<OperationStartDialogProps> = ({
                     <br />
                     Select operation speed:
                 </div>
+
+                {type === 'recruit' && scanUsers && (
+                    <div style={{ 
+                        background: 'rgba(0,0,0,0.2)', 
+                        padding: '12px', 
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: '1px solid var(--border-color)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Shield size={18} color="var(--color-primary)" />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--color-text-main)' }}>Scan with AutoMod</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Filter users against group rules before inviting</span>
+                            </div>
+                        </div>
+                        
+                        {/* Toggle Switch */}
+                        <div 
+                            onClick={() => setIsAutoModEnabled(!isAutoModEnabled)}
+                            style={{
+                                width: '44px',
+                                height: '24px',
+                                background: isAutoModEnabled ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
+                                borderRadius: '12px',
+                                position: 'relative',
+                                cursor: 'pointer',
+                                transition: 'background 0.2s ease'
+                            }}
+                        >
+                            <div style={{
+                                width: '20px',
+                                height: '20px',
+                                background: 'white',
+                                borderRadius: '50%',
+                                position: 'absolute',
+                                top: '2px',
+                                left: isAutoModEnabled ? '22px' : '2px',
+                                transition: 'left 0.2s ease',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                            }} />
+                        </div>
+                    </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                     {speeds.map((speed) => {

@@ -242,6 +242,31 @@ export const setupAutoModHandlers = () => {
     }
   });
 
+  ipcMain.handle("automod:scan-users-batch", async (_, { users, groupId }) => {
+    if (!users || !Array.isArray(users)) return { success: false, error: "Invalid users list" };
+    
+    // Convert generic user objects to GroupMember-like structure for the scanner service
+    // The scanner service expects GroupMember but primarily uses the 'user' property inside it for valuation
+    const results = [];
+    
+    for (const user of users) {
+        // Mock a group member structure since we might be scanning non-members too
+        const memberStub = {
+            user: user,
+            userId: user.id
+        };
+        
+        // Use existing single-member evaluate logic
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result = await autoModScannerService.processEvaluateMember(groupId, memberStub as any);
+        if (result.action !== "SAFE") {
+            results.push(result);
+        }
+    }
+    
+    return { success: true, results };
+  });
+
   // ===== INSTANCE GUARD HANDLERS =====
   ipcMain.handle("instance-guard:get-history", (_e, groupId: string) => {
     return instanceGuardService.getHistory(groupId);
