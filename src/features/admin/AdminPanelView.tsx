@@ -28,7 +28,8 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--color-text)',
   fontSize: '0.95rem',
   boxSizing: 'border-box',
-};
+  WebkitAppRegion: 'no-drag', // Crucial for Electron inputs
+} as React.CSSProperties;
 
 // Type for user management
 interface AdminUser {
@@ -36,6 +37,13 @@ interface AdminUser {
   username: string;
   role: 'owner' | 'admin';
   hwid: string | null;
+}
+
+interface Invite {
+  token: string;
+  created_by: string;
+  is_used: number;
+  expires_at: string;
 }
 
 export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose }) => {
@@ -64,6 +72,7 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
   const [env] = useState<BackendEnv>(getBackendEnv());
   const [hwid, setHwid] = useState<string>('browser-dev-mode');
   const [users, setUsers] = useState<AdminUser[]>([]); // List of admins for management
+  const [invites, setInvites] = useState<Invite[]>([]); // List of pending invites
 
   // Fetch HWID on mount
   React.useEffect(() => {
@@ -124,6 +133,22 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
     }
   }, [showManageAdmins, adminUser, adminSessionToken, getHeaders]);
 
+  // Fetch invites when Manage Admins modal opens
+  React.useEffect(() => {
+    if (showManageAdmins && adminUser?.role === 'owner' && adminSessionToken) {
+      fetch(`${BACKEND_URL}/admin/invites`, {
+        headers: getHeaders(adminSessionToken)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setInvites(data.data);
+        }
+      })
+      .catch(console.error);
+    }
+  }, [showManageAdmins, adminUser, adminSessionToken, getHeaders]);
+
   const handleResetHwid = async (userId: number, username: string) => {
     if (!confirm(`Reset HWID for ${username}? This will allow them to login from a new device.`)) return;
     try {
@@ -156,6 +181,25 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
       if (data.success) {
         alert('User Revoked');
         setUsers(prev => prev.filter(u => u.id !== userId));
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Connection failed');
+    }
+  };
+
+  const handleRevokeInvite = async (token: string) => {
+    if (!confirm('Revoke this invite token? It will be permanently deleted.')) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/invites/${token}/revoke`, {
+        method: 'POST',
+        headers: getHeaders(adminSessionToken)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInvites(prev => prev.filter(i => i.token !== token));
       } else {
         alert('Failed: ' + (data.error || 'Unknown error'));
       }
@@ -908,63 +952,126 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
                   <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
                     <h3 style={{ color: 'var(--color-text)', fontSize: '1rem', marginBottom: '1rem' }}>Active Administrators</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                      {users.map(user => (
-                        <div key={user.id} style={{ 
-                          background: 'rgba(0,0,0,0.3)', 
-                          padding: '0.75rem', 
-                          borderRadius: '6px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          border: '1px solid rgba(255,255,255,0.05)'
-                        }}>
-                          <div>
-                            <div style={{ color: 'var(--color-text)', fontWeight: 'bold' }}>
-                              {user.username} 
-                              {user.id === adminUser?.id && <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginLeft: '0.5rem' }}>(You)</span>}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
-                              Role: {user.role} | HWID: {user.hwid ? 'BOUND' : 'UNBOUND'}
-                            </div>
+                    {users.map(user => (
+                      <div key={user.id} style={{ 
+                        background: 'rgba(0,0,0,0.3)', 
+                        padding: '0.75rem', 
+                        borderRadius: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        marginBottom: '0.5rem'
+                      }}>
+                        <div>
+                          <div style={{ color: 'var(--color-text)', fontWeight: 'bold' }}>
+                            {user.username} 
+                            {user.id === adminUser?.id && <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginLeft: '0.5rem' }}>(You)</span>}
                           </div>
-                          
-                          {/* Actions (Only for other users or if forced) */}
-                          {user.id !== adminUser?.id && (
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button 
-                                onClick={() => handleResetHwid(user.id, user.username)}
-                                title="Reset Hardware ID Binding"
-                                style={{
-                                  background: 'rgba(59, 130, 246, 0.2)',
-                                  color: '#60a5fa',
-                                  border: '1px solid rgba(59, 130, 246, 0.4)',
-                                  borderRadius: '4px',
-                                  padding: '4px 8px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.75rem'
-                                }}
-                              >
-                                Reset Device
-                              </button>
-                              <button 
-                                onClick={() => handleRevokeUser(user.id, user.username)}
-                                title="Revoke Access (Delete Admin)"
-                                style={{
-                                  background: 'rgba(239, 68, 68, 0.2)',
-                                  color: '#f87171',
-                                  border: '1px solid rgba(239, 68, 68, 0.4)',
-                                  borderRadius: '4px',
-                                  padding: '4px 8px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.75rem'
-                                }}
-                              >
-                                Revoke
-                              </button>
-                            </div>
-                          )}
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
+                            Role: {user.role} | HWID: {user.hwid ? 'BOUND' : 'UNBOUND'}
+                          </div>
                         </div>
-                      ))}
+                        
+                        {/* Actions (Only for other users or if forced) */}
+                        {user.id !== adminUser?.id && (
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button 
+                              onClick={() => handleResetHwid(user.id, user.username)}
+                              title="Reset Hardware ID Binding"
+                              style={{
+                                background: 'rgba(59, 130, 246, 0.2)',
+                                color: '#60a5fa',
+                                border: '1px solid rgba(59, 130, 246, 0.4)',
+                                borderRadius: '4px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              Reset Device
+                            </button>
+                            <button 
+                              onClick={() => handleRevokeUser(user.id, user.username)}
+                              title="Revoke Access (Delete Admin)"
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.2)',
+                                color: '#f87171',
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                borderRadius: '4px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              Revoke Access
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {users.length === 0 && (
+                      <div style={{ textAlign: 'center', color: 'var(--color-text-dim)', fontStyle: 'italic', padding: '1rem' }}>
+                        No users found
+                      </div>
+                    )}
+
+                    {/* Pending Invites Section */}
+                    {invites.length > 0 && (
+                      <>
+                        <div style={{ 
+                          borderBottom: '1px solid rgba(255,255,255,0.1)', 
+                          marginTop: '2rem', 
+                          marginBottom: '1rem',
+                          paddingBottom: '0.5rem',
+                          color: 'var(--color-text-dim)',
+                          fontSize: '0.8rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px'
+                        }}>
+                          Pending Invites
+                        </div>
+                        
+                        {invites.map(invite => (
+                          <div key={invite.token} style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            padding: '0.75rem',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            borderRadius: '8px',
+                            marginBottom: '0.5rem'
+                          }}>
+                            <div>
+                                <div style={{ fontFamily: 'monospace', color: '#fbbf24', fontSize: '0.9rem' }}>
+                                  {invite.token.substring(0, 18)}...
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
+                                  Created by: <span style={{ color: 'var(--color-text)' }}>{invite.created_by}</span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => handleRevokeInvite(invite.token)}
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  color: '#ef4444',
+                                  padding: '0.4rem 0.8rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                            >
+                                Cancel
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
                     </div>
                   </div>
 
