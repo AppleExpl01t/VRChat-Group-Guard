@@ -298,8 +298,18 @@ class LogWatcherService extends EventEmitter {
               const timestamp = new Date().toISOString();
               this.emitToRenderer('log:location', { worldId, instanceId: apiLoc, location: apiLoc, timestamp });
               this.reconcileWithApi(apiLoc);
+            } else if (!apiLoc && this.state.currentLocation) {
+              // OFFLINE SYNC FIX: Explicitly clear if API reports offline/private
+              // but only if the game process is NOT running to avoid race conditions with log lag
+              const isGameRunning = processService.isRunning;
+              if (!isGameRunning) {
+                log.info(`[LogWatcher] Inactivity Sync: API reports Offline/Private and game not running. Clearing stale location: ${this.state.currentLocation}`);
+                this.handleGameClosed();
+              }
             }
-          } catch { /* ignore */ }
+          } catch (e) {
+            log.warn('[LogWatcher] Inactivity check failed', e);
+          }
         }
       }
     };
@@ -466,14 +476,16 @@ class LogWatcherService extends EventEmitter {
   }
 
   private handleGameClosed() {
-    if (!this.state.currentWorldId && !this.state.currentLocation) return;
+    // Aggressive Clear: Even if we think we are already closed, we broadcast to ensure 
+    // any race conditions (like hydration re-waking a world ID) are corrected.
+    log.info('[LogWatcher] Game Closed Detected. Clearing internal and renderer states.');
 
-    log.info('[LogWatcher] Game Closed Detected. Clearing state.');
-
-    this.state.currentWorldId = null;
-    this.state.currentWorldName = null;
-    this.state.currentLocation = null;
-    this.state.players.clear();
+    if (this.state.currentWorldId || this.state.currentLocation || this.state.players.size > 0) {
+      this.state.currentWorldId = null;
+      this.state.currentWorldName = null;
+      this.state.currentLocation = null;
+      this.state.players.clear();
+    }
 
     this.emitToRenderer('log:game-closed', {});
     this.emit('game-closed', {});
@@ -676,11 +688,18 @@ class LogWatcherService extends EventEmitter {
 
       log.debug(`[LogWatcher] Joining World: ${location}`);
 
-      // DEBUG: Fetch API location to compare (Only when not hydrating)
-      if (!this.isHydrating && !isBackfill) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { fetchCurrentLocationFromApi } = require('./AuthService');
-        fetchCurrentLocationFromApi().catch(() => { }); // Fallback silently
+      // FRESHNESS GUARD: If we are hydrating a non-live log and the event is old,
+      // and the game isn't running, don't treat it as active location.
+      if (this.isHydrating) {
+        const timestampMs = this.lastActivityTime;
+        const now = Date.now();
+        const thirtyMinutes = 30 * 60 * 1000;
+        const isOld = (now - timestampMs) > thirtyMinutes;
+
+        if (isOld && !processService.isRunning) {
+          log.debug(`[LogWatcher] Hydration Guard: Rejecting stale location event (${timestamp}) as game is not running.`);
+          return;
+        }
       }
 
       if (this.state.currentLocation !== location) {
@@ -926,6 +945,7 @@ class LogWatcherService extends EventEmitter {
       this.emitToRenderer('log:vote-kick', event);
       if (!isBackfill) {
         this.emit('vote-kick', event);
+        serviceEventBus.emit('vote-kick', { target: event.target, initiator: event.initiator, timestamp: event.timestamp });
       }
     }
 
@@ -936,6 +956,7 @@ class LogWatcherService extends EventEmitter {
       this.emitToRenderer('log:video-play', event);
       if (!isBackfill) {
         this.emit('video-play', event);
+        serviceEventBus.emit('video-play', { url: event.url, requestedBy: event.requestedBy, timestamp: event.timestamp });
       }
     }
 

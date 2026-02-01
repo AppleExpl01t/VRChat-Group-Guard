@@ -8,18 +8,27 @@ const logger = log.scope('RelationshipService');
 export interface RelationshipEvent {
     id: string;
     timestamp: string;
-    type: 'add' | 'remove' | 'name_change' | 'avatar_change';
+    type: 'add' | 'remove' | 'name_change' | 'avatar_change' | 'rank_change' | 'bio_change';
     userId: string;
     displayName: string;
     previousName?: string; // For name changes
     avatarUrl?: string;
+    avatarId?: string;
     previousAvatarUrl?: string; // For avatar changes
+    previousAvatarId?: string; // For avatar changes
+    tags?: string[]; // For rank changes
+    previousTags?: string[]; // For rank changes
+    bio?: string; // For bio changes
+    previousBio?: string; // For bio changes
 }
 
 interface FriendSnapshot {
     userId: string;
     displayName: string;
     avatarUrl?: string;
+    avatarId?: string;
+    tags?: string[];
+    bio?: string;
 }
 
 /**
@@ -36,8 +45,11 @@ class RelationshipService {
     private snapshotPath: string | null = null;
     private lastSnapshot: Map<string, FriendSnapshot> = new Map();
     private pollInterval: NodeJS.Timeout | null = null;
+    private pendingRemovals: Map<string, number> = new Map(); // userId -> missCount
 
     private POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+    private MISS_THRESHOLD = 3; // Must be missing for 3 polls (~15 mins) before removal
+    private DROP_THRESHOLD = 0.8; // Ignore poll if >20% of friends disappear (API failure)
 
     public initialize(userDataDir: string) {
         this.dbPath = path.join(userDataDir, 'relationships.jsonl');
@@ -62,6 +74,7 @@ class RelationshipService {
         this.dbPath = null;
         this.snapshotPath = null;
         this.lastSnapshot.clear();
+        this.pendingRemovals.clear();
     }
 
     private loadSnapshot() {
@@ -129,8 +142,19 @@ class RelationshipService {
                 currentFriends.set(friend.id, {
                     userId: friend.id,
                     displayName: friend.displayName,
-                    avatarUrl: friend.currentAvatarThumbnailImageUrl
+                    avatarUrl: friend.currentAvatarThumbnailImageUrl,
+                    avatarId: friend.currentAvatarId as string,
+                    tags: friend.tags,
+                    bio: friend.statusDescription // statusDescription is effectively the bio in LimitedUser
                 });
+            }
+
+            // --- SANITY CHECK ---
+            // If the API returns a massive drop in friends, it's likely a partial failure/rate limit.
+            // We abort to avoid wiping the user's friend list snapshot.
+            if (this.lastSnapshot.size > 10 && currentFriends.size < this.lastSnapshot.size * this.DROP_THRESHOLD) {
+                logger.warn(`API returned suspicious drop in friends: ${this.lastSnapshot.size} -> ${currentFriends.size}. Aborting relationship diff.`);
+                return;
             }
 
             const now = new Date().toISOString();
@@ -144,7 +168,8 @@ class RelationshipService {
                         type: 'add',
                         userId: friend.userId,
                         displayName: friend.displayName,
-                        avatarUrl: friend.avatarUrl
+                        avatarUrl: friend.avatarUrl,
+                        avatarId: friend.avatarId
                     };
                     this.appendEvent(event);
                     logger.info(`New friend detected: ${friend.displayName}`);
@@ -166,20 +191,37 @@ class RelationshipService {
             // Check for REMOVED friends (in snapshot but not in current)
             for (const [userId, friend] of this.lastSnapshot) {
                 if (!currentFriends.has(userId)) {
-                    const event: RelationshipEvent = {
-                        id: `${now}-${Math.random().toString(36).substr(2, 5)}`,
-                        timestamp: now,
-                        type: 'remove',
-                        userId: friend.userId,
-                        displayName: friend.displayName,
-                        avatarUrl: friend.avatarUrl
-                    };
-                    this.appendEvent(event);
-                    logger.info(`Friend removed: ${friend.displayName}`);
+                    // Start or increment grace period counter
+                    const missCount = (this.pendingRemovals.get(userId) || 0) + 1;
+                    this.pendingRemovals.set(userId, missCount);
 
-                    // Emit to service bus
-                    const { serviceEventBus } = require('./ServiceEventBus');
-                    serviceEventBus.emit('friendship-relationship-changed', { event });
+                    if (missCount >= this.MISS_THRESHOLD) {
+                        const event: RelationshipEvent = {
+                            id: `${now}-${Math.random().toString(36).substr(2, 5)}`,
+                            timestamp: now,
+                            type: 'remove',
+                            userId: friend.userId,
+                            displayName: friend.displayName,
+                            avatarUrl: friend.avatarUrl,
+                            avatarId: friend.avatarId
+                        };
+                        this.appendEvent(event);
+                        logger.info(`Friend removal CONFIRMED after ${missCount} misses: ${friend.displayName}`);
+
+                        // Emit to service bus
+                        const { serviceEventBus } = require('./ServiceEventBus');
+                        serviceEventBus.emit('friendship-relationship-changed', { event });
+
+                        // Actually removal confirmed, so we stop tracking misses for them
+                        this.pendingRemovals.delete(userId);
+                    } else {
+                        logger.debug(`Friend missing from poll (${missCount}/${this.MISS_THRESHOLD}): ${friend.displayName}`);
+                    }
+                } else {
+                    // Friend is in current, so clear any pending removal
+                    if (this.pendingRemovals.has(userId)) {
+                        this.pendingRemovals.delete(userId);
+                    }
                 }
             }
 
@@ -194,10 +236,15 @@ class RelationshipService {
                         userId: current.userId,
                         displayName: current.displayName,
                         previousName: previous.displayName,
-                        avatarUrl: current.avatarUrl
+                        avatarUrl: current.avatarUrl,
+                        avatarId: current.avatarId
                     };
                     this.appendEvent(event);
                     logger.info(`Name change detected: ${previous.displayName} → ${current.displayName}`);
+
+                    // Emit to service bus
+                    const { serviceEventBus } = require('./ServiceEventBus');
+                    serviceEventBus.emit('friendship-relationship-changed', { event });
                 }
 
                 // Check for AVATAR CHANGES (same userId, different avatarUrl)
@@ -209,7 +256,9 @@ class RelationshipService {
                         userId: current.userId,
                         displayName: current.displayName,
                         avatarUrl: current.avatarUrl,
-                        previousAvatarUrl: previous.avatarUrl
+                        avatarId: current.avatarId,
+                        previousAvatarUrl: previous.avatarUrl,
+                        previousAvatarId: previous.avatarId
                     };
                     this.appendEvent(event);
                     logger.info(`Avatar change detected in background for: ${current.displayName}`);

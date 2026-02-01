@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Play, RotateCcw, Music, Bell, Monitor, Volume2 } from 'lucide-react';
 import { NeonButton } from '../../components/ui/NeonButton';
 import type { AppSettings } from '../../types/electron';
-const notificationSoundHelper = '/sounds/notification.mp3';
+const notificationSoundHelper = '/sounds/notification.mp3?v=' + Date.now();
 
 // Inner card style for settings sections
 const innerCardStyle: React.CSSProperties = {

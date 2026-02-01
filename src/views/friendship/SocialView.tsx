@@ -7,7 +7,7 @@ import { useUserBatchFetcher } from '../../hooks/useUserBatchFetcher';
 import { TrustRankBadge, AgeVerifiedBadge } from '../../components/ui/UserBadges';
 import type { RelationshipEvent } from '../../types/electron';
 
-type FilterType = 'all' | 'add' | 'remove' | 'name_change';
+type FilterType = 'all' | 'add' | 'remove' | 'name_change' | 'avatar_change' | 'rank_change' | 'bio_change';
 
 export const SocialView: React.FC = () => {
     const [events, setEvents] = useState<RelationshipEvent[]>([]);
@@ -105,27 +105,39 @@ export const SocialView: React.FC = () => {
         }
     }, [paginatedEvents, fetchUsers]);
 
-    const getTypeIcon = (type: 'add' | 'remove' | 'name_change') => {
+    const getTypeIcon = (type: string) => {
         switch (type) {
             case 'add': return '🟢';
             case 'remove': return '🔴';
             case 'name_change': return '🟣';
+            case 'avatar_change': return '👤';
+            case 'rank_change': return '🛡️';
+            case 'bio_change': return '📝';
+            default: return '❓';
         }
     };
 
-    const getTypeLabel = (type: 'add' | 'remove' | 'name_change') => {
+    const getTypeLabel = (type: string) => {
         switch (type) {
             case 'add': return 'Friend added';
             case 'remove': return 'Unfriended';
             case 'name_change': return 'Name changed';
+            case 'avatar_change': return 'Avatar updated';
+            case 'rank_change': return 'Rank updated';
+            case 'bio_change': return 'Bio updated';
+            default: return type;
         }
     };
 
-    const getTypeColor = (type: 'add' | 'remove' | 'name_change') => {
+    const getTypeColor = (type: string) => {
         switch (type) {
             case 'add': return '#22c55e';
             case 'remove': return '#ef4444';
             case 'name_change': return '#a855f7';
+            case 'avatar_change': return '#3b82f6';
+            case 'rank_change': return '#f59e0b';
+            case 'bio_change': return '#ec4899';
+            default: return 'var(--color-text-dim)';
         }
     };
 
@@ -171,7 +183,8 @@ export const SocialView: React.FC = () => {
                         { value: 'all', label: 'All' },
                         { value: 'add', label: '🟢 Added' },
                         { value: 'remove', label: '🔴 Removed' },
-                        { value: 'name_change', label: '🟣 Names' }
+                        { value: 'name_change', label: '🟣 Names' },
+                        { value: 'avatar_change', label: '👤 Avatars' }
                     ] as { value: FilterType; label: string }[]).map(f => (
                         <button
                             key={f.value}
@@ -340,8 +353,14 @@ export const SocialView: React.FC = () => {
                                                 </span>
                                             ) : event.type === 'add' ? (
                                                 <span style={{ color: '#22c55e' }}>Now friends</span>
-                                            ) : (
+                                            ) : event.type === 'remove' ? (
                                                 <span style={{ color: '#ef4444' }}>No longer friends</span>
+                                            ) : event.type === 'avatar_change' ? (
+                                                <span>New avatar detected</span>
+                                            ) : event.type === 'rank_change' ? (
+                                                <span>Rank changed to {event.tags?.includes('system_trust_legendary') ? 'Trusted' : 'Updated'}</span>
+                                            ) : (
+                                                <span>{event.details || 'Details updated'}</span>
                                             )}
                                         </td>
                                     </tr>

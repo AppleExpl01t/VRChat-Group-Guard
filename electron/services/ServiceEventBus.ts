@@ -16,7 +16,9 @@ export type ServiceEventType =
     | 'player-joined'
     | 'player-left'
     | 'location'
-    | 'friend-stats-updated';
+    | 'friend-stats-updated'
+    | 'video-play'
+    | 'vote-kick';
 
 export interface ServiceEventPayloads {
     'location': {
@@ -58,6 +60,8 @@ export interface ServiceEventPayloads {
         isBackfill?: boolean;
     };
     'friendship-relationship-changed': { event: any };
+    'video-play': { url: string, requestedBy: string, timestamp: string };
+    'vote-kick': { target: string, initiator: string, timestamp: string };
 }
 
 class ServiceEventBus extends EventEmitter {

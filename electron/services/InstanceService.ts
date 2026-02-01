@@ -410,6 +410,22 @@ export function setupInstanceHandlers() {
         };
     });
 
+    // GET INSTANCE DETAILS (Real-time occupancy)
+    ipcMain.handle('instance:get-details', async (_event, location: string) => {
+        try {
+            const [worldId, instanceId] = location.split(':');
+            const res = await import('./VRChatApiService').then(m => m.vrchatApiService.getInstance(worldId, instanceId));
+            return {
+                success: res.success,
+                instance: res.data,
+                error: res.error
+            };
+        } catch (error) {
+            logger.error(`Failed to get instance details for ${location}:`, error);
+            return { success: false, error: (error as Error).message };
+        }
+    });
+
     // Register Rally handlers from RallyService
     setupRallyHandlers();
 

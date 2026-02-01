@@ -347,12 +347,14 @@ export interface FriendLocation {
   currentAvatarThumbnailImageUrl?: string;
   currentAvatarId?: string;
   avatarName?: string;
+  userCount?: number;
+  capacity?: number;
 }
 
 export interface SocialFeedEntry {
   id: string;
-  type: 'online' | 'offline' | 'location' | 'status' | 'add' | 'remove' | 'notification' | 'avatar';
-  userId: string;
+  type: 'online' | 'offline' | 'location' | 'status' | 'add' | 'remove' | 'notification' | 'avatar' | 'video' | 'votekick' | 'gps' | 'join' | 'leave';
+  userId?: string;
   displayName: string;
   timestamp: string;
   details?: string;
@@ -374,11 +376,17 @@ export interface PlayerLogEntry {
 export interface RelationshipEvent {
   id: string;
   timestamp: string;
-  type: 'add' | 'remove' | 'name_change';
+  type: 'add' | 'remove' | 'name_change' | 'avatar_change' | 'rank_change' | 'bio_change';
   userId: string;
   displayName: string;
   previousName?: string;
   avatarUrl?: string;
+  previousAvatarUrl?: string;
+  tags?: string[];
+  previousTags?: string[];
+  bio?: string;
+  previousBio?: string;
+  details?: string;
 }
 
 export interface OscConfig {
@@ -563,6 +571,7 @@ export interface ElectronAPI {
     closeInstance: (worldId?: string, instanceId?: string) => Promise<{ success: boolean; error?: string }>;
     inviteSelf: (worldId: string, instanceId: string) => Promise<{ success: boolean; error?: string }>;
     getInstanceInfo: () => Promise<{ success: boolean; worldId?: string; instanceId?: string; name?: string; imageUrl?: string; error?: string }>;
+    getInstanceDetails: (location: string) => Promise<{ success: boolean; instance?: VRChatInstance; error?: string }>;
     onEntityUpdate: (callback: (entity: LiveEntity) => void) => () => void;
     onMassInviteProgress: (callback: (data: { sent: number; skipped: number; failed: number; total: number; current?: string; done?: boolean }) => void) => () => void;
 

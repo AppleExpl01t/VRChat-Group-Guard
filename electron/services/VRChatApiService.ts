@@ -894,7 +894,6 @@ export const vrchatApiService = {
         if (!bypassCache) {
             const cached = friendsCache.get(cacheKey);
             if (cached) {
-                // logger.debug(`Friends list (${cacheKey}) served from cache`);
                 return { success: true, data: cached.data };
             }
         }
@@ -927,7 +926,7 @@ export const vrchatApiService = {
                     if (chunk.length < n) break;
 
                     offset += n;
-                    if (offset > 1500) {
+                    if (offset > 5000) {
                         logger.warn(`Friend list fetch reached sanity limit of ${offset}. Truncating.`);
                         break;
                     }

@@ -7,8 +7,8 @@ const logger = log.scope('SocialFeedService');
 
 export interface SocialFeedEntry {
     id: string; // Unique ID (timestamp + random)
-    type: 'online' | 'offline' | 'location' | 'status' | 'add' | 'remove' | 'notification' | 'avatar';
-    userId: string;
+    type: 'online' | 'offline' | 'location' | 'status' | 'add' | 'remove' | 'notification' | 'avatar' | 'video' | 'votekick' | 'gps' | 'join' | 'leave';
+    userId?: string; // Optional for system/log events
     displayName: string;
     timestamp: string;
     details?: string; // Location name, or status message
@@ -41,6 +41,31 @@ class SocialFeedService {
         serviceEventBus.on('friendship-relationship-changed', ({ event }) => {
             if (!this.isInitialized) return;
             this.handleRelationshipChange(event);
+        });
+
+        serviceEventBus.on('location', (event) => {
+            if (!this.isInitialized) return;
+            this.handleSelfLocation(event);
+        });
+
+        serviceEventBus.on('video-play', (event) => {
+            if (!this.isInitialized) return;
+            this.handleVideoPlay(event);
+        });
+
+        serviceEventBus.on('vote-kick', (event) => {
+            if (!this.isInitialized) return;
+            this.handleVoteKick(event);
+        });
+
+        serviceEventBus.on('player-joined', (event) => {
+            if (!this.isInitialized) return;
+            this.handlePlayerJoin(event);
+        });
+
+        serviceEventBus.on('player-left', (event) => {
+            if (!this.isInitialized) return;
+            this.handlePlayerLeave(event);
         });
     }
 
@@ -165,11 +190,47 @@ class SocialFeedService {
         const feedTypeMap: Record<string, string> = {
             'add': 'add',
             'remove': 'remove',
-            'avatar_change': 'avatar'
+            'name_change': 'status', // Use status icon for name changes
+            'avatar_change': 'avatar',
+            'rank_change': 'status', // Use status for rank too
+            'bio_change': 'bio'
         };
 
         const feedType = feedTypeMap[type];
         if (!feedType) return;
+
+        // --- ENRICHMENT & DEDUPLICATION ---
+        let finalAvatarId = event.avatarId;
+        let finalAvatarName = event.avatarName;
+
+        if (type === 'avatar_change') {
+            // 1. Try to recover missing ID from cache
+            if (!finalAvatarId) {
+                finalAvatarId = this.lastAvatarId.get(userId);
+
+                // 2. Try to recover from LocationService
+                if (!finalAvatarId) {
+                    try {
+                        // eslint-disable-next-line @typescript-eslint/no-require-imports
+                        const { locationService } = require('./LocationService');
+                        const friend = locationService.getFriend(userId);
+                        if (friend) {
+                            finalAvatarId = friend.currentAvatarId;
+                            finalAvatarName = friend.avatarName;
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+            }
+
+            // 3. Deduplicate against real-time events
+            // If we already logged this specific avatar ID recently, skip the background log
+            if (finalAvatarId && this.lastAvatarId.get(userId) === finalAvatarId) {
+                return;
+            }
+            if (finalAvatarId) {
+                this.lastAvatarId.set(userId, finalAvatarId);
+            }
+        }
 
         const entry: SocialFeedEntry = {
             id: `${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
@@ -179,10 +240,96 @@ class SocialFeedService {
             timestamp,
             details: type === 'add' ? 'Added as friend' :
                 type === 'remove' ? 'Removed from friends' :
-                    'Updated their avatar (Background Check)',
-            data: event
+                    type === 'name_change' ? `Changed name to ${displayName} (was ${event.previousName})` :
+                        type === 'rank_change' ? `Rank updated: ${this.formatRank(event.tags) || 'User'}` :
+                            type === 'bio_change' ? `Updated bio: ${event.bio}` :
+                                (finalAvatarName ? `Switched to ${finalAvatarName} (Background Check)` : 'Updated their avatar (Background Check)'),
+            data: {
+                ...event,
+                currentAvatarId: finalAvatarId,
+                avatarName: finalAvatarName
+            }
         };
         await this.appendEntry(entry);
+    }
+
+    private async handleSelfLocation(event: { location: string; worldName?: string; timestamp?: string }) {
+        const timestamp = event.timestamp || new Date().toISOString();
+        const loc = event.location.toLowerCase();
+
+        // Filter out noisy locations (private, offline, travelling)
+        if (loc === 'private' || loc === 'offline' || loc === 'travelling' || loc === 'traveling') return;
+
+        const entry: SocialFeedEntry = {
+            id: `${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'gps',
+            displayName: 'Self',
+            timestamp,
+            details: `Entered: ${event.worldName || event.location}`,
+            data: { location: event.location, worldName: event.worldName }
+        };
+        await this.appendEntry(entry);
+    }
+
+    private async handleVideoPlay(event: { url: string; requestedBy: string; timestamp: string }) {
+        const entry: SocialFeedEntry = {
+            id: `${event.timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'video',
+            displayName: event.requestedBy || 'World',
+            timestamp: event.timestamp,
+            details: `Played: ${event.url}`,
+            data: { url: event.url, requestedBy: event.requestedBy }
+        };
+        await this.appendEntry(entry);
+    }
+
+    private async handleVoteKick(event: { target: string; initiator: string; timestamp: string }) {
+        const entry: SocialFeedEntry = {
+            id: `${event.timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'votekick',
+            displayName: event.initiator,
+            timestamp: event.timestamp,
+            details: `Initiated vote kick against: ${event.target}`,
+            data: { target: event.target, initiator: event.initiator }
+        };
+        await this.appendEntry(entry);
+    }
+
+    private async handlePlayerJoin(event: { displayName: string; userId?: string; timestamp: string; isBackfill?: boolean }) {
+        if (event.isBackfill) return;
+
+        const entry: SocialFeedEntry = {
+            id: `${event.timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'join',
+            userId: event.userId,
+            displayName: event.displayName,
+            timestamp: event.timestamp,
+            details: 'Joined your instance'
+        };
+        await this.appendEntry(entry);
+    }
+
+    private async handlePlayerLeave(event: { displayName: string; userId?: string; timestamp: string; isBackfill?: boolean }) {
+        if (event.isBackfill) return;
+
+        const entry: SocialFeedEntry = {
+            id: `${event.timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'leave',
+            userId: event.userId,
+            displayName: event.displayName,
+            timestamp: event.timestamp,
+            details: 'Left your instance'
+        };
+        await this.appendEntry(entry);
+    }
+
+    private formatRank(tags?: string[]): string | null {
+        if (!tags) return null;
+        if (tags.includes('system_trust_legendary')) return 'Trusted';
+        if (tags.includes('system_trust_veteran')) return 'Known';
+        if (tags.includes('system_trust_trusted')) return 'User';
+        if (tags.includes('system_trust_basic')) return 'New User';
+        return 'Visitor';
     }
 
     private async appendEntry(entry: Omit<SocialFeedEntry, 'id' | 'timestamp'> & { id?: string; timestamp?: string }) {

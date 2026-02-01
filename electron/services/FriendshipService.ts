@@ -56,10 +56,11 @@ class FriendshipService {
                     displayName: event.displayName
                 });
             } else if (event.type === 'avatar_change') {
-                logger.info(`Friend avatar change detected: ${event.displayName}. Updating cache.`);
+                logger.info(`Friend avatar change detected: ${event.displayName} (${event.avatarId}). Updating cache.`);
                 locationService.updateFriend({
                     userId: event.userId,
-                    currentAvatarThumbnailImageUrl: event.avatarUrl
+                    currentAvatarThumbnailImageUrl: event.avatarUrl,
+                    currentAvatarId: event.avatarId
                 });
             }
         });

@@ -25,6 +25,8 @@ interface InstanceGroup {
     friends: FriendLocation[];
     isPrivate: boolean;
     instanceType: string;
+    userCount?: number;
+    capacity?: number;
 }
 
 // Parse location string to extract info
@@ -68,6 +70,7 @@ export const LocationsView: React.FC = () => {
     };
     const [worldCache, setWorldCache] = useState<Map<string, WorldInfo>>(new Map());
     const [groupCache, setGroupCache] = useState<Map<string, GroupInfo>>(new Map());
+    const [instanceCache, setInstanceCache] = useState<Map<string, { userCount: number; capacity: number }>>(new Map());
 
     const fetchFriends = useCallback(async (forceApiRefresh = false) => {
         if (forceApiRefresh) {
@@ -78,12 +81,10 @@ export const LocationsView: React.FC = () => {
 
         try {
             if (forceApiRefresh) {
-                const result = await window.electron.friendship.refreshFriends();
-                console.log('[LocationsView] API refresh result:', result);
+                await window.electron.friendship.refreshFriends();
             }
 
             const data = await window.electron.friendship.getFriendLocations();
-            console.log('[LocationsView] Got', data.length, 'friends');
             setFriends(data);
             setLastRefresh(new Date());
 
@@ -94,55 +95,94 @@ export const LocationsView: React.FC = () => {
             data.forEach(f => {
                 if (f.location && !f.location.startsWith('private') && f.location !== 'offline') {
                     const parsed = parseLocation(f.location);
-
-                    if (parsed.worldId.startsWith('wrld_') && !worldCache.has(parsed.worldId)) {
-                        worldIds.add(parsed.worldId);
-                    }
-                    if (parsed.groupId && !groupCache.has(parsed.groupId)) {
-                        groupIds.add(parsed.groupId);
-                    }
+                    worldIds.add(parsed.worldId);
+                    if (parsed.groupId) groupIds.add(parsed.groupId);
                 }
             });
 
-            // Fetch world details
-            for (const worldId of worldIds) {
+            // Fetch world details in parallel
+            const worldPromises = Array.from(worldIds).map(async (worldId) => {
                 try {
                     const worldResult = await window.electron.getWorld(worldId);
                     if (worldResult.success && worldResult.world) {
-                        const world = worldResult.world;
-                        setWorldCache(prev => new Map(prev).set(worldId, {
-                            id: worldId,
-                            name: world.name || 'Unknown World',
-                            thumbnailUrl: world.imageUrl
-                        }));
+                        return { id: worldId, name: worldResult.world.name || 'Unknown World', thumbnailUrl: worldResult.world.imageUrl };
                     }
                 } catch (e) {
                     console.warn('Failed to fetch world info:', worldId, e);
                 }
-            }
+                return null;
+            });
 
-            // Fetch group details
-            for (const groupId of groupIds) {
+            // Fetch group details in parallel
+            const groupPromises = Array.from(groupIds).map(async (groupId) => {
                 try {
                     const groupResult = await window.electron.getGroupPublicDetails(groupId);
                     if (groupResult.success && groupResult.group) {
-                        const group = groupResult.group;
-                        setGroupCache(prev => new Map(prev).set(groupId, {
-                            id: groupId,
-                            name: group.name || 'Unknown Group'
-                        }));
+                        return { id: groupId, name: groupResult.group.name || 'Unknown Group' };
                     }
                 } catch (e) {
                     console.warn('Failed to fetch group info:', groupId, e);
                 }
-            }
+                return null;
+            });
+
+            const [worlds, groups] = await Promise.all([
+                Promise.all(worldPromises),
+                Promise.all(groupPromises)
+            ]);
+
+            // Batch update caches
+            setWorldCache(prev => {
+                const next = new Map(prev);
+                worlds.forEach(w => w && next.set(w.id, w));
+                return next;
+            });
+
+            setGroupCache(prev => {
+                const next = new Map(prev);
+                groups.forEach(g => g && next.set(g.id, g));
+                return next;
+            });
+
+            // Fetch instance details for active worlds
+            const activeLocations = Array.from(new Set(data
+                .map(f => f.location)
+                .filter(loc => loc && !loc.startsWith('private') && loc !== 'offline' && loc !== '')));
+
+            // Fetch instance details in parallel batches to avoid IPC overload
+            const instanceResults = await Promise.all(activeLocations.map(async (loc) => {
+                try {
+                    const res = await window.electron.instance.getInstanceDetails(loc);
+                    if (res.success && res.instance) {
+                        const { userCount, n_users, capacity, world } = res.instance;
+                        return {
+                            loc,
+                            data: {
+                                userCount: userCount ?? n_users ?? 0,
+                                capacity: capacity ?? world?.capacity ?? 0
+                            }
+                        };
+                    }
+                } catch (e) {
+                    console.warn('[LocationsView] Failed to fetch instance details:', loc, e);
+                }
+                return null;
+            }));
+
+            // Batch update instance cache
+            setInstanceCache(prev => {
+                const next = new Map(prev);
+                instanceResults.forEach(r => r && next.set(r.loc, r.data));
+                return next;
+            });
+
         } catch (error) {
             console.error('Failed to fetch locations:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [worldCache, groupCache]);
+    }, []); // Empty dependencies - we handle cache locally within the function or via functional updates
 
     useEffect(() => {
         // Initial fetch - force API refresh to purge offline players on load
@@ -221,7 +261,9 @@ export const LocationsView: React.FC = () => {
                     groupName,
                     friends: [],
                     isPrivate,
-                    instanceType
+                    instanceType,
+                    userCount: instanceCache.get(groupKey)?.userCount,
+                    capacity: instanceCache.get(groupKey)?.capacity
                 });
             }
 
@@ -252,7 +294,7 @@ export const LocationsView: React.FC = () => {
                 // Tertiary Sort: Name
                 return a.worldName.localeCompare(b.worldName);
             });
-    }, [friends, worldCache, groupCache]);
+    }, [friends, worldCache, groupCache, instanceCache]);
 
     const totalOnline = friends.filter(f => f.status?.toLowerCase() !== 'offline').length;
     const publicInstanceCount = instanceGroups.filter(g => !g.isPrivate).length;
@@ -414,6 +456,28 @@ export const LocationsView: React.FC = () => {
                                                             <span style={{ fontSize: '0.65rem', color: 'var(--color-text-dim)' }}>
                                                                 {group.instanceType}
                                                             </span>
+                                                            {group.userCount !== undefined && (
+                                                                <span style={{
+                                                                    fontSize: '0.7rem',
+                                                                    background: 'rgba(0, 0, 0, 0.4)',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '12px',
+                                                                    color: '#fff',
+                                                                    fontWeight: 700,
+                                                                    marginLeft: '0.5rem',
+                                                                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                                                                }}>
+                                                                    <span style={{
+                                                                        display: 'inline-block',
+                                                                        width: '6px',
+                                                                        height: '6px',
+                                                                        borderRadius: '50%',
+                                                                        background: '#22c55e',
+                                                                        marginRight: '6px'
+                                                                    }}></span>
+                                                                    {group.userCount}{group.capacity ? ` / ${group.capacity}` : ''}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>

@@ -7,7 +7,7 @@ import { useUserBatchFetcher } from '../../hooks/useUserBatchFetcher';
 import { TrustRankBadge, AgeVerifiedBadge } from '../../components/ui/UserBadges';
 import type { SocialFeedEntry } from '../../types/electron';
 
-type FilterType = 'all' | 'online' | 'offline' | 'location' | 'status' | 'avatar' | 'bio';
+type FilterType = 'all' | 'online' | 'offline' | 'location' | 'status' | 'avatar' | 'bio' | 'video' | 'join';
 
 interface WorldInfo {
     name: string;
@@ -130,7 +130,7 @@ export const FeedView: React.FC = () => {
     useEffect(() => {
         const userIds = paginatedFeed
             .map(e => e.userId)
-            .filter(id => id); // Filter out undefined/empty IDs
+            .filter((id): id is string => !!id);
 
         if (userIds.length > 0) {
             fetchUsers(userIds);
@@ -139,12 +139,19 @@ export const FeedView: React.FC = () => {
 
     const getTypeLabel = (type: string) => {
         switch (type) {
-            case 'online': return 'Online';
-            case 'offline': return 'Offline';
-            case 'location': return 'GPS';
-            case 'status': return 'Status';
-            case 'avatar': return 'Avatar';
-            case 'bio': return 'Bio';
+            case 'online': return '🟢 Online';
+            case 'offline': return '⚫ Offline';
+            case 'location': return '📍 GPS';
+            case 'status': return '💬 Status';
+            case 'avatar': return '👤 Avatar';
+            case 'bio': return '📝 Bio';
+            case 'video': return '🎬 Video';
+            case 'votekick': return '🚫 Kick';
+            case 'gps': return '✈️ Travel';
+            case 'join': return '🚪 Join';
+            case 'leave': return '🚪 Leave';
+            case 'add': return '🤝 Added';
+            case 'remove': return '🔴 Removed';
             default: return type;
         }
     };
@@ -157,6 +164,13 @@ export const FeedView: React.FC = () => {
             case 'status': return '#f59e0b';
             case 'avatar': return '#a855f7';
             case 'bio': return '#06b6d4';
+            case 'video': return '#ec4899'; // Pink
+            case 'votekick': return '#f43f5e'; // Rose
+            case 'gps': return '#8b5cf6'; // Violet
+            case 'join': return '#10b981'; // Emerald
+            case 'leave': return '#f87171'; // Light Red
+            case 'add': return '#22c55e'; // Green
+            case 'remove': return '#ef4444'; // Red
             default: return 'var(--color-text-dim)';
         }
     };
@@ -237,7 +251,9 @@ export const FeedView: React.FC = () => {
                         { value: 'offline', label: '⚫ Offline' },
                         { value: 'status', label: '💬 Status' },
                         { value: 'avatar', label: '👤 Avatar' },
-                        { value: 'location', label: '📍 GPS' }
+                        { value: 'location', label: '📍 GPS' },
+                        { value: 'video', label: '🎬 Video' },
+                        { value: 'join', label: '🚪 Instance' }
                     ] as { value: FilterType; label: string }[]).map(f => (
                         <button
                             key={f.value}
@@ -404,7 +420,7 @@ export const FeedView: React.FC = () => {
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis'
                                             }} title={details}>
-                                                {entry.type === 'location' && worldInfo.worldId ? (
+                                                {(entry.type === 'location' || entry.type === 'gps') && worldInfo.worldId ? (
                                                     <span
                                                         style={{
                                                             ...clickableStyle,
@@ -429,6 +445,42 @@ export const FeedView: React.FC = () => {
                                                             color: 'var(--color-text-dim)'
                                                         }}
                                                         onClick={() => openAvatarProfile((entry.data as any).currentAvatarId, (entry.data as any).avatarName)}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.color = 'var(--color-primary)';
+                                                            e.currentTarget.style.textDecorationColor = 'var(--color-primary)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.color = 'var(--color-text-dim)';
+                                                            e.currentTarget.style.textDecorationColor = 'transparent';
+                                                        }}
+                                                    >
+                                                        {details}
+                                                    </span>
+                                                ) : entry.type === 'video' && (entry.data as any)?.url ? (
+                                                    <span
+                                                        style={{
+                                                            ...clickableStyle,
+                                                            color: 'var(--color-text-dim)'
+                                                        }}
+                                                        onClick={() => (window as any).electron.openExternal((entry.data as any).url)}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.color = 'var(--color-primary)';
+                                                            e.currentTarget.style.textDecorationColor = 'var(--color-primary)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.color = 'var(--color-text-dim)';
+                                                            e.currentTarget.style.textDecorationColor = 'transparent';
+                                                        }}
+                                                    >
+                                                        {details}
+                                                    </span>
+                                                ) : entry.type === 'gps' && (entry.data as any)?.location ? (
+                                                    <span
+                                                        style={{
+                                                            ...clickableStyle,
+                                                            color: 'var(--color-text-dim)'
+                                                        }}
+                                                        onClick={() => openWorldProfile((entry.data as any).location.split(':')[0], (entry.data as any).worldName)}
                                                         onMouseEnter={(e) => {
                                                             e.currentTarget.style.color = 'var(--color-primary)';
                                                             e.currentTarget.style.textDecorationColor = 'var(--color-primary)';

@@ -1,7 +1,7 @@
 import React, { useEffect, memo, useState, useMemo, useCallback } from 'react';
 import { useGroupStore } from '../../stores/groupStore';
 import { usePoller } from '../../hooks/usePoller';
-import { useInstanceMonitorStore } from '../../stores/instanceMonitorStore';
+import { useInstanceMonitorStore, type LiveEntity } from '../../stores/instanceMonitorStore';
 import { useGroupPreferencesStore } from '../../stores/groupPreferencesStore';
 import { NeonButton } from '../../components/ui/NeonButton';
 
@@ -312,7 +312,7 @@ export const GroupSelectorView: React.FC = memo(() => {
     isLoading,
     error
   } = useGroupStore();
-  const { currentWorldId, currentWorldName, instanceImageUrl, currentGroupId } = useInstanceMonitorStore();
+  const { currentWorldId, currentWorldName, instanceImageUrl, currentGroupId, updateLiveScan } = useInstanceMonitorStore();
 
 
 
@@ -388,6 +388,17 @@ export const GroupSelectorView: React.FC = memo(() => {
 
   const roamingActive = currentWorldId && (!currentGroupId || !myGroups.some(g => g.id === currentGroupId));
 
+  // Function to refresh roaming instance data (Matches Live Ops logic)
+  const performRoamingScan = useCallback(async () => {
+    if (!roamingActive) return;
+    try {
+      const results = await window.electron.instance.scanSector();
+      updateLiveScan(results as LiveEntity[]);
+    } catch (err) {
+      console.error('[RoamingScan] Failed to refresh user count:', err);
+    }
+  }, [roamingActive, updateLiveScan]);
+
   // Responsive Check
   useEffect(() => {
     const handleResize = () => setIsLarge(window.innerWidth > 1100);
@@ -397,11 +408,17 @@ export const GroupSelectorView: React.FC = memo(() => {
 
   useEffect(() => {
     fetchMyGroups();
-  }, [fetchMyGroups]);
+    if (roamingActive) {
+      performRoamingScan();
+    }
+  }, [fetchMyGroups, roamingActive, performRoamingScan]);
 
   // Polling for live instance counts (every 20 seconds) while on this view
   usePoller(() => {
     fetchAllGroupsInstances();
+    if (roamingActive) {
+      performRoamingScan();
+    }
   }, 20000);
 
   // Loading/Error states (simplified for layout match, or keep)

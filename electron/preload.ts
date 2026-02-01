@@ -222,6 +222,7 @@ contextBridge.exposeInMainWorld('electron', {
             return () => ipcRenderer.removeListener('mass-invite:progress', handler);
         },
         getHealthStats: () => ipcRenderer.invoke('instance:get-health-stats'),
+        getInstanceDetails: (location: string) => ipcRenderer.invoke('instance:get-details', location),
     },
 
     // Updater API
