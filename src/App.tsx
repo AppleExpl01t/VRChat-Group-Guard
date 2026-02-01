@@ -19,6 +19,9 @@ import { useAppViewStore } from './stores/appViewStore';
 import { PageTransition } from './components/layout/PageTransition';
 import { ViewLoader } from './components/ui/ViewLoader';
 import { AutoLoginLoadingScreen } from './features/auth/AutoLoginLoadingScreen';
+import { TermsModal } from './features/compliance/TermsModal';
+import { CURRENT_TOS_VERSION } from './features/compliance/TosText';
+import { useUserTracking } from './hooks/useUserTracking';
 
 // Lazy load heavy views for better performance
 const DashboardView = lazy(() => import('./features/dashboard/DashboardView').then(m => ({ default: m.DashboardView })));
@@ -40,6 +43,7 @@ function App() {
 
   const [isCheckingAutoLogin, setIsCheckingAutoLogin] = useState(true);
   const [isStorageConfigured, setIsStorageConfigured] = useState<boolean | null>(null);
+  const [hasAcceptedTos, setHasAcceptedTos] = useState<boolean | null>(null);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false); // Track if VRC is running basically
 
@@ -51,6 +55,9 @@ function App() {
 
   // Initialize AutoMod Notifications
   useAutoModNotifications();
+
+  // Initialize User Analytics Tracking
+  useUserTracking();
 
   // Update state management
   const {
@@ -209,9 +216,47 @@ function App() {
     checkStorage();
   }, []);
 
-  // Attempt auto-login only after storage is confirmed
+  // Check ToS Acceptance
   useEffect(() => {
-    if (isStorageConfigured === false || isStorageConfigured === null) {
+    if (isStorageConfigured !== true) return; // Wait for storage setup
+
+    const checkTos = async () => {
+      try {
+        const settings = await window.electron.settings.get();
+        if (settings.tosAcceptedVersion === CURRENT_TOS_VERSION) {
+          setHasAcceptedTos(true);
+        } else {
+          setHasAcceptedTos(false);
+        }
+      } catch (e) {
+        console.error("Failed to check ToS status", e);
+        setHasAcceptedTos(false); // Default to showing if check fails
+      }
+    };
+    checkTos();
+  }, [isStorageConfigured]);
+
+  // DEV: F9 to reset ToS for testing
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (e.key === 'F9') {
+        e.preventDefault();
+        try {
+          await window.electron.settings.update({ tosAcceptedVersion: '' });
+          setHasAcceptedTos(false);
+          console.log('[DEV] ToS flag reset - modal will show');
+        } catch (err) {
+          console.error('Failed to reset ToS flag:', err);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Attempt auto-login only after storage AND ToS are confirmed
+  useEffect(() => {
+    if (isStorageConfigured === false || isStorageConfigured === null || hasAcceptedTos !== true) {
       return;
     }
 
@@ -229,7 +274,7 @@ function App() {
     };
 
     attemptAutoLogin();
-  }, [autoLogin, isStorageConfigured]);
+  }, [autoLogin, isStorageConfigured, hasAcceptedTos]);
 
   // 1. Auto-switch to Live View when entering Roaming Mode
   // INTENTIONAL: We only listen to isRoamingMode changes to prevent hijacking navigation
@@ -303,6 +348,13 @@ function App() {
   } else if (isStorageConfigured === false) {
     currentScreen = <SetupView onComplete={() => setIsStorageConfigured(true)} />;
     screenKey = 'setup';
+  } else if (hasAcceptedTos === false) {
+    currentScreen = <TermsModal onAccept={() => setHasAcceptedTos(true)} />;
+    screenKey = 'terms-modal';
+  } else if (hasAcceptedTos === null) {
+    // Loading ToS check...
+    currentScreen = <div className="h-screen w-screen bg-slate-950 flex items-center justify-center"><ViewLoader /></div>;
+    screenKey = 'loading-tos';
   } else if ((isCheckingAutoLogin && status === 'logging-in')) {
     currentScreen = <AutoLoginLoadingScreen />;
     screenKey = 'loading-autologin';

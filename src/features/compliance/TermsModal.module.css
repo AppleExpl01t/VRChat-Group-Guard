@@ -1,0 +1,432 @@
+/* TermsModal.module.css - Styling for the Terms of Service modal */
+
+/* Main container - fills the modal body */
+.container {
+  display: flex;
+  flex-direction: column;
+  margin: -1.5rem; /* Offset modal body padding */
+  min-height: 0; /* Allow flex children to shrink */
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.headerIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%);
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+  flex-shrink: 0;
+}
+
+.headerText {
+  flex: 1;
+  min-width: 0;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: clamp(1rem, 3vw, 1.25rem);
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.requiredBadge {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.45rem;
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 100px;
+  white-space: nowrap;
+}
+
+.headerMeta {
+  margin: 0.15rem 0 0 0;
+  font-size: 0.7rem;
+  color: rgba(148, 163, 184, 0.8);
+}
+
+/* Alert/Highlight Boxes */
+.highlight {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  margin: 0.625rem 1rem 0 1rem;
+  flex-shrink: 0;
+}
+
+.highlight.info {
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  color: #67e8f9;
+}
+
+.highlight.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fcd34d;
+}
+
+.highlight.danger {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.highlightIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Source Link */
+.sourceLink {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.625rem;
+  margin: 0.4rem 1rem 0 1rem;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 6px;
+  color: #22d3ee;
+  font-size: 0.7rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sourceLink:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+.sourceLink span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sourceLink strong {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+/* Scroll Area - Use clamp for responsive height */
+.scrollArea {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.625rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* Responsive height: min 100px, preferred 35vh, max 400px */
+  height: clamp(100px, 35vh, 400px);
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.scrollArea::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Section Cards */
+.section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.section.warning {
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.section.danger {
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.625rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sectionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: rgba(16, 185, 129, 0.12);
+  border-radius: 4px;
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+.section.warning .sectionIcon {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+
+.section.danger .sectionIcon {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.sectionContent {
+  padding: 0.5rem 0.625rem;
+  display: block;
+}
+
+/* Content Elements */
+.paragraph {
+  margin: 0 0 0.375rem 0;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: #f1f5f9;
+}
+
+.paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.bold {
+  color: #fff;
+  font-weight: 600;
+}
+
+.list {
+  margin: 0.25rem 0 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ordered {
+  counter-reset: list-counter;
+}
+
+.listItem {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #f1f5f9;
+}
+
+.listItem::before {
+  content: '';
+  flex-shrink: 0;
+  width: 4px;
+  height: 4px;
+  margin-top: 5px;
+  background: #34d399;
+  border-radius: 50%;
+}
+
+.ordered .listItem::before {
+  display: none;
+}
+
+.listNumber {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+.section.warning .listNumber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.section.warning .listItem::before {
+  background: #fbbf24;
+}
+
+.subsection {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.subsection:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.subsectionTitle {
+  margin: 0 0 0.3rem 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Nested highlight in section content */
+.sectionContent .highlight {
+  margin: 0.2rem 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.7rem;
+}
+
+/* Final Notice */
+.finalNotice {
+  margin-top: 0.25rem;
+  padding: 0.625rem;
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 182, 212, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 6px;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.declineButton {
+  padding: 0.4rem 0.875rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: rgba(148, 163, 184, 0.8);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.declineButton:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Deny Dialog */
+.denyDialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.25rem 0;
+}
+
+.denyIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 50%;
+  color: #f87171;
+  margin-bottom: 0.875rem;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+}
+
+.denyMessage {
+  margin: 0 0 1rem 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.dangerText {
+  color: #f87171;
+}
+
+.denyActions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.exitButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #f87171;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exitButton:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+}

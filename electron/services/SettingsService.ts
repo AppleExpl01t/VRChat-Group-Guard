@@ -25,6 +25,7 @@ export interface AppSettings {
             taskbarFlash: boolean;
         };
     };
+    tosAcceptedVersion?: string;
 }
 
 const defaultSettings: AppSettings = {
@@ -45,7 +46,8 @@ const defaultSettings: AppSettings = {
             sound: true,
             taskbarFlash: true
         }
-    }
+    },
+    tosAcceptedVersion: undefined
 };
 
 class SettingsService {

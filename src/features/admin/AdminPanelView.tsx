@@ -46,6 +46,21 @@ interface Invite {
   expires_at: string;
 }
 
+interface HWIDRecord { hwid: string; last_seen: string; }
+interface IPRecord { ip_address: string; last_seen: string; }
+interface AliasRecord { username: string; first_seen: string; }
+
+interface TrackedUser {
+  vrc_userid: string;
+  current_username?: string;
+  tos_version?: string;
+  last_seen: string;
+  first_seen: string;
+  hwids?: HWIDRecord[];
+  ips?: IPRecord[];
+  aliases?: AliasRecord[];
+}
+
 
 // Inline Confirm Button Component
 const ConfirmButton: React.FC<{
@@ -118,11 +133,18 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
   const [loading, setLoading] = useState(false);
   const [showUnauthorizedModal, setShowUnauthorizedModal] = useState(false);
   const [showManageAdmins, setShowManageAdmins] = useState(false);
+  const [showUserAnalytics, setShowUserAnalytics] = useState(false); // New state
   const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
   const [env] = useState<BackendEnv>(getBackendEnv());
   const [hwid, setHwid] = useState<string>('browser-dev-mode');
   const [users, setUsers] = useState<AdminUser[]>([]); // List of admins for management
   const [invites, setInvites] = useState<Invite[]>([]); // List of pending invites
+  
+  // Analytics State
+  const [analyticsStats, setAnalyticsStats] = useState({ online: 0, total: 0, daily: 0 });
+  const [trackedUsers, setTrackedUsers] = useState<TrackedUser[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [selectedTrackedUser, setSelectedTrackedUser] = useState<TrackedUser | null>(null);
   
   // Local status for Manage Admins modal
   const [manageStatus, setManageStatus] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
@@ -186,26 +208,49 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
     }
   }, [showManageAdmins, adminUser, adminSessionToken, getHeaders]);
 
-  // Fetch invites when Manage Admins modal opens
+
+
+  // Fetch Analytics Stats on Dashboard Load (Polled)
   React.useEffect(() => {
-    if (showManageAdmins && adminUser?.role === 'owner' && adminSessionToken) {
-      fetch(`${BACKEND_URL}/admin/invites`, {
-        headers: getHeaders(adminSessionToken)
-      })
-      .then(async res => {
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          const data = await res.json();
-          if (data.success) {
-            setInvites(data.data);
-          }
-        } else {
-          console.warn("[AdminPanel] Received non-JSON response from /invites:", await res.text());
-        }
+    if (adminSessionToken && !showManageAdmins && !showUserAnalytics) {
+       const fetchStats = () => {
+         fetch(`${BACKEND_URL}/track/stats`, { headers: getHeaders(adminSessionToken) })
+           .then(res => res.json())
+           .then(data => {
+             if (data.success) setAnalyticsStats(data.data);
+           })
+           .catch(console.error);
+       };
+       fetchStats();
+       const interval = setInterval(fetchStats, 10000); // Poll every 10s
+       return () => clearInterval(interval);
+    }
+  }, [adminSessionToken, getHeaders, showManageAdmins, showUserAnalytics]);
+
+  // Fetch Tracked Users when Analytics Panel opens
+  React.useEffect(() => {
+    if (showUserAnalytics && adminSessionToken) {
+       const searchTerm = userSearchQuery || '';
+       fetch(`${BACKEND_URL}/track/users?q=${encodeURIComponent(searchTerm)}`, { 
+         headers: getHeaders(adminSessionToken) 
+       })
+         .then(res => res.json())
+         .then(data => {
+           if (data.success) setTrackedUsers(data.data);
+         })
+         .catch(console.error);
+    }
+  }, [showUserAnalytics, userSearchQuery, adminSessionToken, getHeaders]);
+
+  // Fetch User Details
+  const handleViewUserDetails = (userId: string) => {
+    fetch(`${BACKEND_URL}/track/users/${userId}`, { headers: getHeaders(adminSessionToken) })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setSelectedTrackedUser(data.data);
       })
       .catch(console.error);
-    }
-  }, [showManageAdmins, adminUser, adminSessionToken, getHeaders]);
+  };
 
   const handleResetHwid = async (userId: number, username: string) => {
     // Confirm handled by button state now
@@ -402,23 +447,12 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
 
   if (!isOpen) return null;
 
+
+
   // Unauthorized Modal
   if (showUnauthorizedModal) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          background: 'rgba(0, 0, 0, 0.9)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <GlassPanel style={{ padding: '2rem', maxWidth: '400px', textAlign: 'center' }}>
           <AlertTriangle size={48} style={{ color: '#ef4444', marginBottom: '1rem' }} />
           <h2 style={{ margin: 0, color: 'var(--color-text)' }}>Unauthorized</h2>
@@ -429,8 +463,127 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
             OK
           </NeonButton>
         </GlassPanel>
-      </motion.div>
+      </div>
     );
+  }
+
+  // Analytics Panel (Full Screen Overlay for now)
+  if (showUserAnalytics) {
+     return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#020617' }}>
+         {/* Simple Header */}
+         <div style={{ padding: '1rem', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <Shield className="text-emerald-500" />
+              <h2 className="text-white font-bold text-xl">User Analytics Database</h2>
+              <span className="text-slate-500 text-sm">{trackedUsers.length} results</span>
+            </div>
+            <button 
+              onClick={() => { setShowUserAnalytics(false); setSelectedTrackedUser(null); }}
+              className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+            >
+              <X />
+            </button>
+         </div>
+
+         <div style={{ display: 'flex', height: 'calc(100vh - 65px)' }}>
+            {/* Left: Search & List */}
+            <div style={{ width: '400px', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' }}>
+               <div style={{ padding: '1rem' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Search Username or ID..." 
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    style={{ ...inputStyle, background: '#0f172a', borderColor: '#334155' }}
+                  />
+               </div>
+               <div className="flex-1 overflow-y-auto">
+                  {trackedUsers.map(user => (
+                    <div 
+                      key={user.vrc_userid}
+                      onClick={() => handleViewUserDetails(user.vrc_userid)}
+                      className={`p-4 border-b border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors ${selectedTrackedUser?.vrc_userid === user.vrc_userid ? 'bg-slate-900 border-l-4 border-emerald-500' : ''}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                         <span className="text-white font-medium">{user.current_username || 'Unknown'}</span>
+                         {user.tos_version && <span className="text-xs px-2 py-0.5 rounded bg-emerald-900/30 text-emerald-400 border border-emerald-900">v{user.tos_version}</span>}
+                      </div>
+                      <div className="text-xs text-slate-500 font-mono text-ellipsis overflow-hidden">{user.vrc_userid}</div>
+                      <div className="text-xs text-slate-600 mt-2 flex justify-between">
+                        <span>Seen: {new Date(user.last_seen).toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                  ))}
+               </div>
+            </div>
+
+            {/* Right: Detail View */}
+            <div className="flex-1 overflow-y-auto bg-slate-950 p-8">
+               {selectedTrackedUser ? (
+                 <div className="max-w-4xl mx-auto space-y-8">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 border-b border-slate-800 pb-6">
+                       <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-xl flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-emerald-900/20">
+                          {selectedTrackedUser.current_username?.[0] || '?'}
+                       </div>
+                       <div>
+                          <h1 className="text-3xl font-bold text-white mb-1">{selectedTrackedUser.current_username}</h1>
+                          <div className="flex items-center gap-3 text-slate-400 font-mono text-sm">
+                             <span>{selectedTrackedUser.vrc_userid}</span>
+                             <span className="w-1 h-1 bg-slate-600 rounded-full" />
+                             <span>First Seen: {new Date(selectedTrackedUser.first_seen).toLocaleDateString()}</span>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                       <div className="p-6 rounded-xl bg-slate-900 border border-slate-800">
+                          <h3 className="text-slate-400 text-sm font-bold uppercase mb-4 tracking-wider">Hardware Identity</h3>
+                          <div className="space-y-3">
+                             {selectedTrackedUser.hwids?.map((h, i) => (
+                               <div key={i} className="flex justify-between items-center text-sm font-mono border-b border-slate-800/50 pb-2 last:border-0">
+                                  <span className="text-emerald-400">{h.hwid}</span>
+                                  <span className="text-slate-600">{new Date(h.last_seen).toLocaleDateString()}</span>
+                                </div>
+                             ))}
+                          </div>
+                       </div>
+
+                       <div className="p-6 rounded-xl bg-slate-900 border border-slate-800">
+                          <h3 className="text-slate-400 text-sm font-bold uppercase mb-4 tracking-wider">Known IP Addresses</h3>
+                          <div className="space-y-3">
+                             {selectedTrackedUser.ips?.map((ip, i) => (
+                               <div key={i} className="flex justify-between items-center text-sm font-mono border-b border-slate-800/50 pb-2 last:border-0">
+                                  <span className="text-blue-400">{ip.ip_address}</span>
+                                  <span className="text-slate-600">{new Date(ip.last_seen).toLocaleDateString()}</span>
+                               </div>
+                             ))}
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="p-6 rounded-xl bg-slate-900 border border-slate-800">
+                       <h3 className="text-slate-400 text-sm font-bold uppercase mb-4 tracking-wider">Username History</h3>
+                       <div className="flex flex-wrap gap-2">
+                          {selectedTrackedUser.aliases?.map((a, i) => (
+                            <span key={i} className="px-3 py-1 bg-slate-800 rounded text-sm text-slate-300 border border-slate-700">
+                              {a.username}
+                            </span>
+                          ))}
+                       </div>
+                    </div>
+                 </div>
+               ) : (
+                 <div className="h-full flex flex-col items-center justify-center text-slate-600">
+                    <Users size={64} className="mb-4 opacity-50" />
+                    <p className="text-lg">Select a user to view detailed dossiers</p>
+                 </div>
+               )}
+            </div>
+         </div>
+      </div>
+     );
   }
 
   return (
@@ -510,22 +663,24 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
                 <div className={dashStyles.statsGrid}>
                   <div className={dashStyles.statCard}>
                     <div className={dashStyles.statLabel}>Total Users</div>
-                    <div className={dashStyles.statValue}>1,247</div>
+                    <div className={dashStyles.statValue}>{analyticsStats.total.toLocaleString()}</div>
                     <Users size={16} className={dashStyles.statIcon} />
                   </div>
                   <div className={dashStyles.statCard}>
                     <div className={dashStyles.statLabel}>Active Now</div>
-                    <div className={dashStyles.statValue}>23</div>
+                    <div className={dashStyles.statValue} style={{ color: '#4ade80' }}>
+                      {analyticsStats.online}
+                    </div>
                     <Activity size={16} className={dashStyles.statIcon} />
                   </div>
                   <div className={dashStyles.statCard}>
-                    <div className={dashStyles.statLabel}>Total Bans</div>
-                    <div className={dashStyles.statValue}>89</div>
+                    <div className={dashStyles.statLabel}>24h Active</div>
+                    <div className={dashStyles.statValue}>{analyticsStats.daily.toLocaleString()}</div>
                     <Ban size={16} className={dashStyles.statIcon} />
                   </div>
                   <div className={dashStyles.statCard}>
                     <div className={dashStyles.statLabel}>Uptime</div>
-                    <div className={dashStyles.statValue}>7d 12h</div>
+                    <div className={dashStyles.statValue}>99.9%</div>
                     <Clock size={16} className={dashStyles.statIcon} />
                   </div>
                 </div>
@@ -605,8 +760,8 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
 
                 {/* Quick Actions */}
                 <div className={dashStyles.quickActions}>
-                  <button className={dashStyles.actionButton}>
-                    <Globe size={14} /> Global Config
+                  <button onClick={() => setShowUserAnalytics(true)} className={dashStyles.actionButton}>
+                    <Globe size={14} /> User Analytics
                   </button>
                   <button onClick={() => setShowManageAdmins(true)} className={dashStyles.actionButton}>
                     <Users size={14} /> Manage Admins

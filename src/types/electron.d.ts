@@ -439,6 +439,7 @@ export interface AppSettings {
       taskbarFlash: boolean;
     };
   };
+  tosAcceptedVersion?: string;
 }
 
 export interface ElectronAPI {
