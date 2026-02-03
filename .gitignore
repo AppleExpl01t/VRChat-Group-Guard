@@ -9,6 +9,8 @@
 # SECRETS - All sensitive files go here
 # ============================================
 SENSITIVE/
+github_deploy_key
+github_deploy_key.pub
 
 # ============================================
 # BUILD OUTPUT
