@@ -17,16 +17,6 @@ body,
   -webkit-font-smoothing: antialiased;
 }
 
-/* UNIVERSAL CURSOR HIDE - Force custom cursor everywhere */
-html,
-body,
-#root,
-*,
-*::before,
-*::after {
-  cursor: none !important;
-}
-
 /* Scrollbar Customization */
 ::-webkit-scrollbar {
   width: 8px;
@@ -70,7 +60,7 @@ body,
 
 /* Noise Texture Overlay - 3% opacity grain for organic feel */
 .glass-panel::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -82,7 +72,11 @@ body,
 }
 
 .text-gradient {
-  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--color-primary) 0%,
+    var(--color-accent) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -91,7 +85,7 @@ body,
 }
 
 /* Ensure glass-panel children render above noise overlay */
-.glass-panel>* {
+.glass-panel > * {
   position: relative;
   z-index: 2;
 }

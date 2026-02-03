@@ -6,6 +6,7 @@ import { useAdminStore } from '../../stores/adminStore';
 import { Shield, X, LogIn, UserPlus, AlertTriangle, CheckCircle, Users, Activity, Ban, Clock, Globe, Server } from 'lucide-react';
 import dashStyles from './AdminDashboard.module.css';
 import { UserAnalyticsModal } from './UserAnalyticsModal';
+import type { TrackedUser } from './UserAnalyticsModal';
 import { Modal } from '../../components/ui/Modal';
 
 interface AdminPanelViewProps {
@@ -48,20 +49,7 @@ interface Invite {
   expires_at: string;
 }
 
-interface HWIDRecord { hwid: string; last_seen: string; }
-interface IPRecord { ip_address: string; last_seen: string; }
-interface AliasRecord { username: string; first_seen: string; }
 
-interface TrackedUser {
-  vrc_userid: string;
-  current_username?: string;
-  tos_version?: string;
-  last_seen: string;
-  first_seen: string;
-  hwids?: HWIDRecord[];
-  ips?: IPRecord[];
-  aliases?: AliasRecord[];
-}
 
 
 // Inline Confirm Button Component
@@ -142,8 +130,9 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
   const [users, setUsers] = useState<AdminUser[]>([]); // List of admins for management
   const [invites, setInvites] = useState<Invite[]>([]); // List of pending invites
   
-  // Analytics State
-  const [analyticsStats, setAnalyticsStats] = useState({ online: 0, total: 0, daily: 0 });
+  // Analytics State - Time period options for stats
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<'12h' | '24h' | '7d' | '30d' | '6mo' | '1y'>('24h');
+  const [analyticsStats, setAnalyticsStats] = useState({ online: 0, total: 0, period: 0, periodLabel: '24 Hours' });
   const [trackedUsers, setTrackedUsers] = useState<TrackedUser[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [selectedTrackedUser, setSelectedTrackedUser] = useState<TrackedUser | null>(null);
@@ -232,7 +221,7 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
     if (adminSessionToken && !showManageAdmins && !showUserAnalytics) {
        const fetchStats = async () => {
          const headers = await getHeaders(adminSessionToken);
-         fetch(`${BACKEND_URL}/track/stats`, { headers })
+         fetch(`${BACKEND_URL}/track/stats?period=${analyticsPeriod}`, { headers })
            .then(res => res.json())
            .then(data => {
              if (data.success) setAnalyticsStats(data.data);
@@ -243,7 +232,7 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
        const interval = setInterval(fetchStats, 10000); // Poll every 10s
        return () => clearInterval(interval);
     }
-  }, [adminSessionToken, getHeaders, showManageAdmins, showUserAnalytics]);
+  }, [adminSessionToken, getHeaders, showManageAdmins, showUserAnalytics, analyticsPeriod]);
 
   // Fetch Tracked Users when Analytics Panel opens
   React.useEffect(() => {
@@ -595,9 +584,32 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ isOpen, onClose 
                     </div>
                     <Activity size={16} className={dashStyles.statIcon} />
                   </div>
-                  <div className={dashStyles.statCard}>
-                    <div className={dashStyles.statLabel}>24h Active</div>
-                    <div className={dashStyles.statValue}>{analyticsStats.daily.toLocaleString()}</div>
+                  <div className={dashStyles.statCard} style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div className={dashStyles.statLabel}>{analyticsStats.periodLabel} Active</div>
+                      <select
+                        value={analyticsPeriod}
+                        onChange={(e) => setAnalyticsPeriod(e.target.value as '12h' | '24h' | '7d' | '30d' | '6mo' | '1y')}
+                        style={{
+                          background: 'rgba(0,0,0,0.6)',
+                          border: '1px solid rgba(34, 197, 94, 0.3)',
+                          color: '#4ade80',
+                          fontSize: '0.6rem',
+                          padding: '2px 4px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontFamily: 'monospace'
+                        }}
+                      >
+                        <option value="12h">12h</option>
+                        <option value="24h">24h</option>
+                        <option value="7d">7d</option>
+                        <option value="30d">30d</option>
+                        <option value="6mo">6mo</option>
+                        <option value="1y">1y</option>
+                      </select>
+                    </div>
+                    <div className={dashStyles.statValue}>{analyticsStats.period.toLocaleString()}</div>
                     <Ban size={16} className={dashStyles.statIcon} />
                   </div>
                   <div className={dashStyles.statCard}>
