@@ -4,9 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import { clearSessionStore } from './AuthService';
 
-// electron-store is ESM in v9+, we need to use dynamic import or require
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Store = require('electron-store');
+// electron-store is ESM, managed by esbuild bundle
+import Store from 'electron-store';
 
 // Schema for our stored data
 interface StoredCredentials {
