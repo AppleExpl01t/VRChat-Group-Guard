@@ -15,6 +15,13 @@ export function useHeartbeat() {
   useEffect(() => {
     const sendHeartbeat = async () => {
       try {
+        // KILL SWITCH: Check if cloud features are enabled
+        const settings = await window.electron.settings.get();
+        if (settings.system?.enableCloudFeatures === false) {
+          // Cloud features disabled - do not send heartbeat
+          return;
+        }
+
         // Get installation ID from Electron
         const installationId = await window.electron?.installationId?.get();
         

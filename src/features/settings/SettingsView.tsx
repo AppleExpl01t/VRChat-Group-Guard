@@ -1109,6 +1109,32 @@ export const SettingsView: React.FC = () => {
                       </NeonButton>
                     </div>
 
+                    {/* Reset TOS Compliance */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0' }}>
+                      <div>
+                        <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Reset Compliance Flags</div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Clear TOS & Privacy acceptance to re-trigger onboarding.</div>
+                      </div>
+                      <NeonButton
+                        variant="secondary"
+                        style={{ borderColor: '#ef4444', color: '#ef4444' }}
+                        onClick={async () => {
+                          if (await confirm('Reset TOS & Privacy flags? App will reload to show onboarding.')) {
+                            await window.electron.settings.update({
+                              system: {
+                                tosAcceptedVersion: null,
+                                privacyAcceptedDate: null,
+                                enableCloudFeatures: true
+                              }
+                            });
+                            window.location.reload();
+                          }
+                        }}
+                      >
+                        Reset Flags
+                      </NeonButton>
+                    </div>
+
                     {/* Bulk Friend Import */}
                     <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
                       <div style={{ color: 'var(--color-text-main)', fontWeight: 600 }}>Bulk Friend from VRCX JSON</div>

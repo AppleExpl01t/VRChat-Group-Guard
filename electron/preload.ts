@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('electron', {
     log: (level: string, message: string) => ipcRenderer.send('log', level, message),
     getVersion: () => process?.versions?.electron || 'unknown',
     openExternal: (url: string) => ipcRenderer.invoke('app:open-external', url),
+    startServices: () => ipcRenderer.invoke('app:start-services'),
 
     // Auth API
     login: (credentials: { username: string; password: string; rememberMe?: boolean }) =>

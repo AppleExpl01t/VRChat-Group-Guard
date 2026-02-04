@@ -447,12 +447,18 @@ export interface AppSettings {
       taskbarFlash: boolean;
     };
   };
+  system: {
+    tosAcceptedVersion: string | null;
+    privacyAcceptedDate: string | null;
+    enableCloudFeatures: boolean;
+  };
 }
 
 export interface ElectronAPI {
   log: (level: 'info' | 'warn' | 'error', message: string) => void;
   getVersion: () => string;
   openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+  startServices: () => Promise<boolean>;
 
   // Auth API
   login: (credentials: LoginCredentials) => Promise<LoginResult>;

@@ -426,19 +426,34 @@ progress.update('Watchlist');
 progress.update('Time Tracking');
 
 // Initialize Blocking/Critical Async Services concurrently
-Promise.all([
-  databaseService.initialize().catch(err => {
-    logger.error('Failed to initialize database:', err);
-    progress.update('Database', false);
-  }).then(() => progress.update('Database')),
-  discordBroadcastService.connect().catch(err => {
-    logger.error('Failed to connect Discord RPC:', err);
-    progress.update('Discord RPC', false);
-  }).then(() => progress.update('Discord RPC'))
-]).then(() => {
-  logger.info('Critical services initialized.');
-  progress.update('Interface Ready');
-});
+let servicesStarted = false;
+const startBackgroundServices = () => {
+  if (servicesStarted) return;
+  servicesStarted = true;
+  logger.info('[Startup] Starting background services...');
+
+  Promise.all([
+    databaseService.initialize().catch(err => {
+      logger.error('Failed to initialize database:', err);
+      progress.update('Database', false);
+    }).then(() => progress.update('Database')),
+    discordBroadcastService.connect().catch(err => {
+      logger.error('Failed to connect Discord RPC:', err);
+      progress.update('Discord RPC', false);
+    }).then(() => progress.update('Discord RPC'))
+  ]).then(() => {
+    logger.info('Critical services initialized.');
+    progress.update('Interface Ready');
+
+    // Start Background Workers
+    progress.update('LogWatcher Sync');
+    logWatcherService.start(); // Start robust watching immediately
+    progress.update('AutoMod Logic');
+    startAutoModService(); // Start the periodic join request processing loop
+    progress.update('OSC Engine');
+    oscService.start();
+  });
+};
 
 // Setup handlers
 import { serviceEventBus } from './services/ServiceEventBus';
@@ -456,13 +471,16 @@ ipcMain.handle('log-scanner:scan', () => {
   return logScannerService.scanAndImportHistory();
 });
 
-// Start Background Workers
-progress.update('LogWatcher Sync');
-logWatcherService.start(); // Start robust watching immediately
-progress.update('AutoMod Logic');
-startAutoModService(); // Start the periodic join request processing loop
-progress.update('OSC Engine');
-oscService.start();
+if (settingsService.isTosAccepted()) {
+  startBackgroundServices();
+} else {
+  logger.info('[Startup] TOS not accepted. Deferring service startup.');
+}
+
+ipcMain.handle('app:start-services', () => {
+  startBackgroundServices();
+  return true;
+});
 
 ipcMain.handle('settings:get', () => {
   return settingsService.getSettings();

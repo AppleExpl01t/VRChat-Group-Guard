@@ -25,6 +25,11 @@ export interface AppSettings {
             taskbarFlash: boolean;
         };
     };
+    system: {
+        tosAcceptedVersion: string | null;
+        privacyAcceptedDate: string | null;
+        enableCloudFeatures: boolean;
+    };
 }
 
 const defaultSettings: AppSettings = {
@@ -45,6 +50,11 @@ const defaultSettings: AppSettings = {
             sound: true,
             taskbarFlash: true
         }
+    },
+    system: {
+        tosAcceptedVersion: null,
+        privacyAcceptedDate: null,
+        enableCloudFeatures: true // Default to true, but user must confirm in Privacy Modal
     }
 };
 
@@ -115,6 +125,9 @@ class SettingsService {
             logger.error(`Failed to load audio: ${filePath}`, error);
             return null;
         }
+    }
+    public isTosAccepted(): boolean {
+        return !!this.store.get('system.tosAcceptedVersion');
     }
 }
 

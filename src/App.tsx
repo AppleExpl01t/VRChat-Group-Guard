@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense, startTransition, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, lazy, startTransition, useRef } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
 import { ConfirmationProvider } from './context/ConfirmationContext';
 import { TitleBar } from './components/layout/TitleBar';
@@ -18,8 +18,10 @@ import { useUpdateStore } from './stores/updateStore';
 import { useNotificationStore } from './stores/notificationStore';
 import { useAppViewStore } from './stores/appViewStore';
 import { PageTransition } from './components/layout/PageTransition';
-import { ViewLoader } from './components/ui/ViewLoader';
 import { AutoLoginLoadingScreen } from './features/auth/AutoLoginLoadingScreen';
+import { TermsOfServiceModal } from './features/setup/TermsOfServiceModal';
+import { PrivacyPolicyModal } from './features/setup/PrivacyPolicyModal';
+import { APP_VERSION } from './constants/app';
 
 
 // Lazy load heavy views for better performance
@@ -298,6 +300,70 @@ function App() {
     }
   }, [currentView, selectedGroup]);
 
+  // Legal Acceptance State
+  const [legalCheckComplete, setLegalCheckComplete] = useState(false);
+  const [showTos, setShowTos] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+
+  // Check legal status after storage is configured
+  useEffect(() => {
+    if (isStorageConfigured !== true) return;
+
+    const checkLegal = async () => {
+      try {
+        const settings = await window.electron.settings.get();
+        // Check if TOS accepted (compare versions if needed, for now just existence)
+        if (!settings.system?.tosAcceptedVersion) {
+            setShowTos(true);
+            return;
+        }
+        // Check if Privacy accepted
+        if (!settings.system?.privacyAcceptedDate) {
+            setShowPrivacy(true);
+            return;
+        }
+        setLegalCheckComplete(true);
+      } catch (e) {
+        console.error("Failed to check legal status", e);
+        // Fail safe: show TOS if check fails
+        setShowTos(true);
+      }
+    };
+    checkLegal();
+  }, [isStorageConfigured]);
+
+  const handleTosAccept = async () => {
+    setShowTos(false);
+    setShowPrivacy(true);
+    // Start background services now that TOS is accepted
+    window.electron.startServices();
+  };
+
+  const handlePrivacyComplete = async (accepted: boolean, cloudEnabled: boolean) => {
+    if (accepted) {
+        try {
+            await window.electron.settings.update({
+                system: {
+                    tosAcceptedVersion: APP_VERSION,
+                    privacyAcceptedDate: new Date().toISOString(),
+                    enableCloudFeatures: cloudEnabled
+                }
+            });
+            setShowPrivacy(false);
+            setLegalCheckComplete(true);
+        } catch (e) {
+            console.error("Failed to save legal acceptance", e);
+        }
+    }
+  };
+
+  const handleDeclineParams = () => {
+      window.electron.close(); // Or quit
+  };
+
+
+  // ... Existing code ...
+
   // --- Unified Render Logic for Epic Transitions ---
   let currentScreen: React.ReactNode;
   let screenKey: string;
@@ -308,67 +374,73 @@ function App() {
   } else if (isStorageConfigured === false) {
     currentScreen = <SetupView onComplete={() => setIsStorageConfigured(true)} />;
     screenKey = 'setup';
+  } else if (!legalCheckComplete) {
+      // Show Legal Modals Overlay on top of a loading screen or blank
+      currentScreen = <AutoLoginLoadingScreen />;
+      screenKey = 'legal-check';
   } else if ((isCheckingAutoLogin && status === 'logging-in')) {
     currentScreen = <AutoLoginLoadingScreen />;
     screenKey = 'loading-autologin';
   } else if (!isAuthenticated) {
-    currentScreen = <LoginView />;
-    screenKey = 'login';
+     currentScreen = <LoginView />;
+     screenKey = 'auth';
   } else {
-    // Main Authenticated App
-    currentScreen = (
-      <ConfirmationProvider>
-        <AppLayout>
-          <TitleBar
-            onSettingsClick={() => setCurrentView('settings')}
-            onIntegrationsClick={() => setCurrentView('integrations')}
-            onLogoutClick={() => setIsLogoutConfirmOpen(true)}
-          />
-
-          {/* Main Content Render - Epic Transition */}
-          <AnimatePresence mode="wait">
-            <PageTransition key={currentView + (selectedGroup ? selectedGroup.id : 'home')}>
-              <Suspense fallback={<ViewLoader />}>
-                {content}
-              </Suspense>
-            </PageTransition>
-          </AnimatePresence>
-
-          {/* Neon Dock Navigation */}
-          <NeonDock
-            currentView={currentView}
-            onViewChange={handleViewChange}
-            selectedGroup={selectedGroup}
-            onGroupClick={() => {
-              selectGroup(null);
-              setCurrentView('main');
-            }}
-            isLiveMode={isLiveMode}
-          />
-
-          <GlobalModals
-            isLogoutConfirmOpen={isLogoutConfirmOpen}
-            setIsLogoutConfirmOpen={setIsLogoutConfirmOpen}
-            onLogoutConfirm={() => {
-              logout(false);
-              setIsLogoutConfirmOpen(false);
-            }}
-          />
-        </AppLayout>
-      </ConfirmationProvider>
-    );
-    screenKey = 'app-layout';
+     currentScreen = (
+      <AppLayout>
+        <TitleBar 
+          onSettingsClick={() => handleViewChange('settings')}
+          onIntegrationsClick={() => handleViewChange('integrations')}
+          onLogoutClick={() => setIsLogoutConfirmOpen(true)}
+        />
+        <div className="flex-1 relative overflow-hidden flex flex-col">
+          {content}
+        </div>
+        <NeonDock 
+          currentView={currentView} 
+          onViewChange={handleViewChange} 
+          selectedGroup={selectedGroup}
+          onGroupClick={() => selectGroup(null)}
+          isLiveMode={isLiveMode}
+        />
+        <GlobalModals 
+          isLogoutConfirmOpen={isLogoutConfirmOpen}
+          setIsLogoutConfirmOpen={setIsLogoutConfirmOpen}
+          onLogoutConfirm={() => {
+            logout();
+            setIsLogoutConfirmOpen(false);
+          }}
+        />
+      </AppLayout>
+     );
+     screenKey = 'app';
   }
-
+  
+  // Render
   return (
-    <>
+    <ConfirmationProvider>
       <ToastContainer />
+      
+      {/* Legal Modals (Global Overlay) */}
+      {showTos && (
+        <TermsOfServiceModal 
+            isOpen={showTos} 
+            onAccept={handleTosAccept} 
+            onDecline={handleDeclineParams} 
+        />
+      )}
+      {showPrivacy && (
+        <PrivacyPolicyModal 
+            isOpen={showPrivacy} 
+            onComplete={handlePrivacyComplete} 
+        />
+      )}
+
       <AnimatePresence mode="wait">
         <PageTransition key={screenKey}>
           {currentScreen}
         </PageTransition>
       </AnimatePresence>
-    </>
+    </ConfirmationProvider>
   );
 }
 

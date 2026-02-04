@@ -6,7 +6,6 @@ import { useGroupPreferencesStore } from '../../stores/groupPreferencesStore';
 import { NeonButton } from '../../components/ui/NeonButton';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMouseGlow } from '../../hooks/useMouseGlow';
 import { ParticleDissolveImage } from '../../components/ui/ParticleDissolveImage';
 import { Star } from 'lucide-react';
 import styles from './GroupSelectorView.module.css';
@@ -38,6 +37,7 @@ const GroupCard = memo(({
   onStarToggle,
   onClick
 }: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   group: any,
   isLive: boolean,
   isLarge: boolean,
@@ -45,18 +45,11 @@ const GroupCard = memo(({
   onStarToggle: (e: React.MouseEvent) => void,
   onClick: () => void
 }) => {
-  const glow = useMouseGlow();
-
   return (
     <motion.div variants={itemVariants} layout>
-      {/* eslint-disable react-compiler/react-compiler -- useMouseGlow uses refs for DOM event handling, not for render output */}
       <div
-        ref={glow.setRef}
         className={`${styles.cardPanel} ${isLarge ? styles.cardLarge : styles.cardCompact} ${isLive ? styles.cardLive : ''} ${isStarred ? styles.cardStarred : ''}`}
         onClick={onClick}
-        onMouseMove={glow.onMouseMove}
-        onMouseLeave={glow.onMouseLeave}
-        style={glow.style}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -178,18 +171,11 @@ const RoamingCard = memo(({
   isLarge: boolean,
   onClick: () => void
 }) => {
-  const glow = useMouseGlow();
-
   return (
     <motion.div variants={itemVariants} layout>
-      {/* eslint-disable react-compiler/react-compiler -- useMouseGlow uses refs for DOM event handling, not for render output */}
       <div
-        ref={glow.setRef}
         className={`${styles.cardPanel} ${isLarge ? styles.cardLarge : styles.cardCompact} ${styles.cardRoaming}`}
         onClick={onClick}
-        onMouseMove={glow.onMouseMove}
-        onMouseLeave={glow.onMouseLeave}
-        style={{ ...glow.style }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -573,38 +559,7 @@ export const GroupSelectorView: React.FC = memo(() => {
         </motion.div>
 
         {/* Always show Skip/Roaming Mode button */}
-        <motion.div
-          id="action-footer" // Force DOM update
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          style={{
-            display: 'flex',
-            flexDirection: 'column', // Stack vertically
-            alignItems: 'center', // Center align
-            padding: '2rem 1rem',
-            marginTop: '1rem',
-            gap: '12px' // 10-12px padding as requested
-          }}
-        >
-          <NeonButton
-            variant="secondary"
-            onClick={() => enterRoamingMode()}
-            style={{
-              padding: '0.8rem 2rem',
-              fontSize: '0.9rem',
-              gap: '8px',
-              opacity: 0.8,
-              width: '100%',
-              maxWidth: '320px' // Same length
-            }}
-          >
-            <span style={{ fontSize: '1.1rem' }}>🔍</span>
-            Skip / Enter Roaming Mode
-          </NeonButton>
 
-
-        </motion.div>
       </div>
     </div>
   );
