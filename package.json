@@ -92,7 +92,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^17.2.0",
+    "globals": "^17.3.0",
     "jsdom": "^27.4.0",
     "patch-package": "^8.0.1",
     "prisma": "^5.11.0",
